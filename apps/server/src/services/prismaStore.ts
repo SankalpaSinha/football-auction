@@ -1,0 +1,120 @@
+import type { GameStore } from '../engine/store';
+import type { Db } from '../lib/db';
+
+/** Writes rooms, games, lots, bids and squads to PostgreSQL. */
+export class PrismaGameStore implements GameStore {
+  /** gameId → auction row id */
+  private auctionIds = new Map<string, string>();
+
+  constructor(private readonly db: Db) {}
+
+  async roomCreated(r: Parameters<GameStore['roomCreated']>[0]) {
+    await this.db.room.create({
+      data: {
+        id: r.id,
+        code: r.code,
+        name: r.name,
+        hostUserId: r.hostUserId,
+        competitionId: r.settings.competitionId,
+        seasonId: r.settings.seasonId,
+        settings: r.settings as object,
+        mode: r.settings.mode,
+        isPublic: r.settings.isPublic,
+      },
+    });
+  }
+
+  async memberJoined(roomId: string, userId: string, seat: number) {
+    await this.db.roomPlayer.upsert({
+      where: { roomId_userId: { roomId, userId } },
+      create: { roomId, userId, seat },
+      update: { seat, leftAt: null },
+    });
+  }
+
+  async memberLeft(roomId: string, userId: string) {
+    await this.db.roomPlayer.updateMany({ where: { roomId, userId }, data: { leftAt: new Date() } });
+  }
+
+  async hostChanged(roomId: string, hostUserId: string) {
+    await this.db.room.update({ where: { id: roomId }, data: { hostUserId } });
+  }
+
+  async gameStarted(g: Parameters<GameStore['gameStarted']>[0]) {
+    const auction = await this.db.$transaction(async (tx) => {
+      await tx.room.update({ where: { id: g.roomId }, data: { status: 'IN_GAME' } });
+      await tx.game.create({ data: { id: g.gameId, roomId: g.roomId, seed: g.seed, mode: g.mode } });
+      await tx.squad.createMany({
+        data: g.participants.map((p) => ({
+          gameId: g.gameId,
+          userId: p.userId,
+          budgetStart: p.budget,
+          budgetRemaining: p.budget,
+        })),
+      });
+      return tx.auction.create({
+        data: {
+          gameId: g.gameId,
+          orderStrategy: g.orderStrategy,
+          poolSize: g.poolSize,
+          config: g.config as object,
+        },
+      });
+    });
+    this.auctionIds.set(g.gameId, auction.id);
+  }
+
+  async lotClosed(gameId: string, lot: Parameters<GameStore['lotClosed']>[1], participants: Parameters<GameStore['lotClosed']>[2]) {
+    const auctionId = this.auctionIds.get(gameId);
+    if (!auctionId) throw new Error(`no auction row for game ${gameId}`);
+    await this.db.$transaction(async (tx) => {
+      const row = await tx.auctionLot.create({
+        data: {
+          auctionId,
+          lotNumber: lot.lotNumber,
+          playerStatsId: lot.player.id,
+          outcome: lot.outcome,
+          winnerUserId: lot.winnerId,
+          price: lot.price,
+          estimatedValue: lot.estimatedValue,
+          openedAt: lot.openedAt ? new Date(lot.openedAt) : null,
+          closedAt: new Date(lot.closedAt),
+        },
+      });
+      if (lot.bids.length) {
+        await tx.bid.createMany({
+          data: lot.bids.map((b) => ({ lotId: row.id, userId: b.userId, amount: b.amount, createdAt: new Date(b.at) })),
+        });
+      }
+      if (lot.winnerId && lot.price !== null) {
+        const winner = participants.find((p) => p.userId === lot.winnerId)!;
+        const squad = await tx.squad.update({
+          where: { gameId_userId: { gameId, userId: lot.winnerId } },
+          data: { budgetRemaining: winner.budget },
+        });
+        await tx.squadPlayer.create({
+          data: {
+            squadId: squad.id,
+            gameId,
+            playerStatsId: lot.player.id,
+            price: lot.price,
+            acquiredVia: lot.outcome === 'AUTO_ASSIGNED' ? 'AUTO' : 'AUCTION',
+            lotNumber: lot.lotNumber,
+          },
+        });
+      }
+    });
+  }
+
+  async auctionCompleted(gameId: string) {
+    await this.db.game.update({ where: { id: gameId }, data: { status: 'SQUAD_BUILDING' } });
+  }
+
+  async roomClosed(roomId: string, status: 'FINISHED' | 'ABANDONED' | 'CLOSED', gameId: string | null) {
+    await this.db.room.update({ where: { id: roomId }, data: { status, closedAt: new Date() } });
+    if (gameId && status === 'ABANDONED') {
+      await this.db.game.update({ where: { id: gameId }, data: { status: 'ABANDONED', endedAt: new Date() } });
+    }
+    if (gameId) this.auctionIds.delete(gameId);
+  }
+}

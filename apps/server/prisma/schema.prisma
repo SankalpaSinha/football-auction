@@ -1,0 +1,368 @@
+// Football Auction — relational model.
+// Live auctions run in server memory (authoritative); every outcome that
+// matters (rooms, games, lots, bids, squads, results) is written here.
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ---------------------------------------------------------------- identity
+
+model User {
+  id               String   @id @default(cuid())
+  username         String
+  /// Lower-cased username — enforces case-insensitive uniqueness.
+  usernameKey      String   @unique
+  /// SHA-256 of the session token held by the browser. Replaced by real auth later.
+  sessionTokenHash String   @unique
+  createdAt        DateTime @default(now())
+  lastSeenAt       DateTime @default(now())
+
+  rating      PlayerRating[]
+  memberships RoomPlayer[]
+  hostedRooms Room[]         @relation("RoomHost")
+  squads      Squad[]
+  bids        Bid[]
+  wonLots     AuctionLot[]
+  results     MatchResult[]
+}
+
+// ------------------------------------------------------------ player data
+
+model Season {
+  id        String  @id // "2026-27"
+  label     String
+  startYear Int
+  isCurrent Boolean @default(false)
+
+  competitions CompetitionSeason[]
+  playerStats  PlayerStats[]
+}
+
+enum CompetitionType {
+  LEAGUE
+  CLUB_CUP
+  INTERNATIONAL
+  GLOBAL
+}
+
+model Competition {
+  id         String          @id // slug, e.g. "premier-league"
+  name       String
+  shortName  String
+  type       CompetitionType
+  accent     String
+  selectable Boolean         @default(true)
+  sortOrder  Int             @default(0)
+
+  seasons      CompetitionSeason[]
+  clubs        Club[]
+  leagueStats  PlayerStats[]
+  rooms        Room[]
+}
+
+/// Which players are eligible for a competition in a given season.
+/// `rules` is a PoolRules JSON: { leagues?, clubs?, nations?, positions?, minOverall?, statuses? }
+model CompetitionSeason {
+  id            String      @id @default(cuid())
+  competitionId String
+  seasonId      String
+  rules         Json
+  competition   Competition @relation(fields: [competitionId], references: [id])
+  season        Season      @relation(fields: [seasonId], references: [id])
+
+  @@unique([competitionId, seasonId])
+}
+
+model Nation {
+  code String @id // FIFA trigram
+  name String
+  flag String
+
+  players Player[]
+}
+
+model Club {
+  id        String   @id // slug
+  name      String
+  shortName String
+  country   String
+  colors    String[]
+  logoUrl   String?
+  leagueId  String?
+  league    Competition? @relation(fields: [leagueId], references: [id])
+
+  stats PlayerStats[]
+}
+
+/// Season-independent identity.
+model Player {
+  id            String  @id // stable external id from the dataset
+  name          String
+  shortName     String
+  nationCode    String
+  preferredFoot String
+  heightCm      Int
+  imageUrl      String?
+  nation        Nation  @relation(fields: [nationCode], references: [code])
+
+  stats PlayerStats[]
+}
+
+enum PlayerStatus {
+  ACTIVE
+  INJURED
+  INACTIVE
+}
+
+/// A player's club, position and ratings for one season.
+model PlayerStats {
+  id                 String       @id @default(cuid())
+  playerId           String
+  seasonId           String
+  clubId             String
+  leagueId           String
+  position           String
+  secondaryPositions String[]
+  overall            Int
+  pace               Int?
+  shooting           Int?
+  passing            Int?
+  dribbling          Int?
+  defending          Int?
+  physical           Int?
+  diving             Int?
+  handling           Int?
+  kicking            Int?
+  reflexes           Int?
+  speed              Int?
+  positioning        Int?
+  /// Optional detailed / position-specific attributes (finishing, vision, ...).
+  attributes         Json?
+  age                Int
+  status             PlayerStatus @default(ACTIVE)
+  /// Dataset the row was imported from.
+  source             String
+  updatedAt          DateTime     @updatedAt
+
+  player       Player        @relation(fields: [playerId], references: [id])
+  season       Season        @relation(fields: [seasonId], references: [id])
+  club         Club          @relation(fields: [clubId], references: [id])
+  league       Competition   @relation(fields: [leagueId], references: [id])
+  lots         AuctionLot[]
+  squadEntries SquadPlayer[]
+
+  @@unique([playerId, seasonId])
+  @@index([seasonId, leagueId])
+}
+
+// ------------------------------------------------------------- rooms/games
+
+enum RoomStatus {
+  OPEN
+  IN_GAME
+  FINISHED
+  ABANDONED
+  CLOSED
+}
+
+enum GameMode {
+  CASUAL
+  RANKED
+}
+
+model Room {
+  id            String     @id
+  code          String
+  name          String
+  hostUserId    String?
+  competitionId String
+  seasonId      String
+  settings      Json
+  mode          GameMode   @default(CASUAL)
+  isPublic      Boolean    @default(false)
+  status        RoomStatus @default(OPEN)
+  createdAt     DateTime   @default(now())
+  closedAt      DateTime?
+
+  host        User?        @relation("RoomHost", fields: [hostUserId], references: [id])
+  competition Competition  @relation(fields: [competitionId], references: [id])
+  players     RoomPlayer[]
+  games       Game[]
+
+  @@index([code])
+  @@index([status, isPublic])
+}
+
+model RoomPlayer {
+  id       String    @id @default(cuid())
+  roomId   String
+  userId   String
+  seat     Int
+  joinedAt DateTime  @default(now())
+  leftAt   DateTime?
+  room     Room      @relation(fields: [roomId], references: [id])
+  user     User      @relation(fields: [userId], references: [id])
+
+  @@unique([roomId, userId])
+}
+
+enum GameStatus {
+  AUCTION
+  SQUAD_BUILDING
+  FINISHED
+  ABANDONED
+}
+
+model Game {
+  id        String     @id
+  roomId    String
+  /// Seed for the auction-order shuffle (kept server-side; never sent to clients).
+  seed      String
+  mode      GameMode   @default(CASUAL)
+  status    GameStatus @default(AUCTION)
+  startedAt DateTime   @default(now())
+  endedAt   DateTime?
+  room      Room       @relation(fields: [roomId], references: [id])
+
+  auction Auction?
+  squads  Squad[]
+  results MatchResult[]
+}
+
+model Auction {
+  id            String       @id @default(cuid())
+  gameId        String       @unique
+  orderStrategy String
+  poolSize      Int
+  /// Effective rules for this auction (timer, increments, reserve...).
+  config        Json
+  game          Game         @relation(fields: [gameId], references: [id])
+  lots          AuctionLot[]
+}
+
+enum LotOutcome {
+  SOLD
+  UNSOLD
+  AUTO_ASSIGNED
+}
+
+/// One player offered in an auction ("AuctionPlayer").
+model AuctionLot {
+  id             String      @id @default(cuid())
+  auctionId      String
+  lotNumber      Int
+  playerStatsId  String
+  outcome        LotOutcome
+  winnerUserId   String?
+  price          Int?
+  estimatedValue Int
+  openedAt       DateTime?
+  closedAt       DateTime    @default(now())
+  auction        Auction     @relation(fields: [auctionId], references: [id])
+  playerStats    PlayerStats @relation(fields: [playerStatsId], references: [id])
+  winner         User?       @relation(fields: [winnerUserId], references: [id])
+  bids           Bid[]
+
+  @@unique([auctionId, lotNumber])
+}
+
+model Bid {
+  id        String     @id @default(cuid())
+  lotId     String
+  userId    String
+  amount    Int
+  createdAt DateTime
+  lot       AuctionLot @relation(fields: [lotId], references: [id])
+  user      User       @relation(fields: [userId], references: [id])
+
+  @@index([lotId])
+}
+
+enum Acquisition {
+  AUCTION
+  AUTO
+}
+
+model Squad {
+  id              String        @id @default(cuid())
+  gameId          String
+  userId          String
+  budgetStart     Int
+  budgetRemaining Int
+  formationId     String?
+  game            Game          @relation(fields: [gameId], references: [id])
+  user            User          @relation(fields: [userId], references: [id])
+  formation       Formation?    @relation(fields: [formationId], references: [id])
+  players         SquadPlayer[]
+
+  @@unique([gameId, userId])
+}
+
+enum SquadRole {
+  STARTER
+  BENCH
+}
+
+model SquadPlayer {
+  id            String       @id @default(cuid())
+  squadId       String
+  /// Denormalised so the database itself forbids selling a player twice in one game.
+  gameId        String
+  playerStatsId String
+  price         Int
+  acquiredVia   Acquisition
+  lotNumber     Int?
+  role          SquadRole?
+  slotIndex     Int?
+  squad         Squad        @relation(fields: [squadId], references: [id])
+  playerStats   PlayerStats  @relation(fields: [playerStatsId], references: [id])
+
+  @@unique([gameId, playerStatsId])
+}
+
+model Formation {
+  id     String  @id // "4-3-3"
+  name   String
+  /// Ordered slot definitions: [{ position, x, y }]
+  slots  Json
+  squads Squad[]
+}
+
+model MatchResult {
+  id        String   @id @default(cuid())
+  gameId    String
+  userId    String
+  rank      Int
+  score     Float
+  breakdown Json
+  eloBefore Int?
+  eloAfter  Int?
+  game      Game     @relation(fields: [gameId], references: [id])
+  user      User     @relation(fields: [userId], references: [id])
+
+  @@unique([gameId, userId])
+}
+
+/// Global rating per mode (leaderboard). Ranked updates ELO; casual only counts games.
+model PlayerRating {
+  id           String   @id @default(cuid())
+  userId       String
+  mode         GameMode
+  elo          Int      @default(1200)
+  games        Int      @default(0)
+  wins         Int      @default(0)
+  podiums      Int      @default(0)
+  totalScore   Float    @default(0)
+  highestScore Float    @default(0)
+  updatedAt    DateTime @updatedAt
+  user         User     @relation(fields: [userId], references: [id])
+
+  @@unique([userId, mode])
+  @@index([mode, elo])
+}

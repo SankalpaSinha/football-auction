@@ -1,0 +1,21 @@
+{
+  "name": "football-auction",
+  "private": true,
+  "version": "0.1.0",
+  "workspaces": ["packages/*", "apps/*"],
+  "scripts": {
+    "dev": "concurrently -n server,web -c cyan,magenta \"npm run dev -w @fa/server\" \"npm run dev -w @fa/web\"",
+    "dev:server": "npm run dev -w @fa/server",
+    "dev:web": "npm run dev -w @fa/web",
+    "db:up": "docker compose up -d db",
+    "db:migrate": "npm run db:migrate -w @fa/server",
+    "db:import": "npm run db:import -w @fa/server",
+    "test": "npm run test -w @fa/server",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "sim": "npm run sim -w @fa/server"
+  },
+  "devDependencies": {
+    "concurrently": "^9.2.0",
+    "typescript": "5.9.3"
+  }
+}

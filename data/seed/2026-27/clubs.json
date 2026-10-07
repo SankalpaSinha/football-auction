@@ -1,0 +1,518 @@
+[
+  {
+    "id": "arsenal",
+    "name": "Arsenal",
+    "shortName": "ARS",
+    "league": "premier-league",
+    "country": "ENG",
+    "colors": [
+      "#EF0107",
+      "#FFFFFF"
+    ],
+    "ucl": true
+  },
+  {
+    "id": "manchester-city",
+    "name": "Manchester City",
+    "shortName": "MCI",
+    "league": "premier-league",
+    "country": "ENG",
+    "colors": [
+      "#6CABDD",
+      "#1C2C5B"
+    ],
+    "ucl": true
+  },
+  {
+    "id": "liverpool",
+    "name": "Liverpool",
+    "shortName": "LIV",
+    "league": "premier-league",
+    "country": "ENG",
+    "colors": [
+      "#C8102E",
+      "#F6EB61"
+    ],
+    "ucl": true
+  },
+  {
+    "id": "chelsea",
+    "name": "Chelsea",
+    "shortName": "CHE",
+    "league": "premier-league",
+    "country": "ENG",
+    "colors": [
+      "#034694",
+      "#FFFFFF"
+    ],
+    "ucl": false
+  },
+  {
+    "id": "manchester-united",
+    "name": "Manchester United",
+    "shortName": "MUN",
+    "league": "premier-league",
+    "country": "ENG",
+    "colors": [
+      "#DA291C",
+      "#FBE122"
+    ],
+    "ucl": true
+  },
+  {
+    "id": "tottenham-hotspur",
+    "name": "Tottenham Hotspur",
+    "shortName": "TOT",
+    "league": "premier-league",
+    "country": "ENG",
+    "colors": [
+      "#FFFFFF",
+      "#132257"
+    ],
+    "ucl": false
+  },
+  {
+    "id": "newcastle-united",
+    "name": "Newcastle United",
+    "shortName": "NEW",
+    "league": "premier-league",
+    "country": "ENG",
+    "colors": [
+      "#241F20",
+      "#FFFFFF"
+    ],
+    "ucl": false
+  },
+  {
+    "id": "aston-villa",
+    "name": "Aston Villa",
+    "shortName": "AVL",
+    "league": "premier-league",
+    "country": "ENG",
+    "colors": [
+      "#670E36",
+      "#95BFE5"
+    ],
+    "ucl": true
+  },
+  {
+    "id": "brighton",
+    "name": "Brighton & Hove Albion",
+    "shortName": "BHA",
+    "league": "premier-league",
+    "country": "ENG",
+    "colors": [
+      "#0057B8",
+      "#FFFFFF"
+    ],
+    "ucl": false
+  },
+  {
+    "id": "nottingham-forest",
+    "name": "Nottingham Forest",
+    "shortName": "NFO",
+    "league": "premier-league",
+    "country": "ENG",
+    "colors": [
+      "#DD0000",
+      "#FFFFFF"
+    ],
+    "ucl": false
+  },
+  {
+    "id": "crystal-palace",
+    "name": "Crystal Palace",
+    "shortName": "CRY",
+    "league": "premier-league",
+    "country": "ENG",
+    "colors": [
+      "#1B458F",
+      "#C4122E"
+    ],
+    "ucl": false
+  },
+  {
+    "id": "real-madrid",
+    "name": "Real Madrid",
+    "shortName": "RMA",
+    "league": "la-liga",
+    "country": "ESP",
+    "colors": [
+      "#FFFFFF",
+      "#FEBE10"
+    ],
+    "ucl": true
+  },
+  {
+    "id": "barcelona",
+    "name": "FC Barcelona",
+    "shortName": "BAR",
+    "league": "la-liga",
+    "country": "ESP",
+    "colors": [
+      "#A50044",
+      "#004D98"
+    ],
+    "ucl": true
+  },
+  {
+    "id": "atletico-madrid",
+    "name": "Atlético de Madrid",
+    "shortName": "ATM",
+    "league": "la-liga",
+    "country": "ESP",
+    "colors": [
+      "#CB3524",
+      "#272E61"
+    ],
+    "ucl": true
+  },
+  {
+    "id": "athletic-club",
+    "name": "Athletic Club",
+    "shortName": "ATH",
+    "league": "la-liga",
+    "country": "ESP",
+    "colors": [
+      "#EE2523",
+      "#FFFFFF"
+    ],
+    "ucl": false
+  },
+  {
+    "id": "real-sociedad",
+    "name": "Real Sociedad",
+    "shortName": "RSO",
+    "league": "la-liga",
+    "country": "ESP",
+    "colors": [
+      "#0067B1",
+      "#FFFFFF"
+    ],
+    "ucl": false
+  },
+  {
+    "id": "villarreal",
+    "name": "Villarreal",
+    "shortName": "VIL",
+    "league": "la-liga",
+    "country": "ESP",
+    "colors": [
+      "#FFE667",
+      "#005187"
+    ],
+    "ucl": true
+  },
+  {
+    "id": "real-betis",
+    "name": "Real Betis",
+    "shortName": "BET",
+    "league": "la-liga",
+    "country": "ESP",
+    "colors": [
+      "#00954C",
+      "#FFFFFF"
+    ],
+    "ucl": false
+  },
+  {
+    "id": "sevilla",
+    "name": "Sevilla",
+    "shortName": "SEV",
+    "league": "la-liga",
+    "country": "ESP",
+    "colors": [
+      "#FFFFFF",
+      "#D81920"
+    ],
+    "ucl": false
+  },
+  {
+    "id": "girona",
+    "name": "Girona",
+    "shortName": "GIR",
+    "league": "la-liga",
+    "country": "ESP",
+    "colors": [
+      "#CD2534",
+      "#FFFFFF"
+    ],
+    "ucl": false
+  },
+  {
+    "id": "inter",
+    "name": "Inter",
+    "shortName": "INT",
+    "league": "serie-a",
+    "country": "ITA",
+    "colors": [
+      "#0068A8",
+      "#000000"
+    ],
+    "ucl": true
+  },
+  {
+    "id": "milan",
+    "name": "AC Milan",
+    "shortName": "MIL",
+    "league": "serie-a",
+    "country": "ITA",
+    "colors": [
+      "#FB090B",
+      "#000000"
+    ],
+    "ucl": true
+  },
+  {
+    "id": "juventus",
+    "name": "Juventus",
+    "shortName": "JUV",
+    "league": "serie-a",
+    "country": "ITA",
+    "colors": [
+      "#000000",
+      "#FFFFFF"
+    ],
+    "ucl": true
+  },
+  {
+    "id": "napoli",
+    "name": "Napoli",
+    "shortName": "NAP",
+    "league": "serie-a",
+    "country": "ITA",
+    "colors": [
+      "#12A0D7",
+      "#FFFFFF"
+    ],
+    "ucl": true
+  },
+  {
+    "id": "atalanta",
+    "name": "Atalanta",
+    "shortName": "ATA",
+    "league": "serie-a",
+    "country": "ITA",
+    "colors": [
+      "#1E71B8",
+      "#000000"
+    ],
+    "ucl": false
+  },
+  {
+    "id": "roma",
+    "name": "AS Roma",
+    "shortName": "ROM",
+    "league": "serie-a",
+    "country": "ITA",
+    "colors": [
+      "#8E1F2F",
+      "#F0BC42"
+    ],
+    "ucl": false
+  },
+  {
+    "id": "lazio",
+    "name": "Lazio",
+    "shortName": "LAZ",
+    "league": "serie-a",
+    "country": "ITA",
+    "colors": [
+      "#87D8F7",
+      "#FFFFFF"
+    ],
+    "ucl": false
+  },
+  {
+    "id": "fiorentina",
+    "name": "Fiorentina",
+    "shortName": "FIO",
+    "league": "serie-a",
+    "country": "ITA",
+    "colors": [
+      "#4B2E83",
+      "#FFFFFF"
+    ],
+    "ucl": false
+  },
+  {
+    "id": "bologna",
+    "name": "Bologna",
+    "shortName": "BOL",
+    "league": "serie-a",
+    "country": "ITA",
+    "colors": [
+      "#A21C26",
+      "#1A2F48"
+    ],
+    "ucl": false
+  },
+  {
+    "id": "como",
+    "name": "Como",
+    "shortName": "COM",
+    "league": "serie-a",
+    "country": "ITA",
+    "colors": [
+      "#003DA5",
+      "#FFFFFF"
+    ],
+    "ucl": false
+  },
+  {
+    "id": "bayern-munich",
+    "name": "FC Bayern München",
+    "shortName": "FCB",
+    "league": "bundesliga",
+    "country": "GER",
+    "colors": [
+      "#DC052D",
+      "#0066B2"
+    ],
+    "ucl": true
+  },
+  {
+    "id": "bayer-leverkusen",
+    "name": "Bayer 04 Leverkusen",
+    "shortName": "B04",
+    "league": "bundesliga",
+    "country": "GER",
+    "colors": [
+      "#E32221",
+      "#000000"
+    ],
+    "ucl": true
+  },
+  {
+    "id": "borussia-dortmund",
+    "name": "Borussia Dortmund",
+    "shortName": "BVB",
+    "league": "bundesliga",
+    "country": "GER",
+    "colors": [
+      "#FDE100",
+      "#000000"
+    ],
+    "ucl": true
+  },
+  {
+    "id": "rb-leipzig",
+    "name": "RB Leipzig",
+    "shortName": "RBL",
+    "league": "bundesliga",
+    "country": "GER",
+    "colors": [
+      "#DD0741",
+      "#FFFFFF"
+    ],
+    "ucl": true
+  },
+  {
+    "id": "vfb-stuttgart",
+    "name": "VfB Stuttgart",
+    "shortName": "VFB",
+    "league": "bundesliga",
+    "country": "GER",
+    "colors": [
+      "#E32219",
+      "#FFFFFF"
+    ],
+    "ucl": false
+  },
+  {
+    "id": "eintracht-frankfurt",
+    "name": "Eintracht Frankfurt",
+    "shortName": "SGE",
+    "league": "bundesliga",
+    "country": "GER",
+    "colors": [
+      "#E1000F",
+      "#000000"
+    ],
+    "ucl": false
+  },
+  {
+    "id": "sc-freiburg",
+    "name": "SC Freiburg",
+    "shortName": "SCF",
+    "league": "bundesliga",
+    "country": "GER",
+    "colors": [
+      "#E2001A",
+      "#000000"
+    ],
+    "ucl": false
+  },
+  {
+    "id": "vfl-wolfsburg",
+    "name": "VfL Wolfsburg",
+    "shortName": "WOB",
+    "league": "bundesliga",
+    "country": "GER",
+    "colors": [
+      "#65B32E",
+      "#FFFFFF"
+    ],
+    "ucl": false
+  },
+  {
+    "id": "tsg-hoffenheim",
+    "name": "TSG Hoffenheim",
+    "shortName": "TSG",
+    "league": "bundesliga",
+    "country": "GER",
+    "colors": [
+      "#1C63B7",
+      "#FFFFFF"
+    ],
+    "ucl": true
+  },
+  {
+    "id": "psg",
+    "name": "Paris Saint-Germain",
+    "shortName": "PSG",
+    "league": "ligue-1",
+    "country": "FRA",
+    "colors": [
+      "#004170",
+      "#DA291C"
+    ],
+    "ucl": true
+  },
+  {
+    "id": "marseille",
+    "name": "Olympique de Marseille",
+    "shortName": "OLM",
+    "league": "ligue-1",
+    "country": "FRA",
+    "colors": [
+      "#2FAEE0",
+      "#FFFFFF"
+    ],
+    "ucl": true
+  },
+  {
+    "id": "monaco",
+    "name": "AS Monaco",
+    "shortName": "ASM",
+    "league": "ligue-1",
+    "country": "FRA",
+    "colors": [
+      "#E7262E",
+      "#FFFFFF"
+    ],
+    "ucl": false
+  },
+  {
+    "id": "lille",
+    "name": "LOSC Lille",
+    "shortName": "LIL",
+    "league": "ligue-1",
+    "country": "FRA",
+    "colors": [
+      "#E01E13",
+      "#20325F"
+    ],
+    "ucl": true
+  }
+]

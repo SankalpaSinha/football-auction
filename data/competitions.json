@@ -1,0 +1,45 @@
+[
+  {
+    "id": "premier-league", "name": "Premier League", "shortName": "PL", "type": "LEAGUE",
+    "accent": "#a855f7", "sortOrder": 1, "rules": { "leagues": ["premier-league"] }
+  },
+  {
+    "id": "la-liga", "name": "La Liga", "shortName": "LL", "type": "LEAGUE",
+    "accent": "#f97316", "sortOrder": 2, "rules": { "leagues": ["la-liga"] }
+  },
+  {
+    "id": "serie-a", "name": "Serie A", "shortName": "SA", "type": "LEAGUE",
+    "accent": "#22c55e", "sortOrder": 3, "rules": { "leagues": ["serie-a"] }
+  },
+  {
+    "id": "bundesliga", "name": "Bundesliga", "shortName": "BL", "type": "LEAGUE",
+    "accent": "#ef4444", "sortOrder": 4, "rules": { "leagues": ["bundesliga"] }
+  },
+  {
+    "id": "champions-league", "name": "UEFA Champions League", "shortName": "UCL", "type": "CLUB_CUP",
+    "accent": "#3b82f6", "sortOrder": 5, "rules": { "clubTags": ["ucl"] }
+  },
+  {
+    "id": "world-cup", "name": "FIFA World Cup", "shortName": "WC", "type": "INTERNATIONAL",
+    "accent": "#eab308", "sortOrder": 6,
+    "rules": {
+      "nations": [
+        "CAN", "MEX", "USA",
+        "AUS", "IRN", "JPN", "JOR", "KOR", "QAT", "KSA", "UZB",
+        "ALG", "CPV", "EGY", "GHA", "CIV", "MAR", "SEN", "RSA", "TUN",
+        "ARG", "BRA", "COL", "ECU", "PAR", "URU",
+        "NZL", "CUW", "HAI", "PAN",
+        "ENG", "FRA", "CRO", "NOR", "POR", "NED", "GER", "SUI", "ESP", "BEL", "AUT", "SCO",
+        "ITA", "TUR", "SWE", "CZE", "COD", "IRQ"
+      ]
+    }
+  },
+  {
+    "id": "global", "name": "Global — All Players", "shortName": "ALL", "type": "GLOBAL",
+    "accent": "#14b8a6", "sortOrder": 7, "rules": {}
+  },
+  {
+    "id": "ligue-1", "name": "Ligue 1", "shortName": "L1", "type": "LEAGUE",
+    "accent": "#06b6d4", "sortOrder": 8, "selectable": false, "rules": { "leagues": ["ligue-1"] }
+  }
+]

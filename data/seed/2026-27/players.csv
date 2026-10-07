@@ -1,0 +1,543 @@
+externalId,name,shortName,nation,club,position,secondaryPositions,overall,pace,shooting,passing,dribbling,defending,physical,diving,handling,kicking,reflexes,speed,positioning,age,preferredFoot,heightCm
+david-raya,David Raya,Raya,ESP,arsenal,GK,,86,,,,,,,90,84,79,86,55,82,31,Right,183
+kepa-arrizabalaga,Kepa Arrizabalaga,Kepa,ESP,arsenal,GK,,77,,,,,,,79,77,61,78,52,75,32,Right,186
+william-saliba,William Saliba,Saliba,FRA,arsenal,CB,,87,83,40,66,65,88,95,,,,,,,25,Right,192
+gabriel-magalhaes,Gabriel Magalhães,Gabriel,BRA,arsenal,CB,,86,70,46,64,66,88,89,,,,,,,28,Left,190
+jurrien-timber,Jurriën Timber,Timber,NED,arsenal,RB,CB,83,86,51,74,77,77,70,,,,,,,25,Right,179
+riccardo-calafiori,Riccardo Calafiori,Calafiori,ITA,arsenal,LB,CB,80,79,48,73,77,77,74,,,,,,,24,Left,188
+myles-lewis-skelly,Myles Lewis-Skelly,Lewis-Skelly,ENG,arsenal,LB,CM,76,80,49,69,68,73,66,,,,,,,20,Left,178
+declan-rice,Declan Rice,Rice,ENG,arsenal,CM,CDM,87,75,74,87,86,76,78,,,,,,,27,Right,188
+martin-zubimendi,Martín Zubimendi,Zubimendi,ESP,arsenal,CDM,CM,85,62,65,80,75,84,82,,,,,,,27,Right,181
+martin-odegaard,Martin Ødegaard,Ødegaard,NOR,arsenal,CAM,CM,85,76,78,89,88,53,60,,,,,,,27,Left,178
+eberechi-eze,Eberechi Eze,Eze,ENG,arsenal,CAM,LW,84,75,80,83,88,47,60,,,,,,,28,Right,178
+bukayo-saka,Bukayo Saka,Saka,ENG,arsenal,RW,RM,88,91,78,83,92,41,61,,,,,,,25,Left,178
+viktor-gyokeres,Viktor Gyökeres,Gyökeres,SWE,arsenal,ST,,85,84,86,71,80,35,86,,,,,,,28,Right,187
+ethan-nwaneri,Ethan Nwaneri,Nwaneri,ENG,arsenal,CAM,RW,76,66,68,75,76,55,50,,,,,,,19,Left,176
+gianluigi-donnarumma,Gianluigi Donnarumma,Donnarumma,ITA,manchester-city,GK,,88,,,,,,,89,85,73,88,52,89,27,Right,196
+james-trafford,James Trafford,Trafford,ENG,manchester-city,GK,,78,,,,,,,78,73,71,82,47,79,24,Left,194
+ruben-dias,Rúben Dias,Dias,POR,manchester-city,CB,,85,70,36,62,64,88,90,,,,,,,29,Right,187
+josko-gvardiol,Joško Gvardiol,Gvardiol,CRO,manchester-city,CB,LB,85,70,45,62,61,86,90,,,,,,,24,Left,185
+marc-guehi,Marc Guéhi,Guéhi,ENG,manchester-city,CB,,84,67,37,60,65,85,85,,,,,,,26,Right,182
+abdukodir-khusanov,Abdukodir Khusanov,Khusanov,UZB,manchester-city,CB,,76,75,30,53,52,77,80,,,,,,,22,Right,186
+rayan-ait-nouri,Rayan Aït-Nouri,Aït-Nouri,ALG,manchester-city,LB,LWB,80,80,52,69,80,76,68,,,,,,,25,Left,179
+rodri,Rodri,Rodri,ESP,manchester-city,CDM,CM,87,67,65,88,76,87,91,,,,,,,30,Right,191
+tijjani-reijnders,Tijjani Reijnders,Reijnders,NED,manchester-city,CM,CAM,84,69,69,84,80,67,73,,,,,,,28,Right,185
+rayan-cherki,Rayan Cherki,Cherki,FRA,manchester-city,CAM,RW,83,73,75,82,89,42,61,,,,,,,23,Left,177
+phil-foden,Phil Foden,Foden,ENG,manchester-city,CAM,LW,84,76,75,87,84,46,59,,,,,,,26,Left,171
+jeremy-doku,Jérémy Doku,Doku,BEL,manchester-city,LW,,82,90,77,75,85,37,59,,,,,,,24,Right,173
+antoine-semenyo,Antoine Semenyo,Semenyo,GHA,manchester-city,RW,LW,82,85,76,75,86,37,62,,,,,,,26,Right,183
+erling-haaland,Erling Haaland,Haaland,NOR,manchester-city,ST,,90,91,94,76,85,28,88,,,,,,,26,Left,195
+alisson,Alisson,Alisson,BRA,liverpool,GK,,86,,,,,,,85,87,80,85,44,87,34,Right,193
+virgil-van-dijk,Virgil van Dijk,Van Dijk,NED,liverpool,CB,,86,62,37,73,63,86,92,,,,,,,35,Right,195
+giovanni-leoni,Giovanni Leoni,Leoni,ITA,liverpool,CB,,72,57,22,47,49,73,75,,,,,,,19,Right,195
+milos-kerkez,Miloš Kerkez,Kerkez,HUN,liverpool,LB,,79,77,49,71,73,77,67,,,,,,,22,Left,180
+jeremie-frimpong,Jeremie Frimpong,Frimpong,NED,liverpool,RWB,RB|RM,80,91,57,73,77,67,65,,,,,,,25,Right,171
+ryan-gravenberch,Ryan Gravenberch,Gravenberch,NED,liverpool,CM,CDM,85,69,73,83,82,68,80,,,,,,,24,Right,190
+alexis-mac-allister,Alexis Mac Allister,Mac Allister,ARG,liverpool,CM,CDM,84,67,74,84,83,65,74,,,,,,,27,Right,174
+dominik-szoboszlai,Dominik Szoboszlai,Szoboszlai,HUN,liverpool,CAM,CM|RB,85,72,80,87,85,57,62,,,,,,,25,Right,186
+florian-wirtz,Florian Wirtz,Wirtz,GER,liverpool,CAM,LW,86,74,83,89,88,54,60,,,,,,,23,Right,177
+mohamed-salah,Mohamed Salah,Salah,EGY,liverpool,RW,,86,83,83,77,90,34,62,,,,,,,34,Left,175
+cody-gakpo,Cody Gakpo,Gakpo,NED,liverpool,LW,ST,82,85,75,76,83,38,64,,,,,,,27,Right,189
+alexander-isak,Alexander Isak,Isak,SWE,liverpool,ST,,86,83,89,72,87,31,84,,,,,,,27,Right,192
+hugo-ekitike,Hugo Ekitike,Ekitike,FRA,liverpool,ST,LW,83,82,84,72,77,33,80,,,,,,,24,Right,190
+rio-ngumoha,Rio Ngumoha,Ngumoha,ENG,liverpool,LW,,70,73,63,67,70,34,46,,,,,,,18,Right,175
+robert-sanchez,Robert Sánchez,Sánchez,ESP,chelsea,GK,,80,,,,,,,80,77,69,84,42,78,28,Right,197
+levi-colwill,Levi Colwill,Colwill,ENG,chelsea,CB,LB,81,66,33,58,60,83,84,,,,,,,23,Left,187
+marc-cucurella,Marc Cucurella,Cucurella,ESP,chelsea,LB,,82,83,50,76,76,79,70,,,,,,,28,Left,172
+reece-james,Reece James,James,ENG,chelsea,RB,CM,83,82,52,79,77,78,70,,,,,,,26,Right,180
+jorrel-hato,Jorrel Hato,Hato,NED,chelsea,LB,CB,76,75,45,68,69,71,69,,,,,,,20,Left,182
+moises-caicedo,Moisés Caicedo,Caicedo,ECU,chelsea,CDM,CM,87,65,64,80,76,91,85,,,,,,,24,Right,178
+enzo-fernandez,Enzo Fernández,Enzo,ARG,chelsea,CM,CAM,84,69,73,84,81,66,71,,,,,,,25,Right,178
+cole-palmer,Cole Palmer,Palmer,ENG,chelsea,CAM,RW,86,76,82,87,87,58,68,,,,,,,24,Left,189
+estevao,Estêvão,Estêvão,BRA,chelsea,RW,,80,82,72,75,79,36,54,,,,,,,19,Left,176
+pedro-neto,Pedro Neto,Neto,POR,chelsea,RW,LW,81,88,73,76,84,31,57,,,,,,,26,Left,172
+alejandro-garnacho,Alejandro Garnacho,Garnacho,ARG,chelsea,LW,,78,82,70,71,81,30,53,,,,,,,22,Right,180
+joao-pedro,João Pedro,João Pedro,BRA,chelsea,ST,CAM,83,77,85,71,77,34,79,,,,,,,24,Right,182
+liam-delap,Liam Delap,Delap,ENG,chelsea,ST,,76,73,77,61,75,30,75,,,,,,,23,Right,186
+senne-lammens,Senne Lammens,Lammens,BEL,manchester-united,GK,,78,,,,,,,81,77,62,80,41,76,24,Right,193
+matthijs-de-ligt,Matthijs de Ligt,De Ligt,NED,manchester-united,CB,,81,65,35,56,60,86,83,,,,,,,27,Right,189
+lisandro-martinez,Lisandro Martínez,Lisandro,ARG,manchester-united,CB,LB,81,64,31,60,62,81,80,,,,,,,28,Left,175
+leny-yoro,Leny Yoro,Yoro,FRA,manchester-united,CB,,77,62,29,57,52,81,80,,,,,,,20,Right,190
+diogo-dalot,Diogo Dalot,Dalot,POR,manchester-united,RB,LB,79,79,51,68,73,72,68,,,,,,,27,Right,183
+patrick-dorgu,Patrick Dorgu,Dorgu,DEN,manchester-united,LWB,LB,76,78,49,66,71,69,68,,,,,,,22,Left,185
+bruno-fernandes,Bruno Fernandes,Bruno,POR,manchester-united,CAM,CM,85,75,78,93,85,46,63,,,,,,,32,Right,179
+kobbie-mainoo,Kobbie Mainoo,Mainoo,ENG,manchester-united,CM,,77,64,65,77,71,61,65,,,,,,,21,Right,180
+manuel-ugarte,Manuel Ugarte,Ugarte,URU,manchester-united,CDM,,76,54,57,68,63,74,78,,,,,,,25,Right,182
+amad-diallo,Amad Diallo,Amad,CIV,manchester-united,RW,RWB,80,83,70,72,85,36,53,,,,,,,24,Left,173
+bryan-mbeumo,Bryan Mbeumo,Mbeumo,CMR,manchester-united,RW,ST,83,85,79,80,83,36,57,,,,,,,27,Left,171
+matheus-cunha,Matheus Cunha,Cunha,BRA,manchester-united,CF,LW|CAM,83,79,80,75,80,47,75,,,,,,,27,Right,184
+benjamin-sesko,Benjamin Šeško,Šeško,SVN,manchester-united,ST,,79,75,81,67,75,42,80,,,,,,,23,Right,195
+guglielmo-vicario,Guglielmo Vicario,Vicario,ITA,tottenham-hotspur,GK,,81,,,,,,,79,79,68,86,41,80,30,Right,194
+antonin-kinsky,Antonín Kinský,Kinský,CZE,tottenham-hotspur,GK,,71,,,,,,,75,67,58,75,52,71,23,Right,190
+cristian-romero,Cristian Romero,Romero,ARG,tottenham-hotspur,CB,,84,70,38,64,64,87,84,,,,,,,28,Right,185
+micky-van-de-ven,Micky van de Ven,Van de Ven,NED,tottenham-hotspur,CB,LB,83,89,33,60,60,82,85,,,,,,,25,Left,193
+pedro-porro,Pedro Porro,Porro,ESP,tottenham-hotspur,RB,RWB,81,83,52,77,76,79,66,,,,,,,27,Right,173
+destiny-udogie,Destiny Udogie,Udogie,ITA,tottenham-hotspur,LB,LWB,77,79,50,69,74,71,72,,,,,,,23,Left,188
+joao-palhinha,João Palhinha,Palhinha,POR,tottenham-hotspur,CDM,,81,60,62,72,68,86,84,,,,,,,31,Right,190
+pape-matar-sarr,Pape Matar Sarr,Sarr,SEN,tottenham-hotspur,CM,,77,60,68,78,74,58,71,,,,,,,24,Right,184
+lucas-bergvall,Lucas Bergvall,Bergvall,SWE,tottenham-hotspur,CM,,77,61,62,76,72,61,67,,,,,,,20,Left,187
+james-maddison,James Maddison,Maddison,ENG,tottenham-hotspur,CAM,,79,66,71,78,80,55,51,,,,,,,29,Right,175
+xavi-simons,Xavi Simons,Simons,NED,tottenham-hotspur,CAM,LW,82,73,76,85,85,53,57,,,,,,,23,Right,179
+mohammed-kudus,Mohammed Kudus,Kudus,GHA,tottenham-hotspur,RW,CAM,81,82,71,74,85,28,54,,,,,,,26,Left,177
+dominic-solanke,Dominic Solanke,Solanke,ENG,tottenham-hotspur,ST,,78,72,79,65,74,37,71,,,,,,,29,Right,187
+nick-pope,Nick Pope,Pope,ENG,newcastle-united,GK,,80,,,,,,,78,75,64,79,44,79,34,Right,191
+sven-botman,Sven Botman,Botman,NED,newcastle-united,CB,,80,64,31,60,57,81,83,,,,,,,26,Left,195
+malick-thiaw,Malick Thiaw,Thiaw,GER,newcastle-united,CB,,79,63,34,55,55,82,83,,,,,,,25,Right,194
+tino-livramento,Tino Livramento,Livramento,ENG,newcastle-united,RB,LB,79,83,48,71,72,72,71,,,,,,,23,Right,182
+lewis-hall,Lewis Hall,Hall,ENG,newcastle-united,LB,,78,78,49,72,72,76,65,,,,,,,22,Left,179
+bruno-guimaraes,Bruno Guimarães,Bruno G.,BRA,newcastle-united,CM,CDM,85,72,72,86,84,69,74,,,,,,,28,Right,182
+sandro-tonali,Sandro Tonali,Tonali,ITA,newcastle-united,CDM,CM,84,64,60,80,75,83,82,,,,,,,26,Right,181
+joelinton,Joelinton,Joelinton,BRA,newcastle-united,CM,LW,79,68,67,79,76,63,75,,,,,,,30,Right,186
+anthony-gordon,Anthony Gordon,Gordon,ENG,newcastle-united,LW,,82,83,77,77,84,29,58,,,,,,,25,Right,183
+anthony-elanga,Anthony Elanga,Elanga,SWE,newcastle-united,RW,,78,89,70,72,78,40,52,,,,,,,24,Right,178
+nick-woltemade,Nick Woltemade,Woltemade,GER,newcastle-united,ST,CAM,80,79,83,68,82,41,81,,,,,,,24,Right,198
+yoane-wissa,Yoane Wissa,Wissa,COD,newcastle-united,ST,,78,74,78,63,74,42,67,,,,,,,30,Right,176
+emiliano-martinez,Emiliano Martínez,E. Martínez,ARG,aston-villa,GK,,83,,,,,,,82,80,70,86,52,80,34,Right,195
+ezri-konsa,Ezri Konsa,Konsa,ENG,aston-villa,CB,RB,81,62,35,62,59,82,85,,,,,,,29,Right,183
+pau-torres,Pau Torres,Pau Torres,ESP,aston-villa,CB,,80,61,32,65,57,84,87,,,,,,,29,Left,191
+matty-cash,Matty Cash,Cash,POL,aston-villa,RB,,77,78,46,67,69,74,69,,,,,,,29,Right,185
+ian-maatsen,Ian Maatsen,Maatsen,NED,aston-villa,LB,,76,78,47,67,73,71,65,,,,,,,24,Left,178
+boubacar-kamara,Boubacar Kamara,Kamara,FRA,aston-villa,CDM,,81,60,61,72,68,82,81,,,,,,,27,Right,184
+amadou-onana,Amadou Onana,Onana,BEL,aston-villa,CDM,CM,80,62,60,75,72,83,83,,,,,,,25,Right,195
+youri-tielemans,Youri Tielemans,Tielemans,BEL,aston-villa,CM,CAM,82,66,73,84,76,68,72,,,,,,,29,Right,176
+john-mcginn,John McGinn,McGinn,SCO,aston-villa,CM,LM,78,63,64,79,73,64,67,,,,,,,32,Left,178
+morgan-rogers,Morgan Rogers,Rogers,ENG,aston-villa,CAM,LW,83,71,75,85,87,57,64,,,,,,,24,Right,187
+emiliano-buendia,Emiliano Buendía,Buendía,ARG,aston-villa,CAM,RW,75,62,71,79,78,53,50,,,,,,,29,Right,172
+ollie-watkins,Ollie Watkins,Watkins,ENG,aston-villa,ST,,81,77,80,68,78,31,74,,,,,,,30,Right,180
+bart-verbruggen,Bart Verbruggen,Verbruggen,NED,brighton,GK,,79,,,,,,,81,76,66,81,39,77,24,Right,193
+lewis-dunk,Lewis Dunk,Dunk,ENG,brighton,CB,,76,55,31,51,57,79,79,,,,,,,34,Right,192
+jan-paul-van-hecke,Jan Paul van Hecke,Van Hecke,NED,brighton,CB,,79,63,32,55,55,83,82,,,,,,,26,Right,189
+ferdi-kadioglu,Ferdi Kadıoğlu,Kadıoğlu,TUR,brighton,LB,RB,78,80,46,70,71,76,67,,,,,,,27,Right,174
+maxim-de-cuyper,Maxim De Cuyper,De Cuyper,BEL,brighton,LB,LWB,75,78,43,66,68,73,67,,,,,,,25,Left,181
+carlos-baleba,Carlos Baleba,Baleba,CMR,brighton,CDM,CM,80,62,59,75,71,80,81,,,,,,,22,Right,179
+diego-gomez,Diego Gómez,Gómez,PAR,brighton,CM,CAM,76,59,62,78,73,63,65,,,,,,,23,Right,180
+kaoru-mitoma,Kaoru Mitoma,Mitoma,JPN,brighton,LW,,79,82,69,71,80,39,51,,,,,,,29,Right,171
+yankuba-minteh,Yankuba Minteh,Minteh,GAM,brighton,RW,,76,82,70,71,77,42,54,,,,,,,22,Left,176
+georginio-rutter,Georginio Rutter,Rutter,FRA,brighton,CF,CAM,76,72,77,69,75,41,61,,,,,,,24,Right,182
+danny-welbeck,Danny Welbeck,Welbeck,ENG,brighton,ST,,74,65,77,59,71,36,70,,,,,,,35,Right,185
+matz-sels,Matz Sels,Sels,BEL,nottingham-forest,GK,,80,,,,,,,79,78,68,84,44,80,34,Right,188
+murillo,Murillo,Murillo,BRA,nottingham-forest,CB,,81,65,31,66,58,83,81,,,,,,,24,Left,182
+nikola-milenkovic,Nikola Milenković,Milenković,SRB,nottingham-forest,CB,,80,62,33,55,56,80,88,,,,,,,29,Right,195
+neco-williams,Neco Williams,N. Williams,WAL,nottingham-forest,RB,LB,76,79,48,65,69,74,67,,,,,,,25,Right,183
+ola-aina,Ola Aina,Aina,NGA,nottingham-forest,RB,LB,76,76,44,64,70,69,64,,,,,,,30,Right,184
+elliot-anderson,Elliot Anderson,Anderson,ENG,nottingham-forest,CM,CDM,83,69,73,80,81,66,71,,,,,,,24,Right,179
+morgan-gibbs-white,Morgan Gibbs-White,Gibbs-White,ENG,nottingham-forest,CAM,,81,71,74,82,83,51,57,,,,,,,26,Right,171
+callum-hudson-odoi,Callum Hudson-Odoi,Hudson-Odoi,ENG,nottingham-forest,LW,RW,76,78,71,69,78,44,50,,,,,,,26,Right,178
+dan-ndoye,Dan Ndoye,Ndoye,SUI,nottingham-forest,RW,LW,78,81,70,72,78,37,55,,,,,,,26,Right,184
+chris-wood,Chris Wood,Wood,NZL,nottingham-forest,ST,,77,71,76,61,72,32,76,,,,,,,34,Right,191
+igor-jesus,Igor Jesus,Igor Jesus,BRA,nottingham-forest,ST,,75,74,79,62,74,34,72,,,,,,,25,Right,185
+dean-henderson,Dean Henderson,Henderson,ENG,crystal-palace,GK,,80,,,,,,,82,76,67,81,42,81,29,Right,188
+maxence-lacroix,Maxence Lacroix,Lacroix,FRA,crystal-palace,CB,,79,75,31,57,58,82,84,,,,,,,26,Right,190
+chris-richards,Chris Richards,Richards,USA,crystal-palace,CB,RB,76,58,27,55,52,77,82,,,,,,,26,Right,188
+daniel-munoz,Daniel Muñoz,Muñoz,COL,crystal-palace,RWB,RB,79,84,55,72,77,73,68,,,,,,,30,Right,180
+tyrick-mitchell,Tyrick Mitchell,Mitchell,ENG,crystal-palace,LWB,LB,76,79,51,67,71,66,65,,,,,,,27,Left,175
+adam-wharton,Adam Wharton,Wharton,ENG,crystal-palace,CM,CDM,80,65,68,82,80,64,67,,,,,,,22,Left,178
+jefferson-lerma,Jefferson Lerma,Lerma,COL,crystal-palace,CDM,,74,53,51,66,62,77,72,,,,,,,31,Right,179
+daichi-kamada,Daichi Kamada,Kamada,JPN,crystal-palace,CAM,CM,76,68,69,79,78,56,52,,,,,,,30,Right,180
+ismaila-sarr,Ismaïla Sarr,I. Sarr,SEN,crystal-palace,RW,ST,78,81,70,72,78,32,57,,,,,,,28,Right,185
+brennan-johnson,Brennan Johnson,Johnson,WAL,crystal-palace,RW,ST,76,81,69,71,77,29,54,,,,,,,25,Right,179
+jean-philippe-mateta,Jean-Philippe Mateta,Mateta,FRA,crystal-palace,ST,,79,76,82,65,75,33,78,,,,,,,29,Right,192
+thibaut-courtois,Thibaut Courtois,Courtois,BEL,real-madrid,GK,,88,,,,,,,89,87,74,90,39,90,34,Left,200
+andriy-lunin,Andriy Lunin,Lunin,UKR,real-madrid,GK,,79,,,,,,,80,77,67,80,40,79,27,Right,191
+trent-alexander-arnold,Trent Alexander-Arnold,Alexander-Arnold,ENG,real-madrid,RB,CM,84,85,54,81,76,73,71,,,,,,,28,Right,180
+eder-militao,Éder Militão,Militão,BRA,real-madrid,CB,,83,70,36,60,60,84,87,,,,,,,28,Right,186
+dean-huijsen,Dean Huijsen,Huijsen,ESP,real-madrid,CB,,83,67,35,69,62,86,90,,,,,,,21,Right,197
+alvaro-carreras,Álvaro Carreras,Carreras,ESP,real-madrid,LB,,81,82,49,70,73,77,75,,,,,,,23,Left,186
+raul-asencio,Raúl Asencio,Asencio,ESP,real-madrid,CB,RB,77,62,26,57,53,80,77,,,,,,,23,Right,184
+aurelien-tchouameni,Aurélien Tchouaméni,Tchouaméni,FRA,real-madrid,CDM,CB,85,62,65,80,72,87,86,,,,,,,26,Right,187
+federico-valverde,Federico Valverde,Valverde,URU,real-madrid,CM,RM|RB,87,82,79,84,82,71,80,,,,,,,28,Right,182
+jude-bellingham,Jude Bellingham,Bellingham,ENG,real-madrid,CAM,CM,87,74,83,89,91,51,64,,,,,,,23,Right,186
+arda-guler,Arda Güler,Güler,TUR,real-madrid,CAM,CM,83,73,76,89,86,57,61,,,,,,,21,Left,176
+franco-mastantuono,Franco Mastantuono,Mastantuono,ARG,real-madrid,RW,CAM,78,79,69,71,80,31,55,,,,,,,19,Left,176
+vinicius-junior,Vinícius Júnior,Vini Jr.,BRA,real-madrid,LW,,88,96,84,82,91,36,61,,,,,,,26,Right,176
+kylian-mbappe,Kylian Mbappé,Mbappé,FRA,real-madrid,ST,LW,91,94,95,79,88,37,79,,,,,,,27,Right,178
+gonzalo-garcia,Gonzalo García,Gonzalo,ESP,real-madrid,ST,,74,69,77,59,69,38,68,,,,,,,22,Right,182
+joan-garcia,Joan García,Joan García,ESP,barcelona,GK,,84,,,,,,,86,83,67,87,50,84,25,Right,194
+wojciech-szczesny,Wojciech Szczęsny,Szczęsny,POL,barcelona,GK,,79,,,,,,,80,75,63,82,44,79,36,Right,195
+jules-kounde,Jules Koundé,Koundé,FRA,barcelona,RB,CB,84,85,53,76,81,80,73,,,,,,,27,Right,180
+ronald-araujo,Ronald Araujo,Araujo,URU,barcelona,CB,,81,75,32,58,56,80,81,,,,,,,27,Right,188
+pau-cubarsi,Pau Cubarsí,Cubarsí,ESP,barcelona,CB,,83,65,37,67,62,83,87,,,,,,,19,Right,184
+alejandro-balde,Alejandro Balde,Balde,ESP,barcelona,LB,,81,88,51,73,78,79,70,,,,,,,23,Left,175
+gerard-martin,Gerard Martín,Gerard Martín,ESP,barcelona,LB,CB,76,76,47,65,68,70,66,,,,,,,24,Left,185
+frenkie-de-jong,Frenkie de Jong,De Jong,NED,barcelona,CM,CDM,85,72,72,84,87,68,76,,,,,,,29,Right,181
+pedri,Pedri,Pedri,ESP,barcelona,CM,CAM,88,77,78,91,88,71,75,,,,,,,23,Right,174
+gavi,Gavi,Gavi,ESP,barcelona,CM,,80,67,69,77,77,61,65,,,,,,,22,Right,173
+fermin-lopez,Fermín López,Fermín,ESP,barcelona,CAM,CM,81,73,77,80,82,57,57,,,,,,,23,Right,174
+dani-olmo,Dani Olmo,Olmo,ESP,barcelona,CAM,LW,81,70,72,85,84,43,59,,,,,,,28,Right,179
+marc-bernal,Marc Bernal,Bernal,ESP,barcelona,CDM,,75,54,51,70,65,75,78,,,,,,,19,Right,191
+raphinha,Raphinha,Raphinha,BRA,barcelona,LW,RW,87,91,85,79,87,36,63,,,,,,,29,Left,176
+lamine-yamal,Lamine Yamal,Lamine Yamal,ESP,barcelona,RW,,90,94,81,87,97,42,70,,,,,,,19,Left,180
+marcus-rashford,Marcus Rashford,Rashford,ENG,barcelona,LW,ST,81,85,72,76,81,32,55,,,,,,,28,Right,180
+ferran-torres,Ferran Torres,Ferran,ESP,barcelona,ST,LW,79,77,79,63,77,38,71,,,,,,,26,Right,184
+jan-oblak,Jan Oblak,Oblak,SVN,atletico-madrid,GK,,85,,,,,,,89,85,70,85,43,86,33,Right,188
+juan-musso,Juan Musso,Musso,ARG,atletico-madrid,GK,,77,,,,,,,80,72,63,77,48,73,32,Right,191
+marcos-llorente,Marcos Llorente,Llorente,ESP,atletico-madrid,RB,CM|RW,81,85,50,73,72,79,71,,,,,,,31,Right,184
+jose-maria-gimenez,José María Giménez,Giménez,URU,atletico-madrid,CB,,80,65,34,58,60,79,83,,,,,,,31,Right,185
+robin-le-normand,Robin Le Normand,Le Normand,ESP,atletico-madrid,CB,,80,64,34,55,59,79,85,,,,,,,30,Right,187
+david-hancko,Dávid Hancko,Hancko,SVK,atletico-madrid,CB,LB,81,64,30,61,60,84,85,,,,,,,28,Left,188
+matteo-ruggeri,Matteo Ruggeri,Ruggeri,ITA,atletico-madrid,LB,,77,76,46,70,68,72,71,,,,,,,24,Left,187
+pablo-barrios,Pablo Barrios,Barrios,ESP,atletico-madrid,CM,,81,70,67,79,75,67,73,,,,,,,23,Right,181
+johnny-cardoso,Johnny Cardoso,Cardoso,USA,atletico-madrid,CDM,,78,57,56,73,69,79,76,,,,,,,25,Right,185
+alex-baena,Álex Baena,Baena,ESP,atletico-madrid,CAM,LW,82,73,75,90,86,48,57,,,,,,,25,Left,174
+thiago-almada,Thiago Almada,Almada,ARG,atletico-madrid,CAM,,79,70,72,80,79,55,50,,,,,,,25,Right,171
+giuliano-simeone,Giuliano Simeone,Giuliano,ARG,atletico-madrid,RW,RM,80,84,71,77,84,36,56,,,,,,,24,Right,176
+nicolas-gonzalez,Nicolás González,N. González,ARG,atletico-madrid,LW,RW,79,82,73,71,83,30,55,,,,,,,28,Left,180
+julian-alvarez,Julián Álvarez,Julián,ARG,atletico-madrid,ST,CF,87,83,86,75,83,43,75,,,,,,,26,Right,170
+alexander-sorloth,Alexander Sørloth,Sørloth,NOR,atletico-madrid,ST,,81,78,85,66,76,43,89,,,,,,,30,Left,195
+unai-simon,Unai Simón,Unai Simón,ESP,athletic-club,GK,,83,,,,,,,81,82,68,86,40,85,29,Right,190
+dani-vivian,Dani Vivian,Vivian,ESP,athletic-club,CB,,81,66,35,59,61,83,86,,,,,,,27,Right,184
+aitor-paredes,Aitor Paredes,Paredes,ESP,athletic-club,CB,,78,61,33,59,55,79,77,,,,,,,26,Right,184
+aymeric-laporte,Aymeric Laporte,Laporte,ESP,athletic-club,CB,,79,61,31,55,57,80,85,,,,,,,32,Left,189
+jesus-areso,Jesús Areso,Areso,ESP,athletic-club,RB,,77,78,47,69,69,70,69,,,,,,,27,Right,183
+yuri-berchiche,Yuri Berchiche,Berchiche,ESP,athletic-club,LB,,75,67,43,68,67,74,68,,,,,,,36,Left,181
+mikel-jauregizar,Mikel Jauregizar,Jauregizar,ESP,athletic-club,CDM,CM,80,58,58,71,67,82,77,,,,,,,23,Right,180
+inigo-ruiz-de-galarreta,Iñigo Ruiz de Galarreta,Ruiz de Galarreta,ESP,athletic-club,CM,CDM,78,60,63,80,72,64,66,,,,,,,33,Right,174
+oihan-sancet,Oihan Sancet,Sancet,ESP,athletic-club,CAM,CM,81,71,75,81,84,50,60,,,,,,,26,Right,188
+unai-gomez,Unai Gómez,Unai Gómez,ESP,athletic-club,CAM,ST,74,63,67,75,76,55,52,,,,,,,23,Right,178
+nico-williams,Nico Williams,Nico Williams,ESP,athletic-club,LW,,84,96,75,80,87,30,62,,,,,,,24,Right,181
+inaki-williams,Iñaki Williams,Iñaki Williams,GHA,athletic-club,RW,ST,79,90,73,71,81,34,61,,,,,,,32,Right,186
+gorka-guruzeta,Gorka Guruzeta,Guruzeta,ESP,athletic-club,ST,,77,75,80,61,75,42,73,,,,,,,30,Right,188
+alex-remiro,Álex Remiro,Remiro,ESP,real-sociedad,GK,,81,,,,,,,79,77,68,83,40,82,31,Right,191
+jon-aramburu,Jon Aramburu,Aramburu,VEN,real-sociedad,RB,,76,75,43,66,72,73,68,,,,,,,24,Right,181
+igor-zubeldia,Igor Zubeldia,Zubeldia,ESP,real-sociedad,CB,CDM,79,60,31,59,58,81,78,,,,,,,29,Right,181
+duje-caleta-car,Duje Ćaleta-Car,Ćaleta-Car,CRO,real-sociedad,CB,,76,58,27,52,52,80,80,,,,,,,30,Right,192
+sergio-gomez,Sergio Gómez,Sergio Gómez,ESP,real-sociedad,LB,LM,77,79,45,70,69,70,64,,,,,,,26,Left,171
+brais-mendez,Brais Méndez,Brais,ESP,real-sociedad,CM,CAM,79,63,68,80,79,66,72,,,,,,,29,Right,187
+luka-sucic,Luka Sučić,Sučić,CRO,real-sociedad,CM,CAM,79,63,65,79,79,65,70,,,,,,,24,Left,184
+takefusa-kubo,Takefusa Kubo,Kubo,JPN,real-sociedad,RW,,81,86,72,77,87,36,56,,,,,,,25,Left,173
+ander-barrenetxea,Ander Barrenetxea,Barrenetxea,ESP,real-sociedad,LW,,78,84,69,74,80,36,59,,,,,,,25,Right,181
+mikel-oyarzabal,Mikel Oyarzabal,Oyarzabal,ESP,real-sociedad,ST,LW,82,82,84,68,79,31,73,,,,,,,29,Left,181
+orri-oskarsson,Orri Óskarsson,Óskarsson,ISL,real-sociedad,ST,,75,70,77,63,72,32,71,,,,,,,22,Right,188
+goncalo-guedes,Gonçalo Guedes,Guedes,POR,real-sociedad,RW,LW,77,82,69,73,76,33,55,,,,,,,30,Right,179
+luiz-junior,Luiz Júnior,Luiz Júnior,BRA,villarreal,GK,,79,,,,,,,80,74,64,79,43,79,25,Right,188
+juan-foyth,Juan Foyth,Foyth,ARG,villarreal,CB,RB,79,65,28,56,55,78,80,,,,,,,28,Right,187
+rafa-marin,Rafa Marín,Rafa Marín,ESP,villarreal,CB,,79,64,30,59,55,84,82,,,,,,,24,Right,191
+renato-veiga,Renato Veiga,Veiga,POR,villarreal,CB,LB|CDM,79,64,31,59,59,83,84,,,,,,,23,Left,190
+santiago-mourino,Santiago Mouriño,Mouriño,URU,villarreal,RB,CB,76,80,48,65,73,75,67,,,,,,,24,Right,184
+alfonso-pedraza,Alfonso Pedraza,Pedraza,ESP,villarreal,LB,LWB,78,78,48,69,74,75,67,,,,,,,30,Left,184
+thomas-partey,Thomas Partey,Partey,GHA,villarreal,CDM,CM,80,57,56,72,71,84,82,,,,,,,33,Right,185
+pape-gueye,Pape Gueye,Gueye,SEN,villarreal,CM,CDM,79,67,69,78,77,60,71,,,,,,,27,Left,189
+santi-comesana,Santi Comesaña,Comesaña,ESP,villarreal,CM,,78,65,66,80,73,60,69,,,,,,,30,Right,189
+alberto-moleiro,Alberto Moleiro,Moleiro,ESP,villarreal,CAM,LW,80,68,75,78,82,46,52,,,,,,,22,Left,170
+nicolas-pepe,Nicolas Pépé,Pépé,CIV,villarreal,RW,,80,85,75,74,82,30,60,,,,,,,31,Left,183
+tajon-buchanan,Tajon Buchanan,Buchanan,CAN,villarreal,RW,RB,77,83,69,71,76,42,56,,,,,,,27,Right,183
+georges-mikautadze,Georges Mikautadze,Mikautadze,GEO,villarreal,ST,,80,79,80,64,74,39,73,,,,,,,25,Right,176
+gerard-moreno,Gerard Moreno,Gerard Moreno,ESP,villarreal,ST,CF,79,71,83,63,76,31,74,,,,,,,34,Left,180
+ayoze-perez,Ayoze Pérez,Ayoze,ESP,villarreal,CF,LW,80,72,81,74,78,42,69,,,,,,,33,Right,178
+alvaro-valles,Álvaro Valles,Valles,ESP,real-betis,GK,,78,,,,,,,81,79,65,82,42,75,29,Right,186
+pau-lopez,Pau López,Pau López,ESP,real-betis,GK,,77,,,,,,,80,72,63,77,41,78,32,Left,189
+hector-bellerin,Héctor Bellerín,Bellerín,ESP,real-betis,RB,,76,79,46,66,69,72,65,,,,,,,31,Right,178
+natan,Natan,Natan,BRA,real-betis,CB,,79,66,29,55,56,84,81,,,,,,,25,Left,188
+diego-llorente,Diego Llorente,D. Llorente,ESP,real-betis,CB,,77,59,29,55,52,78,81,,,,,,,33,Right,186
+ricardo-rodriguez,Ricardo Rodríguez,R. Rodríguez,SUI,real-betis,LB,CB,76,72,45,68,70,71,65,,,,,,,34,Left,180
+sofyan-amrabat,Sofyan Amrabat,Amrabat,MAR,real-betis,CDM,,79,57,55,73,68,79,77,,,,,,,30,Right,183
+giovani-lo-celso,Giovani Lo Celso,Lo Celso,ARG,real-betis,CAM,CM,80,72,76,78,81,48,55,,,,,,,30,Left,177
+pablo-fornals,Pablo Fornals,Fornals,ESP,real-betis,CM,CAM,79,62,66,81,77,62,65,,,,,,,30,Right,178
+isco,Isco,Isco,ESP,real-betis,CAM,,80,54,74,88,81,54,53,,,,,,,34,Right,176
+antony,Antony,Antony,BRA,real-betis,RW,,81,82,77,78,86,39,55,,,,,,,26,Left,174
+abde-ezzalzouli,Abde Ezzalzouli,Abde,MAR,real-betis,LW,,79,87,70,70,79,40,57,,,,,,,24,Right,177
+cucho-hernandez,Cucho Hernández,Cucho,COL,real-betis,ST,,79,74,79,64,74,38,69,,,,,,,27,Right,175
+orjan-nyland,Ørjan Nyland,Nyland,NOR,sevilla,GK,,75,,,,,,,75,70,64,75,52,72,36,Right,192
+odysseas-vlachodimos,Odysseas Vlachodimos,Vlachodimos,GRE,sevilla,GK,,76,,,,,,,80,73,60,81,41,77,32,Left,191
+jose-angel-carmona,José Ángel Carmona,Carmona,ESP,sevilla,RB,,76,75,44,64,72,75,67,,,,,,,24,Right,183
+gabriel-suazo,Gabriel Suazo,Suazo,CHI,sevilla,LB,,76,75,48,69,69,75,61,,,,,,,29,Left,174
+nemanja-gudelj,Nemanja Gudelj,Gudelj,SRB,sevilla,CDM,CB,75,49,55,68,61,76,77,,,,,,,35,Right,187
+lucien-agoume,Lucien Agoumé,Agoumé,FRA,sevilla,CDM,CM,78,60,54,74,67,81,81,,,,,,,24,Right,185
+djibril-sow,Djibril Sow,Sow,SUI,sevilla,CM,,76,62,64,77,76,59,67,,,,,,,29,Right,184
+ruben-vargas,Rubén Vargas,Vargas,SUI,sevilla,LW,RW,78,82,73,72,79,36,54,,,,,,,28,Right,179
+chidera-ejuke,Chidera Ejuke,Ejuke,NGA,sevilla,LW,,77,79,70,72,77,39,49,,,,,,,28,Right,174
+akor-adams,Akor Adams,Adams,NGA,sevilla,ST,,76,70,81,61,70,39,73,,,,,,,26,Right,185
+marc-andre-ter-stegen,Marc-André ter Stegen,Ter Stegen,GER,girona,GK,,82,,,,,,,82,82,77,81,47,78,34,Right,187
+paulo-gazzaniga,Paulo Gazzaniga,Gazzaniga,ARG,girona,GK,,77,,,,,,,76,77,61,80,44,75,34,Right,196
+daley-blind,Daley Blind,Blind,NED,girona,CB,LB,75,51,29,58,50,74,75,,,,,,,36,Left,180
+arnau-martinez,Arnau Martínez,Arnau,ESP,girona,RB,CB,77,80,47,66,68,70,65,,,,,,,23,Right,180
+vitor-reis,Vitor Reis,Vitor Reis,BRA,girona,CB,,75,59,28,55,52,76,80,,,,,,,20,Right,187
+axel-witsel,Axel Witsel,Witsel,BEL,girona,CDM,CB,75,45,52,68,66,76,73,,,,,,,37,Right,186
+azzedine-ounahi,Azzedine Ounahi,Ounahi,MAR,girona,CM,CAM,79,63,69,76,75,65,70,,,,,,,26,Right,182
+ivan-martin,Iván Martín,Iván Martín,ESP,girona,CM,CAM,78,62,66,77,72,64,65,,,,,,,27,Right,178
+viktor-tsygankov,Viktor Tsygankov,Tsygankov,UKR,girona,RW,,79,82,71,75,83,42,56,,,,,,,28,Left,178
+vladyslav-vanat,Vladyslav Vanat,Vanat,UKR,girona,ST,,78,75,81,64,73,32,75,,,,,,,24,Right,183
+yann-sommer,Yann Sommer,Sommer,SUI,inter,GK,,81,,,,,,,84,78,68,85,51,77,37,Right,183
+josep-martinez,Josep Martínez,Josep Martínez,ESP,inter,GK,,79,,,,,,,80,78,62,81,38,78,28,Right,191
+alessandro-bastoni,Alessandro Bastoni,Bastoni,ITA,inter,CB,LB,85,71,38,68,60,89,88,,,,,,,27,Left,190
+yann-bisseck,Yann Bisseck,Bisseck,GER,inter,CB,,79,63,28,55,54,81,84,,,,,,,25,Right,196
+manuel-akanji,Manuel Akanji,Akanji,SUI,inter,CB,,82,64,32,59,59,81,82,,,,,,,31,Right,188
+denzel-dumfries,Denzel Dumfries,Dumfries,NED,inter,RWB,RB,82,84,55,72,78,76,80,,,,,,,30,Right,188
+federico-dimarco,Federico Dimarco,Dimarco,ITA,inter,LWB,LB,84,84,70,83,80,74,70,,,,,,,28,Left,175
+nicolo-barella,Nicolò Barella,Barella,ITA,inter,CM,,85,72,75,86,83,69,72,,,,,,,29,Right,172
+hakan-calhanoglu,Hakan Çalhanoğlu,Çalhanoğlu,TUR,inter,CDM,CM,83,60,70,83,71,85,79,,,,,,,32,Right,178
+petar-sucic,Petar Sučić,P. Sučić,CRO,inter,CM,,78,67,68,76,75,61,69,,,,,,,23,Right,187
+davide-frattesi,Davide Frattesi,Frattesi,ITA,inter,CM,,80,69,71,79,78,66,69,,,,,,,26,Right,178
+lautaro-martinez,Lautaro Martínez,Lautaro,ARG,inter,ST,,87,87,90,74,80,42,77,,,,,,,29,Right,174
+marcus-thuram,Marcus Thuram,Thuram,FRA,inter,ST,LW,84,82,87,71,79,28,79,,,,,,,29,Right,192
+francesco-pio-esposito,Francesco Pio Esposito,Pio Esposito,ITA,inter,ST,,77,76,79,61,75,30,77,,,,,,,21,Right,191
+mike-maignan,Mike Maignan,Maignan,FRA,milan,GK,,86,,,,,,,89,83,80,86,49,87,31,Right,191
+pietro-terracciano,Pietro Terracciano,Terracciano,ITA,milan,GK,,73,,,,,,,76,73,61,78,40,73,36,Right,193
+fikayo-tomori,Fikayo Tomori,Tomori,ENG,milan,CB,,80,79,31,59,60,81,82,,,,,,,28,Right,185
+strahinja-pavlovic,Strahinja Pavlović,S. Pavlović,SRB,milan,CB,,80,66,32,57,57,81,84,,,,,,,25,Left,194
+pervis-estupinan,Pervis Estupiñán,Estupiñán,ECU,milan,LB,LWB,79,81,52,70,74,73,64,,,,,,,28,Left,175
+davide-bartesaghi,Davide Bartesaghi,Bartesaghi,ITA,milan,LB,,75,77,44,65,71,71,70,,,,,,,20,Left,194
+alexis-saelemaekers,Alexis Saelemaekers,Saelemaekers,BEL,milan,RWB,RM,80,82,53,71,74,73,68,,,,,,,27,Right,180
+luka-modric,Luka Modrić,Modrić,CRO,milan,CM,CAM,80,56,69,86,79,63,67,,,,,,,41,Right,172
+adrien-rabiot,Adrien Rabiot,Rabiot,FRA,milan,CM,,81,68,71,79,78,64,74,,,,,,,31,Left,188
+samuele-ricci,Samuele Ricci,Ricci,ITA,milan,CDM,CM,79,58,57,75,68,81,75,,,,,,,25,Right,183
+christian-pulisic,Christian Pulisic,Pulisic,USA,milan,RW,CAM,83,88,78,74,83,42,61,,,,,,,28,Right,177
+rafael-leao,Rafael Leão,Leão,POR,milan,LW,,83,94,76,80,87,32,61,,,,,,,27,Right,188
+santiago-gimenez,Santiago Giménez,S. Giménez,MEX,milan,ST,,78,77,79,63,74,32,72,,,,,,,25,Right,182
+michele-di-gregorio,Michele Di Gregorio,Di Gregorio,ITA,juventus,GK,,81,,,,,,,83,82,69,83,42,80,29,Right,187
+mattia-perin,Mattia Perin,Perin,ITA,juventus,GK,,77,,,,,,,80,74,61,78,50,78,34,Right,188
+gleison-bremer,Gleison Bremer,Bremer,BRA,juventus,CB,,84,67,36,61,62,85,86,,,,,,,29,Right,188
+federico-gatti,Federico Gatti,Gatti,ITA,juventus,CB,,79,63,30,60,60,80,81,,,,,,,28,Right,190
+pierre-kalulu,Pierre Kalulu,Kalulu,FRA,juventus,CB,RB,80,62,34,59,56,85,83,,,,,,,26,Right,182
+andrea-cambiaso,Andrea Cambiaso,Cambiaso,ITA,juventus,LB,RB|LWB,81,82,53,71,78,76,69,,,,,,,26,Right,182
+juan-cabal,Juan Cabal,Cabal,COL,juventus,LB,CB,75,73,44,66,71,74,66,,,,,,,25,Left,186
+manuel-locatelli,Manuel Locatelli,Locatelli,ITA,juventus,CDM,CM,81,60,57,76,70,81,84,,,,,,,28,Right,185
+khephren-thuram,Khéphren Thuram,K. Thuram,FRA,juventus,CM,,81,69,66,81,77,63,73,,,,,,,25,Right,192
+weston-mckennie,Weston McKennie,McKennie,USA,juventus,CM,RM,79,65,67,78,79,62,73,,,,,,,28,Right,185
+kenan-yildiz,Kenan Yıldız,Yıldız,TUR,juventus,LW,CAM,84,88,76,79,88,33,62,,,,,,,21,Right,185
+francisco-conceicao,Francisco Conceição,Conceição,POR,juventus,RW,,80,85,76,74,85,36,55,,,,,,,24,Left,170
+jonathan-david,Jonathan David,David,CAN,juventus,ST,,81,76,85,68,80,35,71,,,,,,,26,Right,175
+lois-openda,Loïs Openda,Openda,BEL,juventus,ST,,79,84,80,67,76,42,68,,,,,,,26,Right,177
+vanja-milinkovic-savic,Vanja Milinković-Savić,Milinković-Savić,SRB,napoli,GK,,80,,,,,,,81,77,69,81,53,78,29,Right,202
+alex-meret,Alex Meret,Meret,ITA,napoli,GK,,79,,,,,,,83,78,66,79,49,80,29,Left,190
+giovanni-di-lorenzo,Giovanni Di Lorenzo,Di Lorenzo,ITA,napoli,RB,CB,81,76,50,70,78,79,68,,,,,,,33,Right,183
+alessandro-buongiorno,Alessandro Buongiorno,Buongiorno,ITA,napoli,CB,,81,64,34,57,58,84,87,,,,,,,27,Left,194
+mathias-olivera,Mathías Olivera,Olivera,URU,napoli,LB,CB,78,80,50,69,73,75,72,,,,,,,29,Left,185
+miguel-gutierrez,Miguel Gutiérrez,Gutiérrez,ESP,napoli,LB,,79,77,49,68,72,75,67,,,,,,,25,Left,180
+stanislav-lobotka,Stanislav Lobotka,Lobotka,SVK,napoli,CDM,CM,83,64,60,82,77,85,78,,,,,,,31,Right,170
+frank-anguissa,Frank Anguissa,Anguissa,CMR,napoli,CM,,81,64,68,82,79,63,73,,,,,,,30,Right,184
+scott-mctominay,Scott McTominay,McTominay,SCO,napoli,CM,CAM,85,74,79,86,83,66,79,,,,,,,29,Right,193
+kevin-de-bruyne,Kevin De Bruyne,De Bruyne,BEL,napoli,CAM,CM,84,67,78,90,88,53,63,,,,,,,35,Right,181
+billy-gilmour,Billy Gilmour,Gilmour,SCO,napoli,CDM,,78,59,56,73,65,80,73,,,,,,,25,Right,170
+rasmus-hojlund,Rasmus Højlund,Højlund,DEN,napoli,ST,,81,76,80,65,76,38,79,,,,,,,23,Left,191
+romelu-lukaku,Romelu Lukaku,Lukaku,BEL,napoli,ST,,79,73,80,67,75,37,85,,,,,,,33,Left,191
+marco-carnesecchi,Marco Carnesecchi,Carnesecchi,ITA,atalanta,GK,,82,,,,,,,82,79,65,86,38,82,26,Right,191
+marco-sportiello,Marco Sportiello,Sportiello,ITA,atalanta,GK,,72,,,,,,,72,72,56,72,49,69,34,Right,192
+isak-hien,Isak Hien,Hien,SWE,atalanta,CB,,80,65,30,58,60,79,87,,,,,,,27,Right,191
+giorgio-scalvini,Giorgio Scalvini,Scalvini,ITA,atalanta,CB,,79,65,33,59,60,81,85,,,,,,,22,Right,194
+raoul-bellanova,Raoul Bellanova,Bellanova,ITA,atalanta,RWB,,79,84,56,70,74,71,69,,,,,,,26,Right,188
+nicola-zalewski,Nicola Zalewski,Zalewski,POL,atalanta,LWB,,76,81,52,66,71,67,62,,,,,,,24,Left,175
+marten-de-roon,Marten de Roon,De Roon,NED,atalanta,CDM,CM,79,53,55,70,71,83,77,,,,,,,35,Right,185
+ederson,Éderson,Éderson,BRA,atalanta,CM,CDM,81,69,67,79,80,65,73,,,,,,,27,Right,183
+yunus-musah,Yunus Musah,Musah,USA,atalanta,CM,,77,62,65,77,75,62,65,,,,,,,23,Right,178
+charles-de-ketelaere,Charles De Ketelaere,De Ketelaere,BEL,atalanta,CAM,CF,82,71,76,82,83,42,63,,,,,,,25,Left,192
+ademola-lookman,Ademola Lookman,Lookman,NGA,atalanta,LW,CF,83,86,78,77,83,30,61,,,,,,,28,Right,174
+nikola-krstovic,Nikola Krstović,Krstović,MNE,atalanta,ST,,79,77,84,65,72,35,72,,,,,,,26,Right,185
+gianluca-scamacca,Gianluca Scamacca,Scamacca,ITA,atalanta,ST,,78,78,78,65,75,41,78,,,,,,,27,Right,195
+mile-svilar,Mile Svilar,Svilar,SRB,roma,GK,,84,,,,,,,86,80,68,89,39,83,27,Left,189
+gianluca-mancini,Gianluca Mancini,Mancini,ITA,roma,CB,,80,62,31,59,56,85,83,,,,,,,30,Right,190
+evan-ndicka,Evan Ndicka,Ndicka,CIV,roma,CB,,80,66,34,59,61,85,87,,,,,,,27,Left,192
+wesley,Wesley,Wesley,BRA,roma,RB,RWB|LB,79,85,49,68,70,77,65,,,,,,,23,Right,174
+angelino,Angeliño,Angeliño,ESP,roma,LB,LWB,78,82,47,66,71,77,66,,,,,,,29,Left,171
+manu-kone,Manu Koné,Koné,FRA,roma,CM,CDM,81,67,71,83,78,67,73,,,,,,,25,Right,185
+bryan-cristante,Bryan Cristante,Cristante,ITA,roma,CDM,CM,78,57,56,72,66,76,78,,,,,,,31,Right,186
+neil-el-aynaoui,Neil El Aynaoui,El Aynaoui,MAR,roma,CM,CDM,78,64,66,75,75,62,70,,,,,,,25,Right,185
+lorenzo-pellegrini,Lorenzo Pellegrini,Pellegrini,ITA,roma,CAM,CM,78,68,74,82,83,55,57,,,,,,,30,Right,186
+matias-soule,Matías Soulé,Soulé,ARG,roma,RW,CAM,81,86,75,76,81,30,61,,,,,,,23,Left,183
+donyell-malen,Donyell Malen,Malen,NED,roma,ST,RW,81,80,85,64,78,40,77,,,,,,,27,Right,179
+artem-dovbyk,Artem Dovbyk,Dovbyk,UKR,roma,ST,,78,75,82,66,76,39,72,,,,,,,29,Left,189
+evan-ferguson,Evan Ferguson,Ferguson,IRL,roma,ST,,76,75,81,62,74,28,72,,,,,,,21,Right,188
+ivan-provedel,Ivan Provedel,Provedel,ITA,lazio,GK,,81,,,,,,,83,79,66,80,51,81,32,Right,192
+alessio-romagnoli,Alessio Romagnoli,Romagnoli,ITA,lazio,CB,,79,63,34,57,55,79,85,,,,,,,31,Left,188
+mario-gila,Mario Gila,Gila,ESP,lazio,CB,,80,64,30,58,59,81,83,,,,,,,26,Right,185
+adam-marusic,Adam Marušić,Marušić,MNE,lazio,RB,LB,76,68,46,68,68,69,65,,,,,,,34,Right,185
+nuno-tavares,Nuno Tavares,Tavares,POR,lazio,LB,LWB,78,86,51,70,72,76,67,,,,,,,26,Left,183
+nicolo-rovella,Nicolò Rovella,Rovella,ITA,lazio,CDM,CM,79,56,55,73,67,79,78,,,,,,,24,Right,179
+matias-vecino,Matías Vecino,Vecino,URU,lazio,CM,,74,55,61,73,71,58,63,,,,,,,35,Right,187
+fisayo-dele-bashiru,Fisayo Dele-Bashiru,Dele-Bashiru,NGA,lazio,CM,,75,60,62,76,72,61,64,,,,,,,25,Right,185
+mattia-zaccagni,Mattia Zaccagni,Zaccagni,ITA,lazio,LW,,79,85,73,70,83,36,57,,,,,,,31,Right,177
+gustav-isaksen,Gustav Isaksen,Isaksen,DEN,lazio,RW,,78,80,74,72,82,30,54,,,,,,,25,Left,177
+boulaye-dia,Boulaye Dia,Dia,SEN,lazio,ST,CF,77,74,77,65,76,34,69,,,,,,,30,Right,180
+tijjani-noslin,Tijjani Noslin,Noslin,NED,lazio,ST,,74,70,74,58,71,40,70,,,,,,,27,Right,180
+david-de-gea,David de Gea,De Gea,ESP,fiorentina,GK,,81,,,,,,,81,78,67,81,38,79,35,Right,192
+luca-ranieri,Luca Ranieri,Ranieri,ITA,fiorentina,CB,,77,62,31,53,55,79,81,,,,,,,27,Left,187
+marin-pongracic,Marin Pongračić,Pongračić,CRO,fiorentina,CB,,76,58,26,53,56,78,79,,,,,,,28,Right,192
+pietro-comuzzo,Pietro Comuzzo,Comuzzo,ITA,fiorentina,CB,,76,58,30,52,53,78,78,,,,,,,21,Right,184
+dodo,Dodô,Dodô,BRA,fiorentina,RB,RWB,79,81,49,67,71,75,63,,,,,,,28,Right,168
+robin-gosens,Robin Gosens,Gosens,GER,fiorentina,LWB,LB,77,80,54,67,75,68,70,,,,,,,32,Left,184
+rolando-mandragora,Rolando Mandragora,Mandragora,ITA,fiorentina,CM,,77,61,63,77,73,59,68,,,,,,,29,Left,183
+albert-gudmundsson,Albert Guðmundsson,Guðmundsson,ISL,fiorentina,CF,CAM,80,76,79,76,83,42,69,,,,,,,29,Right,177
+moise-kean,Moise Kean,Kean,ITA,fiorentina,ST,,81,76,86,66,78,37,74,,,,,,,26,Right,182
+roberto-piccoli,Roberto Piccoli,Piccoli,ITA,fiorentina,ST,,75,71,76,59,72,36,72,,,,,,,25,Right,190
+lukasz-skorupski,Łukasz Skorupski,Skorupski,POL,bologna,GK,,79,,,,,,,80,75,65,82,52,81,35,Right,187
+federico-ravaglia,Federico Ravaglia,Ravaglia,ITA,bologna,GK,,73,,,,,,,71,68,60,72,47,72,27,Right,187
+jhon-lucumi,Jhon Lucumí,Lucumí,COL,bologna,CB,,80,66,32,57,60,81,85,,,,,,,28,Left,187
+torbjorn-heggem,Torbjørn Heggem,Heggem,NOR,bologna,CB,,76,57,27,57,54,76,78,,,,,,,27,Right,192
+emil-holm,Emil Holm,Holm,SWE,bologna,RB,,77,76,46,66,70,71,71,,,,,,,26,Right,191
+juan-miranda,Juan Miranda,Miranda,ESP,bologna,LB,,76,74,44,67,71,72,66,,,,,,,26,Left,185
+remo-freuler,Remo Freuler,Freuler,SUI,bologna,CDM,CM,78,51,56,73,70,80,75,,,,,,,34,Right,180
+lewis-ferguson,Lewis Ferguson,L. Ferguson,SCO,bologna,CM,,79,65,67,81,75,61,67,,,,,,,27,Right,180
+riccardo-orsolini,Riccardo Orsolini,Orsolini,ITA,bologna,RW,,80,83,75,74,82,35,57,,,,,,,29,Left,183
+jonathan-rowe,Jonathan Rowe,Rowe,ENG,bologna,LW,,76,83,67,67,80,42,52,,,,,,,23,Left,178
+santiago-castro,Santiago Castro,Castro,ARG,bologna,ST,,78,76,79,64,73,34,73,,,,,,,22,Right,183
+jean-butez,Jean Butez,Butez,FRA,como,GK,,79,,,,,,,81,75,64,79,37,81,31,Right,188
+jacobo-ramon,Jacobo Ramón,Ramón,ESP,como,CB,,76,57,30,53,52,80,79,,,,,,,21,Right,193
+marc-oliver-kempf,Marc-Oliver Kempf,Kempf,GER,como,CB,,76,61,27,56,51,80,81,,,,,,,31,Left,186
+alex-valle,Álex Valle,Valle,ESP,como,LB,,76,80,46,70,71,69,63,,,,,,,22,Left,177
+ivan-smolcic,Ivan Smolčić,Smolčić,CRO,como,RB,,74,74,47,63,66,71,66,,,,,,,25,Right,186
+maximo-perrone,Máximo Perrone,Perrone,ARG,como,CDM,CM,79,60,55,73,67,79,74,,,,,,,23,Right,178
+lucas-da-cunha,Lucas Da Cunha,Da Cunha,FRA,como,CM,CAM,78,61,67,79,78,64,66,,,,,,,25,Right,180
+nico-paz,Nico Paz,Nico Paz,ARG,como,CAM,,81,72,74,82,83,56,62,,,,,,,22,Left,186
+martin-baturina,Martin Baturina,Baturina,CRO,como,CAM,CM,78,68,70,82,77,50,51,,,,,,,23,Right,172
+jesus-rodriguez,Jesús Rodríguez,Jesús Rodríguez,ESP,como,LW,,77,79,71,68,76,28,49,,,,,,,21,Left,174
+assane-diao,Assane Diao,Diao,SEN,como,RW,LW,77,80,70,68,78,33,56,,,,,,,21,Right,180
+alvaro-morata,Álvaro Morata,Morata,ESP,como,ST,,76,70,76,62,72,31,73,,,,,,,34,Right,189
+manuel-neuer,Manuel Neuer,Neuer,GER,bayern-munich,GK,,82,,,,,,,85,81,74,82,53,82,40,Right,193
+jonas-urbig,Jonas Urbig,Urbig,GER,bayern-munich,GK,,75,,,,,,,76,72,59,77,42,77,23,Right,189
+dayot-upamecano,Dayot Upamecano,Upamecano,FRA,bayern-munich,CB,,83,65,38,63,60,82,85,,,,,,,28,Right,186
+jonathan-tah,Jonathan Tah,Tah,GER,bayern-munich,CB,,84,68,36,63,59,86,89,,,,,,,30,Right,195
+kim-min-jae,Kim Min-jae,Kim Min-jae,KOR,bayern-munich,CB,,81,66,35,58,57,85,84,,,,,,,29,Right,190
+hiroki-ito,Hiroki Ito,Ito,JPN,bayern-munich,CB,LB,78,64,30,55,54,83,80,,,,,,,27,Left,188
+alphonso-davies,Alphonso Davies,Davies,CAN,bayern-munich,LB,,81,92,52,70,73,79,69,,,,,,,25,Left,183
+konrad-laimer,Konrad Laimer,Laimer,AUT,bayern-munich,RB,CM,81,80,50,72,77,76,68,,,,,,,29,Right,180
+joshua-kimmich,Joshua Kimmich,Kimmich,GER,bayern-munich,CDM,RB|CM,87,66,67,88,76,87,83,,,,,,,31,Right,177
+aleksandar-pavlovic,Aleksandar Pavlović,A. Pavlović,GER,bayern-munich,CDM,CM,81,61,60,73,70,83,80,,,,,,,22,Left,188
+jamal-musiala,Jamal Musiala,Musiala,GER,bayern-munich,CAM,LW,87,75,80,88,91,51,67,,,,,,,23,Right,184
+lennart-karl,Lennart Karl,Karl,GER,bayern-munich,CAM,RW,76,65,67,79,80,43,50,,,,,,,18,Left,170
+michael-olise,Michael Olise,Olise,FRA,bayern-munich,RW,CAM,88,90,81,88,93,43,67,,,,,,,24,Left,184
+luis-diaz,Luis Díaz,Díaz,COL,bayern-munich,LW,,85,91,76,78,86,40,63,,,,,,,29,Right,180
+harry-kane,Harry Kane,Kane,ENG,bayern-munich,ST,,89,67,95,85,84,27,87,,,,,,,33,Right,188
+nicolas-jackson,Nicolas Jackson,Jackson,SEN,bayern-munich,ST,,79,73,79,66,76,33,72,,,,,,,25,Right,186
+mark-flekken,Mark Flekken,Flekken,NED,bayer-leverkusen,GK,,79,,,,,,,77,79,64,82,38,78,33,Right,195
+janis-blaswich,Janis Blaswich,Blaswich,GER,bayer-leverkusen,GK,,73,,,,,,,73,71,60,73,43,71,35,Right,193
+edmond-tapsoba,Edmond Tapsoba,Tapsoba,BFA,bayer-leverkusen,CB,,81,67,34,56,57,84,87,,,,,,,27,Right,194
+jarell-quansah,Jarell Quansah,Quansah,ENG,bayer-leverkusen,CB,,79,64,29,59,58,84,80,,,,,,,23,Right,190
+loic-bade,Loïc Badé,Badé,FRA,bayer-leverkusen,CB,,79,63,30,59,58,79,82,,,,,,,26,Right,191
+alejandro-grimaldo,Alejandro Grimaldo,Grimaldo,ESP,bayer-leverkusen,LWB,LB,82,88,72,82,75,76,69,,,,,,,31,Left,171
+robert-andrich,Robert Andrich,Andrich,GER,bayer-leverkusen,CDM,,79,58,55,73,69,82,81,,,,,,,32,Right,187
+aleix-garcia,Aleix García,Aleix García,ESP,bayer-leverkusen,CM,CDM,79,67,67,80,76,61,63,,,,,,,29,Right,173
+exequiel-palacios,Exequiel Palacios,Palacios,ARG,bayer-leverkusen,CM,,80,67,67,82,78,64,70,,,,,,,28,Right,177
+malik-tillman,Malik Tillman,Tillman,USA,bayer-leverkusen,CAM,,79,72,73,83,83,43,58,,,,,,,24,Right,187
+ibrahim-maza,Ibrahim Maza,Maza,ALG,bayer-leverkusen,CAM,CM,76,65,68,77,75,52,55,,,,,,,20,Right,177
+eliesse-ben-seghir,Eliesse Ben Seghir,Ben Seghir,MAR,bayer-leverkusen,LW,CAM,78,85,69,70,83,28,53,,,,,,,21,Left,178
+ernest-poku,Ernest Poku,Poku,NED,bayer-leverkusen,RW,,76,79,71,68,80,34,54,,,,,,,22,Right,178
+patrik-schick,Patrik Schick,Schick,CZE,bayer-leverkusen,ST,,81,77,85,67,78,43,78,,,,,,,30,Left,191
+gregor-kobel,Gregor Kobel,Kobel,SUI,borussia-dortmund,GK,,84,,,,,,,87,83,70,85,41,81,28,Right,194
+nico-schlotterbeck,Nico Schlotterbeck,Schlotterbeck,GER,borussia-dortmund,CB,,83,70,35,63,64,88,89,,,,,,,26,Left,191
+waldemar-anton,Waldemar Anton,Anton,GER,borussia-dortmund,CB,,79,63,33,57,58,80,83,,,,,,,30,Right,189
+ramy-bensebaini,Ramy Bensebaini,Bensebaini,ALG,borussia-dortmund,LB,CB,78,79,45,72,71,71,67,,,,,,,31,Left,187
+julian-ryerson,Julian Ryerson,Ryerson,NOR,borussia-dortmund,RB,LB,79,78,50,69,76,74,72,,,,,,,28,Right,183
+daniel-svensson,Daniel Svensson,Svensson,SWE,borussia-dortmund,LWB,LB,78,83,54,72,73,71,64,,,,,,,24,Left,179
+emre-can,Emre Can,Can,GER,borussia-dortmund,CDM,CB,77,55,58,68,65,79,77,,,,,,,32,Right,186
+felix-nmecha,Felix Nmecha,Nmecha,GER,borussia-dortmund,CM,,80,63,70,78,77,62,72,,,,,,,25,Right,190
+jobe-bellingham,Jobe Bellingham,J. Bellingham,ENG,borussia-dortmund,CM,CAM,78,65,69,76,72,59,70,,,,,,,21,Right,190
+julian-brandt,Julian Brandt,Brandt,GER,borussia-dortmund,CAM,,79,70,74,82,81,58,58,,,,,,,30,Right,185
+karim-adeyemi,Karim Adeyemi,Adeyemi,GER,borussia-dortmund,LW,RW,80,92,70,76,81,35,58,,,,,,,24,Right,180
+maximilian-beier,Maximilian Beier,Beier,GER,borussia-dortmund,CF,ST|LW,79,75,77,73,82,42,66,,,,,,,24,Right,185
+serhou-guirassy,Serhou Guirassy,Guirassy,GUI,borussia-dortmund,ST,,84,82,92,72,79,38,80,,,,,,,30,Right,187
+fabio-silva,Fábio Silva,Fábio Silva,POR,borussia-dortmund,ST,,76,73,79,64,70,28,70,,,,,,,24,Right,185
+peter-gulacsi,Péter Gulácsi,Gulácsi,HUN,rb-leipzig,GK,,78,,,,,,,81,79,63,82,42,79,36,Right,191
+maarten-vandevoordt,Maarten Vandevoordt,Vandevoordt,BEL,rb-leipzig,GK,,78,,,,,,,81,75,62,80,45,80,24,Right,191
+willi-orban,Willi Orbán,Orbán,HUN,rb-leipzig,CB,,79,58,31,59,56,83,84,,,,,,,33,Right,186
+castello-lukeba,Castello Lukeba,Lukeba,FRA,rb-leipzig,CB,LB,81,70,32,60,56,85,86,,,,,,,23,Left,184
+david-raum,David Raum,Raum,GER,rb-leipzig,LB,LWB,80,84,48,75,77,79,68,,,,,,,28,Left,180
+ridle-baku,Ridle Baku,Baku,GER,rb-leipzig,RB,,78,82,50,69,74,74,67,,,,,,,28,Right,176
+xaver-schlager,Xaver Schlager,Schlager,AUT,rb-leipzig,CM,CDM,80,65,69,78,76,64,64,,,,,,,29,Right,174
+nicolas-seiwald,Nicolas Seiwald,Seiwald,AUT,rb-leipzig,CDM,,78,57,54,69,70,79,75,,,,,,,25,Right,179
+assan-ouedraogo,Assan Ouédraogo,Ouédraogo,GER,rb-leipzig,CM,CAM,76,62,64,75,72,59,70,,,,,,,20,Right,188
+christoph-baumgartner,Christoph Baumgartner,Baumgartner,AUT,rb-leipzig,CAM,,79,71,74,82,79,55,55,,,,,,,27,Right,180
+antonio-nusa,Antonio Nusa,Nusa,NOR,rb-leipzig,LW,,79,86,72,73,79,43,54,,,,,,,21,Right,178
+yan-diomande,Yan Diomande,Diomande,CIV,rb-leipzig,RW,,79,85,75,75,78,42,59,,,,,,,20,Right,180
+johan-bakayoko,Johan Bakayoko,Bakayoko,BEL,rb-leipzig,RW,,78,80,72,73,78,43,54,,,,,,,23,Left,179
+romulo,Rômulo,Rômulo,BRA,rb-leipzig,ST,,75,70,77,63,70,37,72,,,,,,,24,Right,186
+alexander-nubel,Alexander Nübel,Nübel,GER,vfb-stuttgart,GK,,81,,,,,,,82,78,67,85,49,77,30,Right,193
+jeff-chabot,Jeff Chabot,Chabot,GER,vfb-stuttgart,CB,,78,63,33,57,56,83,81,,,,,,,28,Left,195
+finn-jeltsch,Finn Jeltsch,Jeltsch,GER,vfb-stuttgart,CB,,76,61,29,52,53,78,78,,,,,,,20,Right,190
+maximilian-mittelstadt,Maximilian Mittelstädt,Mittelstädt,GER,vfb-stuttgart,LB,,79,81,48,71,73,77,69,,,,,,,29,Left,180
+angelo-stiller,Angelo Stiller,Stiller,GER,vfb-stuttgart,CDM,CM,81,62,59,81,69,85,81,,,,,,,25,Right,183
+atakan-karazor,Atakan Karazor,Karazor,GER,vfb-stuttgart,CDM,,75,54,51,66,66,77,78,,,,,,,29,Right,191
+chema-andres,Chema Andrés,Chema,ESP,vfb-stuttgart,CM,,76,64,63,78,72,58,67,,,,,,,21,Right,187
+bilal-el-khannouss,Bilal El Khannouss,El Khannouss,MAR,vfb-stuttgart,CAM,,79,68,72,79,79,43,54,,,,,,,22,Right,180
+chris-fuhrich,Chris Führich,Führich,GER,vfb-stuttgart,LW,,78,84,73,72,79,44,57,,,,,,,28,Right,181
+jamie-leweling,Jamie Leweling,Leweling,GER,vfb-stuttgart,RW,RB,78,82,73,74,82,34,54,,,,,,,25,Right,184
+deniz-undav,Deniz Undav,Undav,GER,vfb-stuttgart,ST,CF,81,75,81,65,75,40,73,,,,,,,30,Right,178
+ermedin-demirovic,Ermedin Demirović,Demirović,BIH,vfb-stuttgart,ST,,79,75,84,63,72,39,75,,,,,,,28,Right,185
+kaua-santos,Kauã Santos,Kauã Santos,BRA,eintracht-frankfurt,GK,,78,,,,,,,79,77,63,79,44,79,23,Right,196
+michael-zetterer,Michael Zetterer,Zetterer,GER,eintracht-frankfurt,GK,,74,,,,,,,76,74,60,77,46,72,31,Right,187
+robin-koch,Robin Koch,Koch,GER,eintracht-frankfurt,CB,,80,67,30,60,56,82,83,,,,,,,30,Right,192
+arthur-theate,Arthur Theate,Theate,BEL,eintracht-frankfurt,CB,LB,79,65,30,59,55,80,80,,,,,,,26,Left,185
+rasmus-kristensen,Rasmus Kristensen,Kristensen,DEN,eintracht-frankfurt,RB,,78,78,48,70,72,74,72,,,,,,,29,Right,187
+nathaniel-brown,Nathaniel Brown,Brown,GER,eintracht-frankfurt,LB,,78,84,48,71,74,75,68,,,,,,,23,Left,183
+hugo-larsson,Hugo Larsson,Larsson,SWE,eintracht-frankfurt,CM,CDM,79,62,68,79,74,64,69,,,,,,,22,Right,187
+ellyes-skhiri,Ellyes Skhiri,Skhiri,TUN,eintracht-frankfurt,CDM,,77,57,52,68,67,75,74,,,,,,,31,Right,185
+can-uzun,Can Uzun,Uzun,TUR,eintracht-frankfurt,CAM,ST,79,67,73,81,82,56,60,,,,,,,21,Right,188
+ritsu-doan,Ritsu Dōan,Dōan,JPN,eintracht-frankfurt,RW,,79,84,71,76,82,42,54,,,,,,,28,Left,172
+fares-chaibi,Fares Chaibi,Chaibi,ALG,eintracht-frankfurt,CAM,LW,77,70,70,76,79,42,56,,,,,,,23,Right,183
+jonathan-burkardt,Jonathan Burkardt,Burkardt,GER,eintracht-frankfurt,ST,,79,77,78,66,75,36,72,,,,,,,26,Right,181
+noah-atubolu,Noah Atubolu,Atubolu,GER,sc-freiburg,GK,,80,,,,,,,80,80,65,81,50,77,24,Right,190
+florian-muller,Florian Müller,F. Müller,GER,sc-freiburg,GK,,70,,,,,,,74,69,59,72,38,69,28,Right,190
+matthias-ginter,Matthias Ginter,Ginter,GER,sc-freiburg,CB,,79,63,32,57,58,82,86,,,,,,,32,Right,191
+philipp-lienhart,Philipp Lienhart,Lienhart,AUT,sc-freiburg,CB,,78,65,32,56,58,83,80,,,,,,,30,Right,189
+christian-gunter,Christian Günter,Günter,GER,sc-freiburg,LB,,75,70,44,64,70,70,69,,,,,,,33,Left,184
+maximilian-eggestein,Maximilian Eggestein,Eggestein,GER,sc-freiburg,CM,CDM,77,65,67,77,75,59,68,,,,,,,29,Right,181
+johan-manzambi,Johan Manzambi,Manzambi,SUI,sc-freiburg,CM,CAM,78,61,66,78,77,60,72,,,,,,,21,Right,184
+vincenzo-grifo,Vincenzo Grifo,Grifo,ITA,sc-freiburg,LW,CAM,77,75,72,71,80,44,52,,,,,,,33,Right,180
+jan-niklas-beste,Jan-Niklas Beste,Beste,GER,sc-freiburg,LW,LB,77,79,68,71,81,42,52,,,,,,,27,Left,178
+yuito-suzuki,Yuito Suzuki,Suzuki,JPN,sc-freiburg,CAM,LW,77,65,72,80,80,56,51,,,,,,,25,Right,178
+igor-matanovic,Igor Matanović,Matanović,CRO,sc-freiburg,ST,,75,69,74,62,73,35,72,,,,,,,23,Right,195
+kamil-grabara,Kamil Grabara,Grabara,POL,vfl-wolfsburg,GK,,79,,,,,,,81,75,63,81,46,80,27,Right,195
+denis-vavro,Denis Vavro,Vavro,SVK,vfl-wolfsburg,CB,,76,61,30,52,53,77,80,,,,,,,30,Right,194
+konstantinos-koulierakis,Konstantinos Koulierakis,Koulierakis,GRE,vfl-wolfsburg,CB,,78,60,30,57,55,79,80,,,,,,,22,Left,189
+joakim-maehle,Joakim Mæhle,Mæhle,DEN,vfl-wolfsburg,RB,LB,76,76,48,66,71,74,68,,,,,,,29,Right,185
+maximilian-arnold,Maximilian Arnold,Arnold,GER,vfl-wolfsburg,CM,CDM,78,63,65,82,77,63,69,,,,,,,32,Left,184
+christian-eriksen,Christian Eriksen,Eriksen,DEN,vfl-wolfsburg,CAM,CM,77,59,72,86,80,50,53,,,,,,,34,Right,182
+mattias-svanberg,Mattias Svanberg,Svanberg,SWE,vfl-wolfsburg,CM,,78,65,67,78,72,60,70,,,,,,,27,Right,185
+lovro-majer,Lovro Majer,Majer,CRO,vfl-wolfsburg,CAM,,78,65,71,77,79,49,52,,,,,,,28,Left,176
+patrick-wimmer,Patrick Wimmer,Wimmer,AUT,vfl-wolfsburg,RW,LW,77,84,72,72,79,36,55,,,,,,,25,Right,182
+andreas-skov-olsen,Andreas Skov Olsen,Skov Olsen,DEN,vfl-wolfsburg,RW,,78,81,72,73,81,35,54,,,,,,,26,Left,185
+mohamed-amoura,Mohamed Amoura,Amoura,ALG,vfl-wolfsburg,ST,LW,79,87,79,63,76,37,69,,,,,,,26,Right,170
+jonas-wind,Jonas Wind,Wind,DEN,vfl-wolfsburg,ST,CAM,78,73,79,62,73,37,78,,,,,,,27,Right,190
+oliver-baumann,Oliver Baumann,Baumann,GER,tsg-hoffenheim,GK,,81,,,,,,,81,78,66,81,43,80,36,Right,187
+ozan-kabak,Ozan Kabak,Kabak,TUR,tsg-hoffenheim,CB,,78,63,29,57,56,82,81,,,,,,,26,Right,186
+albian-hajdari,Albian Hajdari,Hajdari,SUI,tsg-hoffenheim,CB,,77,63,31,55,54,78,82,,,,,,,23,Left,189
+bernardo,Bernardo,Bernardo,BRA,tsg-hoffenheim,LB,,75,77,47,64,72,70,65,,,,,,,31,Left,180
+grischa-promel,Grischa Prömel,Prömel,GER,tsg-hoffenheim,CM,CDM,77,60,66,80,74,60,68,,,,,,,31,Right,184
+leon-avdullahu,Leon Avdullahu,Avdullahu,SUI,tsg-hoffenheim,CDM,,76,54,51,66,66,75,76,,,,,,,22,Right,185
+wouter-burger,Wouter Burger,Burger,NED,tsg-hoffenheim,CDM,,76,58,53,71,65,80,82,,,,,,,25,Left,191
+andrej-kramaric,Andrej Kramarić,Kramarić,CRO,tsg-hoffenheim,CF,CAM,79,65,80,71,81,32,65,,,,,,,35,Right,177
+bazoumana-toure,Bazoumana Touré,Touré,CIV,tsg-hoffenheim,LW,,78,85,72,71,78,36,52,,,,,,,20,Right,178
+fisnik-asllani,Fisnik Asllani,Asllani,KOS,tsg-hoffenheim,ST,CAM,78,75,82,65,71,30,75,,,,,,,24,Right,187
+adam-hlozek,Adam Hložek,Hložek,CZE,tsg-hoffenheim,ST,LW,76,74,76,65,70,31,74,,,,,,,24,Right,188
+lucas-chevalier,Lucas Chevalier,Chevalier,FRA,psg,GK,,83,,,,,,,81,84,69,85,53,82,25,Right,189
+matvey-safonov,Matvey Safonov,Safonov,RUS,psg,GK,,79,,,,,,,82,78,65,81,48,80,27,Right,192
+marquinhos,Marquinhos,Marquinhos,BRA,psg,CB,,84,64,38,64,62,87,86,,,,,,,32,Right,183
+willian-pacho,Willian Pacho,Pacho,ECU,psg,CB,,84,69,34,60,59,85,86,,,,,,,25,Left,187
+achraf-hakimi,Achraf Hakimi,Hakimi,MAR,psg,RB,RWB,87,92,79,75,83,82,74,,,,,,,28,Right,181
+nuno-mendes,Nuno Mendes,Nuno Mendes,POR,psg,LB,,86,93,55,74,83,83,72,,,,,,,24,Left,176
+warren-zaire-emery,Warren Zaïre-Emery,Zaïre-Emery,FRA,psg,CM,RB,81,67,67,84,76,63,66,,,,,,,20,Right,178
+vitinha,Vitinha,Vitinha,POR,psg,CM,CDM,88,76,77,91,90,71,73,,,,,,,26,Right,172
+joao-neves,João Neves,João Neves,POR,psg,CM,CDM,86,70,73,86,85,74,72,,,,,,,22,Right,174
+senny-mayulu,Senny Mayulu,Mayulu,FRA,psg,CM,CAM,75,58,65,73,69,59,63,,,,,,,20,Right,183
+ousmane-dembele,Ousmane Dembélé,Dembélé,FRA,psg,RW,ST,89,92,84,81,89,39,65,,,,,,,29,Left,178
+khvicha-kvaratskhelia,Khvicha Kvaratskhelia,Kvaratskhelia,GEO,psg,LW,,87,93,80,78,94,41,63,,,,,,,25,Right,183
+desire-doue,Désiré Doué,Doué,FRA,psg,RW,LW|CAM,85,88,78,80,90,44,64,,,,,,,21,Right,181
+bradley-barcola,Bradley Barcola,Barcola,FRA,psg,LW,,82,95,74,76,85,29,62,,,,,,,24,Right,182
+goncalo-ramos,Gonçalo Ramos,Ramos,POR,psg,ST,,79,74,82,66,77,34,76,,,,,,,25,Right,185
+geronimo-rulli,Gerónimo Rulli,Rulli,ARG,marseille,GK,,81,,,,,,,81,81,69,83,52,83,34,Right,189
+leonardo-balerdi,Leonardo Balerdi,Balerdi,ARG,marseille,CB,,80,62,34,58,58,84,81,,,,,,,27,Right,187
+nayef-aguerd,Nayef Aguerd,Aguerd,MAR,marseille,CB,,79,63,31,57,57,82,85,,,,,,,30,Left,190
+pierre-emile-hojbjerg,Pierre-Emile Højbjerg,Højbjerg,DEN,marseille,CDM,CM,81,63,61,75,69,81,81,,,,,,,31,Right,185
+matt-o-riley,Matt O'Riley,O'Riley,DEN,marseille,CM,CAM,79,64,68,78,77,66,73,,,,,,,25,Left,189
+mason-greenwood,Mason Greenwood,Greenwood,ENG,marseille,RW,ST,83,86,81,74,85,42,62,,,,,,,25,Left,181
+igor-paixao,Igor Paixão,Paixão,BRA,marseille,LW,,79,80,75,72,82,37,51,,,,,,,26,Left,169
+timothy-weah,Timothy Weah,Weah,USA,marseille,RW,RB,77,80,67,72,80,40,53,,,,,,,26,Right,183
+pierre-emerick-aubameyang,Pierre-Emerick Aubameyang,Aubameyang,GAB,marseille,ST,,78,64,82,66,75,40,76,,,,,,,37,Right,187
+philipp-kohn,Philipp Köhn,Köhn,SUI,monaco,GK,,78,,,,,,,79,79,61,78,50,79,28,Right,191
+thilo-kehrer,Thilo Kehrer,Kehrer,GER,monaco,CB,RB,77,63,27,56,58,81,81,,,,,,,30,Right,186
+mohammed-salisu,Mohammed Salisu,Salisu,GHA,monaco,CB,,78,65,33,58,53,78,81,,,,,,,27,Left,191
+denis-zakaria,Denis Zakaria,Zakaria,SUI,monaco,CDM,CM,81,63,59,73,68,81,81,,,,,,,29,Right,191
+lamine-camara,Lamine Camara,Camara,SEN,monaco,CM,CDM,79,62,65,78,75,63,68,,,,,,,22,Right,172
+aleksandr-golovin,Aleksandr Golovin,Golovin,RUS,monaco,CAM,CM,78,67,75,79,79,42,54,,,,,,,30,Right,178
+maghnes-akliouche,Maghnes Akliouche,Akliouche,FRA,monaco,RW,CAM,81,85,73,74,85,42,60,,,,,,,24,Left,180
+takumi-minamino,Takumi Minamino,Minamino,JPN,monaco,CAM,LW,78,67,72,76,81,47,54,,,,,,,31,Right,174
+folarin-balogun,Folarin Balogun,Balogun,USA,monaco,ST,,79,78,81,63,77,35,73,,,,,,,25,Right,178
+berke-ozer,Berke Özer,Özer,TUR,lille,GK,,78,,,,,,,78,74,65,79,41,80,26,Right,188
+aissa-mandi,Aïssa Mandi,Mandi,ALG,lille,CB,,75,55,28,51,53,76,75,,,,,,,34,Right,184
+romain-perraud,Romain Perraud,Perraud,FRA,lille,LB,,76,75,49,66,72,74,61,,,,,,,29,Left,173
+benjamin-andre,Benjamin André,André,FRA,lille,CDM,CM,77,47,54,72,68,75,74,,,,,,,36,Right,180
+ayyoub-bouaddi,Ayyoub Bouaddi,Bouaddi,FRA,lille,CM,CDM,78,61,65,78,76,63,66,,,,,,,19,Right,180
+hakon-arnar-haraldsson,Hákon Arnar Haraldsson,Haraldsson,ISL,lille,CAM,LW,79,70,74,79,81,48,57,,,,,,,23,Right,181
+matias-fernandez-pardo,Matías Fernández-Pardo,Fernández-Pardo,BEL,lille,RW,,77,80,71,71,77,30,56,,,,,,,21,Right,180
+osame-sahraoui,Osame Sahraoui,Sahraoui,NOR,lille,LW,,76,82,71,73,80,30,48,,,,,,,25,Right,170
+hamza-igamane,Hamza Igamane,Igamane,MAR,lille,ST,LW,76,72,81,64,71,31,73,,,,,,,23,Right,184
+olivier-giroud,Olivier Giroud,Giroud,FRA,lille,ST,,74,62,73,61,71,34,75,,,,,,,40,Left,193

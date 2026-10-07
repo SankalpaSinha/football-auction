@@ -59,8 +59,9 @@ export class Bot {
 
   emit<T = unknown>(event: keyof ClientToServer, payload: unknown = {}): Promise<Ack<T>> {
     return new Promise((resolve) => {
-      // @ts-expect-error — generic emit over the typed event map
-      this.socket.emit(event, payload, (r: Ack<T>) => resolve(r));
+      (this.socket as unknown as { emit: (e: string, p: unknown, cb: (r: Ack<T>) => void) => void }).emit(event, payload, (r) =>
+        resolve(r),
+      );
     });
   }
 

@@ -48,7 +48,8 @@ async function main() {
   }
 
   const catalog = new InMemoryCatalog(data);
-  const origins = (env.CLIENT_ORIGIN ?? 'http://localhost:3000').split(',').map((s) => s.trim());
+  const originEnv = env.CLIENT_ORIGIN ?? 'http://localhost:3000';
+  const origins = originEnv === '*' ? true : originEnv.split(',').map((s) => s.trim());
   const server = createApp({ catalog, users, store, clock: systemClock, rules, corsOrigins: origins });
   const actualPort = await server.listen(port);
 

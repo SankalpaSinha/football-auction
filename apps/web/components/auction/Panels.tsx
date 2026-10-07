@@ -1,0 +1,143 @@
+'use client';
+import { AnimatePresence, motion } from 'motion/react';
+import { GROUP_ORDER, POSITION_GROUP, type LotView, type MemberView, type RoomView } from '@fa/shared';
+import { coins, GROUP_LABEL, groupSquad } from '@/lib/format';
+import { Avatar, Coin, ConnectionDot } from '../ui';
+
+const GROUP_COLOR = { GK: '#f5c542', DEF: '#2ee6ff', MID: '#c8ff2e', ATT: '#ff6b8a' } as const;
+
+export function SquadPanel({ room, me }: { room: RoomView; me: MemberView | undefined }) {
+  if (!me) return <div className="glass rounded-2xl p-4 text-sm text-muted">Spectating</div>;
+  const size = room.rules.squadSize;
+  const grouped = groupSquad(me.squad);
+  const hasGk = grouped.GK.length > 0;
+  const left = size - me.squad.length;
+  const spent = me.squad.reduce((s, e) => s + e.price, 0);
+
+  return (
+    <div className="glass flex h-full flex-col rounded-2xl p-4">
+      <div className="label">Your squad</div>
+      <div className="mt-2 flex items-end justify-between">
+        <div>
+          <div className="flex items-center gap-1.5">
+            <Coin className="h-5 w-5" />
+            <span className="display text-4xl font-extrabold leading-none num">{coins(me.budget)}</span>
+          </div>
+          <div className="mt-1 text-xs text-muted">
+            spent {coins(spent)} · max bid <span className="font-bold text-ink">{coins(me.maxBid)}</span>
+          </div>
+        </div>
+        <div className="text-right">
+          <div className="display text-3xl font-extrabold leading-none num">
+            {me.squad.length}
+            <span className="text-lg text-dim">/{size}</span>
+          </div>
+          <div className="text-xs text-muted">{left} slots left</div>
+        </div>
+      </div>
+
+      {/* slot bar */}
+      <div className="mt-3 flex gap-[3px]">
+        {Array.from({ length: size }, (_, i) => {
+          const e = me.squad[i];
+          return (
+            <div
+              key={i}
+              className="h-2 flex-1 rounded-full transition-colors"
+              style={{ background: e ? GROUP_COLOR[POSITION_GROUP[e.player.position]] : 'rgba(255,255,255,.08)' }}
+            />
+          );
+        })}
+      </div>
+      {!hasGk && (
+        <div className="mt-3 rounded-lg border border-amber/40 bg-amber/10 px-3 py-1.5 text-xs font-semibold text-amber-100">
+          ⚠ You still need a goalkeeper
+        </div>
+      )}
+
+      <div className="scrollbar-thin -mx-1 mt-3 flex-1 space-y-3 overflow-y-auto px-1">
+        {me.squad.length === 0 && <p className="py-6 text-center text-sm text-dim">No players yet. Your first signing will appear here.</p>}
+        {GROUP_ORDER.map((g) =>
+          grouped[g].length ? (
+            <div key={g}>
+              <div className="mb-1 flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.18em]" style={{ color: GROUP_COLOR[g] }}>
+                {GROUP_LABEL[g]} <span className="text-dim">{grouped[g].length}</span>
+              </div>
+              <ul className="space-y-1">
+                <AnimatePresence initial={false}>
+                  {grouped[g].map((e) => (
+                    <motion.li
+                      key={e.player.id}
+                      layout
+                      initial={{ opacity: 0, x: -20, backgroundColor: 'rgba(200,255,46,.25)' }}
+                      animate={{ opacity: 1, x: 0, backgroundColor: 'rgba(255,255,255,.03)' }}
+                      transition={{ duration: 0.6 }}
+                      className="flex items-center gap-2 rounded-lg px-2 py-1.5 text-sm"
+                    >
+                      <span className="w-8 text-[11px] font-bold text-muted">{e.player.position}</span>
+                      <span className="min-w-0 flex-1 truncate font-medium">{e.player.shortName}</span>
+                      <span className="display w-6 text-right font-bold">{e.player.overall}</span>
+                      <span className="w-10 text-right text-xs text-muted num">{e.price}</span>
+                    </motion.li>
+                  ))}
+                </AnimatePresence>
+              </ul>
+            </div>
+          ) : null,
+        )}
+      </div>
+    </div>
+  );
+}
+
+export function ManagersPanel({ room, lot, me }: { room: RoomView; lot: LotView | null; me: string }) {
+  return (
+    <div className="glass rounded-2xl p-4">
+      <div className="label mb-3">Live managers</div>
+      <ul className="space-y-2">
+        {room.members.map((m) => {
+          const leading = lot?.highestBidderId === m.userId;
+          const skipped = lot?.skippedBy.includes(m.userId);
+          const full = m.squad.length >= room.rules.squadSize;
+          return (
+            <motion.li
+              key={m.userId}
+              layout
+              animate={{ scale: leading ? 1.02 : 1 }}
+              className={`flex items-center gap-3 rounded-xl border px-3 py-2 transition-colors ${
+                leading ? 'border-volt/60 bg-volt/[.09] shadow-[0_0_24px_-8px_rgba(200,255,46,.6)]' : 'border-white/5 bg-white/[.02]'
+              } ${!m.connected ? 'opacity-50' : ''}`}
+            >
+              <Avatar name={m.username} size={34} />
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-1.5">
+                  <ConnectionDot connected={m.connected} />
+                  <span className="truncate text-sm font-bold">{m.username}</span>
+                  {m.isHost && <span className="text-xs" title="Host">👑</span>}
+                  {m.userId === me && <span className="text-[10px] text-muted">YOU</span>}
+                </div>
+                <div className="mt-0.5 flex items-center gap-1 text-xs text-muted num">
+                  <Coin className="h-3 w-3" />
+                  {coins(m.budget)} · {m.squad.length}/{room.rules.squadSize}
+                </div>
+              </div>
+              <div className="text-right">
+                {leading ? (
+                  <span className="display text-xl font-extrabold text-volt num">{lot?.currentBid}</span>
+                ) : !m.connected ? (
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-amber-200">Offline</span>
+                ) : full ? (
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-cyan">Full</span>
+                ) : skipped ? (
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-dim">Skipped</span>
+                ) : (
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-dim">Thinking</span>
+                )}
+              </div>
+            </motion.li>
+          );
+        })}
+      </ul>
+    </div>
+  );
+}

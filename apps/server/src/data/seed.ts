@@ -91,6 +91,7 @@ export interface NormalizedPlayer {
   preferredFoot: 'Left' | 'Right';
   heightCm: number;
   imageUrl: string | null;
+  imageCredit: string | null;
   status: PlayerStatus;
 }
 
@@ -248,6 +249,7 @@ export function normalizePlayerRecord(
       : 'Right',
     heightCm: num(pick(rec, 'heightCm', 'height')) ?? 180,
     imageUrl: (pick(rec, 'imageUrl', 'image') as string | undefined) ?? null,
+    imageCredit: (pick(rec, 'imageCredit') as string | undefined) ?? null,
     status: (['ACTIVE', 'INJURED', 'INACTIVE'].includes(status) ? status : 'ACTIVE') as PlayerStatus,
   };
 }
@@ -274,12 +276,21 @@ export function loadSeasonDataset(dataDir: string, season: SeasonRecord, players
     ? readJson<Record<string, unknown>[]>(file)
     : parseCsv(readFileSync(file, 'utf8'));
 
+  // Optional photo manifest produced by `npm run images:fetch`.
+  const imagesFile = join(dir, 'images.json');
+  const images: Record<string, { url?: string; credit?: string }> = existsSync(imagesFile) ? readJson(imagesFile) : {};
+
   const players: NormalizedPlayer[] = [];
   const errors: string[] = [];
   const seen = new Set<string>();
   records.forEach((rec, i) => {
     try {
       const p = normalizePlayerRecord(rec, { seasonId: season.id, nations, clubs });
+      const img = images[p.playerId];
+      if (!p.imageUrl && img?.url) {
+        p.imageUrl = img.url;
+        p.imageCredit = img.credit ?? null;
+      }
       if (seen.has(p.playerId)) throw new Error(`duplicate id "${p.playerId}"`);
       seen.add(p.playerId);
       players.push(p);

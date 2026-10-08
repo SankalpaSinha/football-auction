@@ -144,7 +144,13 @@ export class RoomManager {
       this.flushScheduled = false;
       const rooms = [...this.dirty];
       this.dirty.clear();
-      for (const r of rooms) if (!r.closed) this.io.to(roomChannel(r.code)).emit('room:state', r.view());
+      // Each manager gets their own snapshot (their lineup draft is private).
+      for (const r of rooms) {
+        if (r.closed) continue;
+        for (const userId of r.memberIds()) {
+          if (this.userRoom.get(userId) === r.code) this.io.to(userChannel(userId)).emit('room:state', r.view(userId));
+        }
+      }
     });
   }
 

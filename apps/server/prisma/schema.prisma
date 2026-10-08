@@ -109,6 +109,8 @@ model Player {
   preferredFoot String
   heightCm      Int
   imageUrl      String?
+  /// Photo attribution (author · licence).
+  imageCredit   String?
   nation        Nation  @relation(fields: [nationCode], references: [code])
 
   stats PlayerStats[]

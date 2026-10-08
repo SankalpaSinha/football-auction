@@ -96,6 +96,11 @@ export function AuctionScreen({ room, me }: { room: RoomView; me: string }) {
                     <Pill color="#ffb020">Second chance</Pill>
                   </div>
                 )}
+                {lot?.player.imageCredit && (
+                  <div className="mt-2 max-w-[178px] truncate text-center text-[10px] text-dim md:max-w-[300px]" title={lot.player.imageCredit}>
+                    📷 {lot.player.imageCredit}
+                  </div>
+                )}
               </div>
               {lot && (
                 <div className="min-w-0 flex-1 md:hidden">

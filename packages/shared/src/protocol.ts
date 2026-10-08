@@ -39,6 +39,10 @@ export const bidSchema = z.object({
   amount: z.number().int().positive().max(1_000_000),
 });
 export const skipSchema = z.object({ lotNumber: z.number().int().positive() });
+export const lineupSchema = z.object({
+  formationId: z.string().min(1).max(16),
+  slots: z.array(z.string().min(1).max(80).nullable()).max(11),
+});
 
 /** Every client→server action is acknowledged with one of these. */
 export type Ack<T = undefined> = { ok: true; data?: T } | { ok: false; error: string; code: string };
@@ -51,6 +55,9 @@ export interface ClientToServer {
   'room:start': (input: unknown, ack: (r: Ack) => void) => void;
   'auction:bid': (input: unknown, ack: (r: Ack) => void) => void;
   'auction:skip': (input: unknown, ack: (r: Ack) => void) => void;
+  'squad:draft': (input: unknown, ack: (r: Ack) => void) => void;
+  'squad:lock': (input: unknown, ack: (r: Ack) => void) => void;
+  'squad:unlock': (input: unknown, ack: (r: Ack) => void) => void;
   'time:sync': (input: unknown, ack: (r: { serverTime: number }) => void) => void;
 }
 
@@ -94,5 +101,12 @@ export const ERROR_MESSAGES = {
   RESERVE_REQUIRED: 'You must keep enough coins to complete your squad.',
   NEED_GOALKEEPER: 'Your last slot must be a goalkeeper.',
   GOALKEEPER_LIMIT: 'Other managers still need the remaining goalkeepers.',
+  // squad building
+  INVALID_FORMATION: 'Unknown formation.',
+  LINEUP_INCOMPLETE: 'Fill all 11 positions first.',
+  LINEUP_DUPLICATE: 'A player can only fill one position.',
+  NOT_YOUR_PLAYER: 'That player is not in your squad.',
+  GOALKEEPER_REQUIRED: 'Put a goalkeeper in goal.',
+  LINEUP_LOCKED: 'Your lineup is locked — unlock it to make changes.',
 } as const;
 export type ErrorCode = keyof typeof ERROR_MESSAGES;

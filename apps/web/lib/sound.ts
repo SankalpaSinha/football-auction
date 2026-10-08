@@ -88,7 +88,10 @@ class SoundKit {
       case 'GAME_STARTING':
         return this.start();
       case 'AUCTION_COMPLETE':
+      case 'LINEUPS_REVEALED':
         return this.complete();
+      case 'LINEUP_LOCKED':
+        return this.bid();
     }
   }
 }

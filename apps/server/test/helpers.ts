@@ -26,6 +26,7 @@ export function makeCard(id: string, position: Position, overall = 75): PlayerCa
     preferredFoot: 'Right',
     heightCm: 182,
     imageUrl: null,
+    imageCredit: null,
   };
 }
 
@@ -138,4 +139,23 @@ export function skipAll(h: Harness, except: string[] = []) {
 export function nextLot(h: Harness) {
   const r = h.room.view().auction?.lastResult;
   if (r) h.clock.advance(r.nextAt - h.clock.now());
+}
+
+/** Run the auction to completion: managers take turns buying at the minimum price. */
+export function completeAuction(h: Harness) {
+  let turn = 0;
+  for (let guard = 0; guard < 3000 && (h.room.phase === 'AUCTION' || h.room.phase === 'PLAYER_SOLD'); guard++) {
+    if (h.room.phase === 'PLAYER_SOLD') {
+      nextLot(h);
+      continue;
+    }
+    const lot = h.lot();
+    const buyer = h.users[turn++ % h.users.length];
+    try {
+      h.room.bid(buyer.id, lot.lotNumber, lot.minNextBid);
+    } catch {
+      /* not allowed for this buyer */
+    }
+    if (h.room.view().auction?.lot?.lotNumber === lot.lotNumber) skipAll(h);
+  }
 }

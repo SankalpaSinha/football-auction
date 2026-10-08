@@ -1,5 +1,5 @@
 import { io, type Socket } from 'socket.io-client';
-import type { Ack, ClientToServer, RoomView, ServerToClient } from '@fa/shared';
+import { autoPick, FORMATIONS, type Ack, type ClientToServer, type RoomView, type ServerToClient } from '@fa/shared';
 
 export interface BotOptions {
   /** 0..1 — how keen the bot is to bid at all. */
@@ -21,6 +21,7 @@ export class Bot {
   errors: string[] = [];
   private actedOn = new Map<number, number>();
   private thinking = false;
+  private lockingLineup = false;
 
   constructor(
     readonly base: string,
@@ -94,8 +95,24 @@ export class Bot {
     });
   }
 
+  /** Squad builder: pick a random formation, auto-pick the best XI, lock in. */
+  private maybeLockLineup(v: RoomView) {
+    const mine = v.squadBuilding?.mine;
+    if (!mine || mine.locked || this.lockingLineup || !this.me) return;
+    this.lockingLineup = true;
+    const formation = FORMATIONS[Math.floor(Math.random() * FORMATIONS.length)].id;
+    const slots = autoPick(this.me.squad.map((e) => e.player), formation);
+    const [lo, hi] = this.opts.thinkMs ?? [20, 80];
+    setTimeout(async () => {
+      const r = await this.emit('squad:lock', { formationId: formation, slots });
+      if (!r.ok) this.errors.push(r.code);
+      this.lockingLineup = false;
+    }, lo + Math.random() * (hi - lo));
+  }
+
   private maybeAct() {
     const v = this.state;
+    if (v?.phase === 'SQUAD_BUILDING') return this.maybeLockLineup(v);
     const lot = v?.auction?.lot;
     const me = this.me;
     if (!v || v.phase !== 'AUCTION' || !lot || !me || this.thinking) return;

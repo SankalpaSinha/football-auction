@@ -3,3 +3,6 @@ export * from './rules';
 export * from './valuation';
 export * from './types';
 export * from './protocol';
+export * from './formations';
+export * from './fit';
+export * from './lineup';

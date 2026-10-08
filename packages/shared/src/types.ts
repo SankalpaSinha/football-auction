@@ -59,6 +59,8 @@ export interface PlayerCard {
   preferredFoot: 'Left' | 'Right';
   heightCm: number;
   imageUrl: string | null;
+  /** Attribution for the photo (author · licence), required for CC-licensed images. */
+  imageCredit: string | null;
 }
 
 export type CompetitionType = 'LEAGUE' | 'CLUB_CUP' | 'INTERNATIONAL' | 'GLOBAL';
@@ -171,6 +173,7 @@ export type FeedKind =
   | 'DISCONNECT'
   | 'RECONNECT'
   | 'HOST'
+  | 'LOCK'
   | 'INFO';
 
 export interface FeedItem {
@@ -193,6 +196,24 @@ export interface AuctionView {
   lastResult: LotResultView | null;
 }
 
+export interface LineupView {
+  formationId: string;
+  /** Player (PlayerCard) id per formation slot; null = empty. */
+  slots: (string | null)[];
+  locked: boolean;
+  /** Completed by the server at the deadline. */
+  auto: boolean;
+}
+
+export interface SquadBuildingView {
+  /** Server epoch ms deadline. */
+  endsAt: number;
+  /** userId → has locked in. */
+  locked: Record<string, boolean>;
+  /** The viewer's own lineup (other managers' lineups stay hidden until reveal). */
+  mine: LineupView | null;
+}
+
 export interface RoomView {
   id: string;
   code: string;
@@ -205,6 +226,9 @@ export interface RoomView {
   members: MemberView[];
   startsAt: number | null;
   auction: AuctionView | null;
+  squadBuilding: SquadBuildingView | null;
+  /** Revealed once every lineup is final. userId → lineup. */
+  lineups: Record<string, LineupView> | null;
   feed: FeedItem[];
   serverTime: number;
   version: number;
@@ -221,6 +245,8 @@ export type GameEvent =
   | { type: 'SOLD'; lotNumber: number; userId: string; amount: number }
   | { type: 'UNSOLD'; lotNumber: number }
   | { type: 'AUCTION_COMPLETE' }
+  | { type: 'LINEUP_LOCKED'; userId: string }
+  | { type: 'LINEUPS_REVEALED' }
   | { type: 'GAME_STARTING'; startsAt: number };
 
 export interface SessionUser {

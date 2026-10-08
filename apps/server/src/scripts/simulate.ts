@@ -76,13 +76,15 @@ async function main() {
     }
   });
 
-  const final = await watcher.waitFor((v) => v.phase === 'SQUAD_BUILDING', 60 * 60_000);
-  console.log('\n🏁 Auction complete\n');
+  await watcher.waitFor((v) => v.phase === 'SQUAD_BUILDING', 60 * 60_000);
+  console.log('\n🏁 Auction complete — bots are picking lineups\n');
+  const final = await watcher.waitFor((v) => v.phase === 'FINAL_EVALUATION', 10 * 60_000);
   for (const m of final.members) {
     const spent = m.squad.reduce((s, e) => s + e.price, 0);
     const gk = m.squad.filter((e) => e.player.position === 'GK').length;
     const avg = (m.squad.reduce((s, e) => s + e.player.overall, 0) / m.squad.length).toFixed(1);
-    console.log(`  ${m.username.padEnd(18)} ${m.squad.length} players · ${gk} GK · avg ${avg} OVR · spent ${spent} · left ${m.budget}`);
+    const l = final.lineups?.[m.userId];
+    console.log(`  ${m.username.padEnd(18)} ${m.squad.length} players · ${gk} GK · avg ${avg} OVR · spent ${spent} · left ${m.budget} · ${l?.formationId}${l?.auto ? ' (auto)' : ''}`);
   }
   const errors = bots.flatMap((b) => b.errors);
   if (errors.length) console.log(`\n  unexpected rejections: ${errors.join(', ')}`);

@@ -1,3 +1,4 @@
+import { FORMATIONS } from '@fa/shared';
 import type { GameStore } from '../engine/store';
 import type { Db } from '../lib/db';
 
@@ -7,6 +8,35 @@ export class PrismaGameStore implements GameStore {
   private auctionIds = new Map<string, string>();
 
   constructor(private readonly db: Db) {}
+
+  /** Keep the Formation table in sync with the code-defined formations. */
+  async ensureFormations() {
+    for (const f of FORMATIONS) {
+      await this.db.formation.upsert({
+        where: { id: f.id },
+        create: { id: f.id, name: f.name, slots: f.slots as object },
+        update: { name: f.name, slots: f.slots as object },
+      });
+    }
+  }
+
+  async lineupsFinalized(gameId: string, lineups: { userId: string; formationId: string; slots: string[] }[]) {
+    await this.db.$transaction(async (tx) => {
+      for (const l of lineups) {
+        const squad = await tx.squad.update({
+          where: { gameId_userId: { gameId, userId: l.userId } },
+          data: { formationId: l.formationId },
+        });
+        await tx.squadPlayer.updateMany({ where: { squadId: squad.id }, data: { role: 'BENCH', slotIndex: null } });
+        for (const [slotIndex, playerStatsId] of l.slots.entries()) {
+          await tx.squadPlayer.updateMany({
+            where: { squadId: squad.id, playerStatsId },
+            data: { role: 'STARTER', slotIndex },
+          });
+        }
+      }
+    });
+  }
 
   async roomCreated(r: Parameters<GameStore['roomCreated']>[0]) {
     await this.db.room.create({

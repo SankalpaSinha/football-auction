@@ -26,6 +26,8 @@ export interface GameRules {
   unsoldRevealMs: number;
   /** When someone without a GK is down to this many open slots, GKs are pulled forward. */
   gkUrgencySlots: number;
+  /** Time managers get to pick formation + starting XI after the auction. */
+  squadBuildingMs: number;
   lobbyDisconnectGraceMs: number;
   hostTransferGraceMs: number;
   abandonAfterMs: number;
@@ -54,6 +56,7 @@ export const GAME_RULES: Readonly<GameRules> = {
   soldRevealMs: 3_500,
   unsoldRevealMs: 1_600,
   gkUrgencySlots: 2,
+  squadBuildingMs: 180_000,
   lobbyDisconnectGraceMs: 60_000,
   hostTransferGraceMs: 10_000,
   abandonAfterMs: 5 * 60_000,

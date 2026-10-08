@@ -36,7 +36,9 @@ async function main() {
       console.warn('⚠ No players in the database. Run `npm run db:import` first.');
     }
     users = new PrismaUserStore(db);
-    store = new PrismaGameStore(db);
+    const prismaStore = new PrismaGameStore(db);
+    await prismaStore.ensureFormations();
+    store = prismaStore;
     disconnect = () => db.$disconnect();
   } else {
     const loaded = catalogFromSeedFiles(dataDir);

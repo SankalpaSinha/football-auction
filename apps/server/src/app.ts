@@ -7,6 +7,7 @@ import {
   bidSchema,
   createRoomSchema,
   joinRoomSchema,
+  lineupSchema,
   readySchema,
   skipSchema,
   usernameSchema,
@@ -166,7 +167,7 @@ export function createApp(deps: AppDeps) {
     if (room) {
       socket.join(roomChannel(room.code));
       room.setConnected(user.id, true);
-      socket.emit('room:state', room.view());
+      socket.emit('room:state', room.view(user.id));
     }
 
     const actions = new TokenBucket(15, 30, () => deps.clock.now());
@@ -206,7 +207,7 @@ export function createApp(deps: AppDeps) {
 
     on('room:join', joinRoomSchema, ({ code }) => {
       const r = manager.join(user, code);
-      socket.emit('room:state', r.view());
+      socket.emit('room:state', r.view(user.id));
       return { code: r.code };
     });
 
@@ -240,6 +241,11 @@ export function createApp(deps: AppDeps) {
       if (!r) throw new GameError('NOT_IN_ROOM');
       r.skip(user.id, lotNumber);
     });
+
+    const inRoom = () => manager.roomOf(user.id) ?? (() => { throw new GameError('NOT_IN_ROOM'); })();
+    on('squad:draft', lineupSchema, (l) => inRoom().saveLineupDraft(user.id, l));
+    on('squad:lock', lineupSchema, (l) => inRoom().lockLineup(user.id, l));
+    on('squad:unlock', null, () => inRoom().unlockLineup(user.id));
 
     socket.on('time:sync', (_raw, ack) => {
       if (typeof ack === 'function') ack({ serverTime: deps.clock.now() });

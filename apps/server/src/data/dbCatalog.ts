@@ -43,6 +43,7 @@ export async function catalogFromDb(db: Db): Promise<CatalogData> {
         preferredFoot: s.player.preferredFoot,
         heightCm: s.player.heightCm,
         imageUrl: s.player.imageUrl,
+        imageCredit: s.player.imageCredit,
       }),
     })),
   };

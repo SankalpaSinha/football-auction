@@ -14,7 +14,8 @@
     "db:deploy": "prisma migrate deploy",
     "db:import": "tsx src/scripts/import.ts",
     "sim": "tsx src/scripts/simulate.ts",
-    "postinstall": "prisma generate"
+    "postinstall": "prisma generate",
+    "images:fetch": "tsx src/scripts/fetchImages.ts"
   },
   "dependencies": {
     "@fa/shared": "*",

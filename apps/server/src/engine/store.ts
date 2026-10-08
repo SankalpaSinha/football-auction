@@ -28,6 +28,7 @@ export interface GameStore {
   }): Promise<void>;
   lotClosed(gameId: string, lot: LotRecord, participants: Participant[]): Promise<void>;
   auctionCompleted(gameId: string, participants: Participant[]): Promise<void>;
+  lineupsFinalized(gameId: string, lineups: { userId: string; formationId: string; slots: string[] }[]): Promise<void>;
   roomClosed(roomId: string, status: 'FINISHED' | 'ABANDONED' | 'CLOSED', gameId: string | null): Promise<void>;
 }
 
@@ -39,5 +40,6 @@ export class NoopGameStore implements GameStore {
   async gameStarted() {}
   async lotClosed() {}
   async auctionCompleted() {}
+  async lineupsFinalized() {}
   async roomClosed() {}
 }

@@ -1,4 +1,5 @@
 'use client';
+import { useState } from 'react';
 import type { ClubRef, PlayerCard as Card, Tier } from '@fa/shared';
 import { faceStats } from '@/lib/format';
 
@@ -83,12 +84,7 @@ export function PlayerCard({ player, size = 'lg', className = '' }: { player: Ca
             <ClubBadge club={player.club} className="mt-[0.5em] w-[2.4em]" />
           </div>
           <div className="relative w-[70%]">
-            {player.imageUrl ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={player.imageUrl} alt="" className="absolute bottom-0 right-0 h-full object-contain" />
-            ) : (
-              <Portrait club={player.club} seed={player.playerId} />
-            )}
+            <CardPhoto player={player} />
           </div>
         </div>
 
@@ -147,6 +143,31 @@ export function ClubBadge({ club, className = 'w-6' }: { club: ClubRef; classNam
         {club.shortName}
       </text>
     </svg>
+  );
+}
+
+/** Licensed photo faded into the card, or the generated portrait if there is none / it fails. */
+function CardPhoto({ player }: { player: Card }) {
+  const [failed, setFailed] = useState(false);
+  if (!player.imageUrl || failed) return <Portrait club={player.club} seed={player.playerId} />;
+  return (
+    <div
+      className="absolute inset-0"
+      style={{ maskImage: 'linear-gradient(to right, transparent 0%, #000 22%)', WebkitMaskImage: 'linear-gradient(to right, transparent 0%, #000 22%)' }}
+    >
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        src={player.imageUrl}
+        alt={player.name}
+        onError={() => setFailed(true)}
+        className="h-full w-full object-cover"
+        style={{
+          objectPosition: '50% 18%',
+          maskImage: 'linear-gradient(to bottom, #000 62%, transparent 100%)',
+          WebkitMaskImage: 'linear-gradient(to bottom, #000 62%, transparent 100%)',
+        }}
+      />
+    </div>
   );
 }
 

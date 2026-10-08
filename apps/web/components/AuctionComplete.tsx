@@ -1,13 +1,14 @@
 'use client';
 import { motion } from 'motion/react';
-import { GROUP_ORDER, type RoomView } from '@fa/shared';
-import { coins, GROUP_LABEL, groupSquad } from '@/lib/format';
+import { summarizeLineup, type PlayerCard, type RoomView } from '@fa/shared';
+import { coins } from '@/lib/format';
+import { PlayerAvatar } from './PlayerAvatar';
+import { MiniPitch } from './squad/Pitch';
 import { Avatar, Button, Coin, Logo, Pill, SoundToggle } from './ui';
 
 /**
- * End of Phase 2: the auction is over and every squad is locked at 15.
- * The squad builder (formation, starting XI) and scoring are the next phases —
- * shown here honestly as not built yet rather than as dead buttons.
+ * Lineups revealed (FINAL_EVALUATION). Scoring is Phase 4 — stated plainly
+ * here rather than shown as a fake result.
  */
 export function AuctionComplete({ room, me, onLeave }: { room: RoomView; me: string; onLeave: () => void }) {
   const members = [...room.members].sort((a, b) => (a.userId === me ? -1 : b.userId === me ? 1 : a.seat - b.seat));
@@ -27,21 +28,24 @@ export function AuctionComplete({ room, me, onLeave }: { room: RoomView; me: str
       <motion.section initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} className="mt-6 text-center">
         <Pill color={room.competition.accent}>{room.competition.name}</Pill>
         <h1 className="display mt-3 text-6xl font-extrabold sm:text-7xl">
-          Auction <span className="text-volt">complete</span>
+          Lineups <span className="text-volt">revealed</span>
         </h1>
-        <p className="mx-auto mt-3 max-w-xl text-muted">Every manager has a full {room.rules.squadSize}-man squad. Here’s how the money went.</p>
+        <p className="mx-auto mt-3 max-w-xl text-muted">Every manager has named their XI. Here’s how each squad lines up.</p>
       </motion.section>
 
       <div className="mx-auto mt-6 max-w-2xl rounded-2xl border border-cyan/30 bg-cyan/[.06] px-5 py-4 text-sm text-cyan-50">
-        <span className="font-bold">Next: squad builder & scoring.</span> Picking a formation and starting XI, and the scoring that
-        decides the winner, come in the next phases and aren’t built yet. Squads are saved.
+        <span className="font-bold">Next: scoring.</span> The deterministic squad score (quality, position fit, tactics, chemistry,
+        balance, depth) that decides the winner is Phase 4 and isn’t built yet. Lineups are saved.
       </div>
 
-      <div className="mt-8 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+      <div className="mt-8 grid gap-5 md:grid-cols-2 xl:grid-cols-3">
         {members.map((m, i) => {
+          const lineup = room.lineups?.[m.userId];
+          const players = new Map<string, PlayerCard>(m.squad.map((e) => [e.player.id, e.player]));
+          const squad = [...players.values()];
+          const summary = lineup ? summarizeLineup(lineup, squad) : null;
+          const bench = lineup ? squad.filter((p) => !lineup.slots.includes(p.id)) : [];
           const spent = m.squad.reduce((s, e) => s + e.price, 0);
-          const avg = m.squad.length ? m.squad.reduce((s, e) => s + e.player.overall, 0) / m.squad.length : 0;
-          const grouped = groupSquad(m.squad);
           const bargains = m.squad.filter((e) => e.via === 'AUCTION' && e.price <= e.estimatedValue * 0.85).length;
           const overpays = m.squad.filter((e) => e.price >= e.estimatedValue * 1.15).length;
           return (
@@ -62,40 +66,59 @@ export function AuctionComplete({ room, me, onLeave }: { room: RoomView; me: str
                     spent {coins(spent)} · <Coin className="h-3 w-3" /> {coins(m.budget)} left
                   </div>
                 </div>
-                <div className="text-right">
-                  <div className="display text-3xl font-extrabold leading-none num">{avg.toFixed(1)}</div>
-                  <div className="text-[10px] uppercase tracking-wider text-muted">avg ovr</div>
-                </div>
+                {lineup && (
+                  <div className="text-right">
+                    <div className="display text-2xl font-extrabold leading-none">{lineup.formationId}</div>
+                    {lineup.auto && <div className="text-[10px] uppercase tracking-wider text-amber-200">auto-completed</div>}
+                  </div>
+                )}
               </div>
-              <div className="mt-3 flex gap-2 text-xs">
+
+              {lineup && (
+                <div className="mx-auto mt-4 max-w-[300px]">
+                  <MiniPitch formationId={lineup.formationId} slots={lineup.slots} players={players} />
+                </div>
+              )}
+
+              {summary && (
+                <div className="mt-4 grid grid-cols-3 gap-2 text-center">
+                  <MiniStat label="XI avg" value={summary.averageOverall.toFixed(1)} />
+                  <MiniStat label="Effective" value={summary.effectiveOverall.toFixed(1)} />
+                  <MiniStat label="In position" value={`${summary.fit.NATURAL + summary.fit.SECONDARY}/11`} />
+                </div>
+              )}
+
+              {bench.length > 0 && (
+                <div className="mt-4">
+                  <div className="label mb-1.5 !text-[10px]">Bench</div>
+                  <div className="flex flex-wrap gap-1.5">
+                    {bench.map((p) => (
+                      <span key={p.id} className="inline-flex items-center gap-1.5 rounded-full bg-white/[.05] py-0.5 pl-0.5 pr-2 text-xs">
+                        <PlayerAvatar player={p} size={20} />
+                        <span className="font-bold">{p.overall}</span> {p.shortName}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              <div className="mt-4 flex gap-2 text-xs">
                 <span className="rounded-full bg-emerald-400/10 px-2 py-0.5 font-semibold text-emerald-300">{bargains} bargains</span>
                 <span className="rounded-full bg-danger/10 px-2 py-0.5 font-semibold text-rose-300">{overpays} overpays</span>
-              </div>
-              <div className="mt-4 space-y-2.5">
-                {GROUP_ORDER.map((g) => (
-                  <div key={g}>
-                    <div className="label mb-1 !text-[10px]">
-                      {GROUP_LABEL[g]} · {grouped[g].length}
-                    </div>
-                    <div className="flex flex-wrap gap-1">
-                      {grouped[g].map((e) => (
-                        <span
-                          key={e.player.id}
-                          className="rounded-md bg-white/[.05] px-2 py-0.5 text-xs"
-                          title={`${e.player.name} — paid ${e.price}, est. ${e.estimatedValue}${e.via === 'AUTO' ? ' (auto-assigned)' : ''}`}
-                        >
-                          <span className="font-bold">{e.player.overall}</span> {e.player.shortName}
-                          <span className="ml-1 text-dim">{e.price}</span>
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                ))}
               </div>
             </motion.div>
           );
         })}
       </div>
     </main>
+  );
+}
+
+function MiniStat({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-lg bg-white/[.04] py-1.5">
+      <div className="display text-xl font-extrabold num">{value}</div>
+      <div className="text-[9px] font-semibold uppercase tracking-wider text-muted">{label}</div>
+    </div>
   );
 }

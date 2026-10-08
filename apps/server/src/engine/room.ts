@@ -1,4 +1,12 @@
 import { randomUUID } from 'node:crypto';
+import {
+  DEFAULT_FORMATION,
+  autoPick,
+  getFormation,
+  validateLineup,
+  type LineupInput,
+  type LineupView,
+} from '@fa/shared';
 import type {
   FeedItem,
   FeedKind,
@@ -51,6 +59,8 @@ interface Member {
 }
 
 const LOBBY_PHASES: RoomPhase[] = ['WAITING_FOR_PLAYERS', 'LOBBY'];
+
+interface LineupState extends LineupView {}
 const FEED_LIMIT = 60;
 
 /**
@@ -78,6 +88,9 @@ export class Room {
   private abandonTimer: TimerHandle | null = null;
   private auction: Auction | null = null;
   private participants: Participant[] = [];
+  private lineups = new Map<string, LineupState>();
+  private squadEndsAt: number | null = null;
+  private squadTimer: TimerHandle | null = null;
   private persistChain: Promise<void> = Promise.resolve();
 
   constructor(
@@ -103,6 +116,10 @@ export class Room {
     return this.members.has(userId);
   }
 
+  memberIds() {
+    return [...this.members.keys()];
+  }
+
   get memberCount() {
     return this.members.size;
   }
@@ -111,9 +128,14 @@ export class Room {
     return LOBBY_PHASES.includes(this.phase);
   }
 
-  /** While the auction is live a manager cannot hop into another room. */
+  /** While the game is live a manager cannot hop into another room. */
   get isLive() {
-    return this.phase === 'STARTING' || this.phase === 'AUCTION' || this.phase === 'PLAYER_SOLD';
+    return (
+      this.phase === 'STARTING' ||
+      this.phase === 'AUCTION' ||
+      this.phase === 'PLAYER_SOLD' ||
+      this.phase === 'SQUAD_BUILDING'
+    );
   }
 
   // ------------------------------------------------------------ membership
@@ -316,10 +338,9 @@ export class Room {
           this.persist(() => this.deps.store.lotClosed(gameId, lot, snapshot));
         },
         onComplete: () => {
-          this.phase = 'SQUAD_BUILDING';
           const snapshot = this.participants.map((p) => ({ ...p, squad: [...p.squad] }));
           this.persist(() => this.deps.store.auctionCompleted(gameId, snapshot));
-          this.changed();
+          this.beginSquadBuilding();
         },
       },
     });
@@ -343,6 +364,90 @@ export class Room {
     this.assertOpen();
     if (!this.members.has(userId)) fail('NOT_IN_ROOM');
     if (!this.auction || (this.phase !== 'AUCTION' && this.phase !== 'PLAYER_SOLD')) fail('WRONG_PHASE');
+  }
+
+  // ------------------------------------------------------ squad building
+
+  private beginSquadBuilding() {
+    this.phase = 'SQUAD_BUILDING';
+    for (const p of this.participants) {
+      this.lineups.set(p.userId, {
+        formationId: DEFAULT_FORMATION,
+        slots: getFormation(DEFAULT_FORMATION)!.slots.map(() => null),
+        locked: false,
+        auto: false,
+      });
+    }
+    this.squadEndsAt = this.deps.clock.now() + this.deps.rules.squadBuildingMs;
+    this.squadTimer = this.deps.clock.setTimeout(() => this.finalizeLineups(), this.deps.rules.squadBuildingMs);
+    this.pushFeed('INFO', 'Squad builder open — pick a formation and your starting XI');
+    this.changed();
+  }
+
+  private squadOf(userId: string) {
+    return (this.participants.find((p) => p.userId === userId) ?? fail('NOT_PARTICIPANT')).squad.map((e) => e.player);
+  }
+
+  private requireLineup(userId: string): LineupState {
+    this.assertOpen();
+    if (!this.members.has(userId)) fail('NOT_IN_ROOM');
+    if (this.phase !== 'SQUAD_BUILDING') fail('WRONG_PHASE');
+    return this.lineups.get(userId) ?? fail('NOT_PARTICIPANT');
+  }
+
+  /** Save work in progress (partial lineups allowed). Used for auto-complete at the deadline. */
+  saveLineupDraft(userId: string, input: LineupInput) {
+    const state = this.requireLineup(userId);
+    if (state.locked) fail('LINEUP_LOCKED');
+    const err = validateLineup(input, this.squadOf(userId), false);
+    if (err) fail(err);
+    state.formationId = input.formationId;
+    state.slots = [...input.slots];
+    this.changed();
+  }
+
+  lockLineup(userId: string, input: LineupInput) {
+    const state = this.requireLineup(userId);
+    if (state.locked) fail('LINEUP_LOCKED');
+    const err = validateLineup(input, this.squadOf(userId), true);
+    if (err) fail(err);
+    state.formationId = input.formationId;
+    state.slots = [...input.slots];
+    state.locked = true;
+    const name = this.members.get(userId)!.username;
+    this.pushFeed('LOCK', `${name} locked in a ${input.formationId}`, userId);
+    this.deps.onEvent(this, { type: 'LINEUP_LOCKED', userId });
+    if ([...this.lineups.values()].every((l) => l.locked)) this.finalizeLineups();
+    else this.changed();
+  }
+
+  unlockLineup(userId: string) {
+    const state = this.requireLineup(userId);
+    if (!state.locked) return;
+    state.locked = false;
+    this.changed();
+  }
+
+  /** Deadline (or everyone locked): auto-complete unfinished lineups and reveal them all. */
+  private finalizeLineups() {
+    if (this.phase !== 'SQUAD_BUILDING') return;
+    this.squadTimer?.cancel();
+    this.squadTimer = null;
+    for (const [userId, state] of this.lineups) {
+      if (state.locked) continue;
+      state.slots = autoPick(this.squadOf(userId), state.formationId, state.slots);
+      state.locked = true;
+      state.auto = true;
+      this.pushFeed('AUTO', `${this.members.get(userId)?.username ?? 'A manager'}'s lineup was auto-completed`, userId);
+    }
+    this.squadEndsAt = null;
+    this.phase = 'FINAL_EVALUATION';
+    const gameId = this.gameId!;
+    const final = [...this.lineups].map(([userId, l]) => ({ userId, formationId: l.formationId, slots: [...l.slots] as string[] }));
+    this.persist(() => this.deps.store.lineupsFinalized(gameId, final));
+    this.pushFeed('INFO', 'All lineups are in');
+    this.deps.onEvent(this, { type: 'LINEUPS_REVEALED' });
+    this.changed();
   }
 
   // --------------------------------------------------------------- host
@@ -390,6 +495,7 @@ export class Room {
     this.startTimer?.cancel();
     this.hostTimer?.cancel();
     this.abandonTimer?.cancel();
+    this.squadTimer?.cancel();
     for (const m of this.members.values()) m.removalTimer?.cancel();
     this.auction?.dispose();
     const gameId = this.gameId;
@@ -430,7 +536,8 @@ export class Room {
 
   // --------------------------------------------------------------- view
 
-  view(): RoomView {
+  /** Snapshot for one viewer — lineups stay private until they are revealed. */
+  view(viewerId?: string): RoomView {
     const rules = this.deps.rules;
     const members: MemberView[] = [...this.members.values()]
       .sort((a, b) => a.seat - b.seat)
@@ -466,6 +573,18 @@ export class Room {
       members,
       startsAt: this.startsAt,
       auction: this.auction ? this.auction.view() : null,
+      squadBuilding:
+        this.phase === 'SQUAD_BUILDING' && this.squadEndsAt !== null
+          ? {
+              endsAt: this.squadEndsAt,
+              locked: Object.fromEntries([...this.lineups].map(([id, l]) => [id, l.locked])),
+              mine: viewerId && this.lineups.has(viewerId) ? { ...this.lineups.get(viewerId)! } : null,
+            }
+          : null,
+      lineups:
+        this.phase !== 'SQUAD_BUILDING' && this.lineups.size
+          ? Object.fromEntries([...this.lineups].map(([id, l]) => [id, { ...l }]))
+          : null,
       feed: this.feed.slice(-40),
       serverTime: this.deps.clock.now(),
       version: this.version,

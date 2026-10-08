@@ -181,6 +181,7 @@ export interface RawPlayerRow {
   preferredFoot: string;
   heightCm: number;
   imageUrl?: string | null;
+  imageCredit?: string | null;
 }
 
 export function toPlayerCard(r: RawPlayerRow): PlayerCard {
@@ -230,5 +231,6 @@ export function toPlayerCard(r: RawPlayerRow): PlayerCard {
     preferredFoot: r.preferredFoot === 'Left' ? 'Left' : 'Right',
     heightCm: r.heightCm,
     imageUrl: r.imageUrl ?? null,
+    imageCredit: r.imageCredit ?? null,
   };
 }

@@ -114,6 +114,7 @@ async function main() {
           preferredFoot: p.preferredFoot,
           heightCm: p.heightCm,
           imageUrl: p.imageUrl,
+          imageCredit: p.imageCredit,
         },
         update: {
           name: p.name,
@@ -122,6 +123,7 @@ async function main() {
           preferredFoot: p.preferredFoot,
           heightCm: p.heightCm,
           imageUrl: p.imageUrl,
+          imageCredit: p.imageCredit,
         },
       });
       const stats = {

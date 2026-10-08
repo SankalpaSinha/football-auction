@@ -5,6 +5,7 @@ import { useParams, useRouter } from 'next/navigation';
 import { AuctionComplete } from '@/components/AuctionComplete';
 import { AuctionScreen } from '@/components/auction/AuctionScreen';
 import { Lobby } from '@/components/Lobby';
+import { SquadBuilder } from '@/components/squad/SquadBuilder';
 import { UsernameGate } from '@/components/UsernameGate';
 import { Button, ConnectionBanner, Logo } from '@/components/ui';
 import { api, saveSession } from '@/lib/api';
@@ -111,6 +112,13 @@ export default function RoomPage() {
     case 'AUCTION':
     case 'PLAYER_SOLD':
       screen = <AuctionScreen room={room} me={session.user.id} />;
+      break;
+    case 'SQUAD_BUILDING':
+      screen = room.squadBuilding?.mine ? (
+        <SquadBuilder room={room} me={session.user.id} />
+      ) : (
+        <Centered title="Squad builder" body="Managers are picking their lineups…" />
+      );
       break;
     default:
       screen = <AuctionComplete room={room} me={session.user.id} onLeave={leave} />;

@@ -12,6 +12,7 @@ const KIND: Partial<Record<FeedKind, { dot: string; text: string }>> = {
   DISCONNECT: { dot: 'bg-amber', text: 'text-amber-200' },
   RECONNECT: { dot: 'bg-emerald-400', text: 'text-emerald-200' },
   HOST: { dot: 'bg-gold', text: 'text-amber-100' },
+  LOCK: { dot: 'bg-volt', text: 'text-lime-100' },
 };
 
 export function Feed({ items, me, className = '' }: { items: FeedItem[]; me: string; className?: string }) {

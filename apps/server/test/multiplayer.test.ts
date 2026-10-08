@@ -1,5 +1,5 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { makeRules } from '@fa/shared';
+import { makeRules, validateLineup } from '@fa/shared';
 import { createApp } from '../src/app';
 import { InMemoryCatalog } from '../src/data/catalog';
 import { systemClock } from '../src/engine/clock';
@@ -112,7 +112,14 @@ describe('multiplayer over websockets', () => {
     expect(restored.squad.length).toBeGreaterThanOrEqual(before.squad.length);
     expect(restored.budget).toBeLessThanOrEqual(before.budget!);
 
-    const final = await a.waitFor((v) => v.phase === 'SQUAD_BUILDING', 60_000);
+    const final = await a.waitFor((v) => v.phase === 'FINAL_EVALUATION', 60_000);
+    // Every lineup was locked by its manager (not auto-completed) and is valid.
+    for (const m of final.members) {
+      const l = final.lineups![m.userId];
+      expect(l.locked).toBe(true);
+      expect(l.auto).toBe(false);
+      expect(validateLineup(l, m.squad.map((e) => e.player), true)).toBeNull();
+    }
     const ids = new Set<string>();
     for (const m of final.members) {
       expect(m.squad).toHaveLength(15);

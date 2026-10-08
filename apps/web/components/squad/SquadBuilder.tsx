@@ -341,6 +341,24 @@ export function SquadBuilder({ room, me }: { room: RoomView; me: string }) {
           </div>
         </aside>
       </main>
+
+      {/* phones: keep the primary action in reach */}
+      <div className="sticky bottom-0 z-30 border-t border-white/10 bg-night/90 px-3 py-2.5 backdrop-blur-xl lg:hidden">
+        {locked ? (
+          <Button variant="secondary" className="w-full" disabled={busy} onClick={unlock}>
+            Locked ✓ · Unlock to edit
+          </Button>
+        ) : (
+          <div className="flex gap-2">
+            <Button variant="secondary" className="flex-1" onClick={() => update(autoPick(squad, formationId, partial ? slots : undefined))}>
+              Auto-pick
+            </Button>
+            <Button className="flex-[2]" disabled={busy || !!complete} onClick={lock}>
+              {complete ? `${summary.filled}/11 picked` : 'Lock in lineup'}
+            </Button>
+          </div>
+        )}
+      </div>
     </div>
   );
 }

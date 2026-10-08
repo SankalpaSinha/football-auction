@@ -2,7 +2,7 @@
 
 A real-time multiplayer football auction game. 2–6 managers share one budget size, bid on players one at a time, and must each finish with exactly 15 players.
 
-**Status:** Phases 1–2 are done: core multiplayer and a fully playable auction. Next come Phase 3 (squad builder) and Phase 4 (scoring).
+**Status:** Phases 1–3 are done: core multiplayer, the live auction and the squad builder. Next is Phase 4 (deterministic scoring).
 
 ---
 
@@ -36,7 +36,7 @@ The web app connects to `<same host>:4000`, so a friend on your Wi-Fi can open `
 ### Tests
 
 ```bash
-npm test            # 40 tests: engine rules + full multiplayer games over real sockets
+npm test            # 51 tests: auction rules, lineups, and full multiplayer games over real sockets
 npm run typecheck
 ```
 
@@ -61,10 +61,17 @@ Browser (Next.js / React)  ──WebSocket (Socket.IO)──▶  Game server (No
 ### Game state machine
 
 ```
-WAITING_FOR_PLAYERS ⇄ LOBBY → STARTING → AUCTION ⇄ PLAYER_SOLD → SQUAD_BUILDING → (FORMATION_SELECTION → FINAL_EVALUATION → RESULTS → FINISHED)
+WAITING_FOR_PLAYERS ⇄ LOBBY → STARTING → AUCTION ⇄ PLAYER_SOLD → SQUAD_BUILDING → FINAL_EVALUATION → (RESULTS → FINISHED)
 ```
 
-Every action checks the current phase. The phases in brackets belong to later development phases.
+Every action checks the current phase. Formation choice happens inside `SQUAD_BUILDING`, so `FORMATION_SELECTION` isn't used as a separate state. The phases in brackets come with Phase 4–5.
+
+### Squad builder (Phase 3)
+
+- 7 formations in `packages/shared/src/formations.ts`. Each has 11 slots, and slot 0 is the goalkeeper.
+- Position fit table in `packages/shared/src/fit.ts`: natural ×1.0, secondary ×0.9, compatible ×0.7, out of position ×0.3, wrong side of the GK line ×0.05. You can change these values freely.
+- You have 3 minutes to pick (`squadBuildingMs`). Drafts autosave to the server and stay hidden from opponents. Locking in is validated on the server: 11 of your own players, no duplicates, and a goalkeeper in goal. You can unlock until everyone has locked.
+- At the deadline, unfinished lineups are completed by a deterministic best-fit picker that keeps whatever the manager had already placed. All lineups are then revealed together.
 
 ### Auction rules (server-enforced)
 
@@ -110,6 +117,7 @@ data/
 
 - `data/competitions.json` defines each competition's pool rules: `leagues`, `clubs`, `clubTags` (for example `ucl`), `nations`, `positions`, `minOverall`, and per-season overrides. You can add a competition without changing any code.
 - `npm run db:import -- --season 2026-27 --file my-players.json` imports CSV or JSON. Fields can be ids or display names (club, nationality, competition). Players removed from a dataset are marked `INACTIVE`.
+- **Player photos** come from Wikimedia Commons through Wikidata (`npm run images:fetch -w @fa/server`). Each photo's author and licence travel with it and are shown in the UI, which the CC licences require. Players without a usable photo get a generated portrait. A licensed photo feed can replace this through `imageUrl` and `imageCredit`.
 - **The included dataset is a placeholder.** Ratings are original estimates, not EA FC data, and rosters are a best guess for summer 2026. Player images and club logos are generated (silhouettes in club colours, generic badges). Replace them with a licensed dataset through the importer; `imageUrl`/`logoUrl` are supported. The World Cup nation list and Champions League club flags are also estimates and should be checked.
 
 ---
@@ -118,12 +126,12 @@ data/
 
 - [x] **Phase 1:** usernames, private rooms, codes, lobby, ready-up, host transfer, reconnects
 - [x] **Phase 2:** player database, seeded pool, server timer, bids, skip, budget reserve, SOLD flow, real-time sync
-- [ ] **Phase 3:** squad builder: pitch, formations, drag-and-drop XI, bench
+- [x] **Phase 3:** squad builder: pitch, formations, drag-and-drop XI, bench
 - [ ] **Phase 4:** deterministic scoring: position fit, chemistry, tactics, balance, depth, efficiency
 - [ ] **Phase 5:** results, best buy and overpay, AI commentary (explains the result, never decides it)
 - [ ] **Phase 6:** profiles, match history, ELO, leaderboard, ranked mode, public rooms
 - [ ] **Phase 7:** polish, spectator mode, achievements
 
-Not implemented yet, and shown as "Soon" in the UI: Ranked mode, public rooms, squad builder, scoring.
+Not implemented yet, and labelled in the UI: Ranked mode, public rooms, scoring and results.
 
 Known limitations: live games aren't recovered after a server restart, and the server runs as a single process. A shared store such as Redis would be needed to scale across several processes.

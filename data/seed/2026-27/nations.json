@@ -95,6 +95,11 @@
     "flag": "🏴󠁧󠁢󠁥󠁮󠁧󠁿"
   },
   {
+    "code": "FIN",
+    "name": "Finland",
+    "flag": "🇫🇮"
+  },
+  {
     "code": "FRA",
     "name": "France",
     "flag": "🇫🇷"
@@ -218,6 +223,11 @@
     "code": "IRL",
     "name": "Republic of Ireland",
     "flag": "🇮🇪"
+  },
+  {
+    "code": "ROU",
+    "name": "Romania",
+    "flag": "🇷🇴"
   },
   {
     "code": "RUS",

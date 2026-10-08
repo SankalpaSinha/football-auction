@@ -213,7 +213,7 @@
       "#00954C",
       "#FFFFFF"
     ],
-    "ucl": false
+    "ucl": true
   },
   {
     "id": "sevilla",
@@ -224,18 +224,6 @@
     "colors": [
       "#FFFFFF",
       "#D81920"
-    ],
-    "ucl": false
-  },
-  {
-    "id": "girona",
-    "name": "Girona",
-    "shortName": "GIR",
-    "league": "la-liga",
-    "country": "ESP",
-    "colors": [
-      "#CD2534",
-      "#FFFFFF"
     ],
     "ucl": false
   },
@@ -261,7 +249,7 @@
       "#FB090B",
       "#000000"
     ],
-    "ucl": true
+    "ucl": false
   },
   {
     "id": "juventus",
@@ -273,7 +261,7 @@
       "#000000",
       "#FFFFFF"
     ],
-    "ucl": true
+    "ucl": false
   },
   {
     "id": "napoli",
@@ -309,7 +297,7 @@
       "#8E1F2F",
       "#F0BC42"
     ],
-    "ucl": false
+    "ucl": true
   },
   {
     "id": "lazio",
@@ -357,7 +345,7 @@
       "#003DA5",
       "#FFFFFF"
     ],
-    "ucl": false
+    "ucl": true
   },
   {
     "id": "bayern-munich",
@@ -381,7 +369,7 @@
       "#E32221",
       "#000000"
     ],
-    "ucl": true
+    "ucl": false
   },
   {
     "id": "borussia-dortmund",
@@ -417,7 +405,7 @@
       "#E32219",
       "#FFFFFF"
     ],
-    "ucl": false
+    "ucl": true
   },
   {
     "id": "eintracht-frankfurt",
@@ -444,18 +432,6 @@
     "ucl": false
   },
   {
-    "id": "vfl-wolfsburg",
-    "name": "VfL Wolfsburg",
-    "shortName": "WOB",
-    "league": "bundesliga",
-    "country": "GER",
-    "colors": [
-      "#65B32E",
-      "#FFFFFF"
-    ],
-    "ucl": false
-  },
-  {
     "id": "tsg-hoffenheim",
     "name": "TSG Hoffenheim",
     "shortName": "TSG",
@@ -465,7 +441,7 @@
       "#1C63B7",
       "#FFFFFF"
     ],
-    "ucl": true
+    "ucl": false
   },
   {
     "id": "psg",
@@ -489,7 +465,7 @@
       "#2FAEE0",
       "#FFFFFF"
     ],
-    "ucl": true
+    "ucl": false
   },
   {
     "id": "monaco",

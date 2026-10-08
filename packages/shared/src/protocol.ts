@@ -10,6 +10,13 @@ export const usernameSchema = z
   .trim()
   .regex(USERNAME_RE, 'Usernames are 3–16 characters: letters, numbers or underscore.');
 
+export const passwordSchema = z
+  .string()
+  .min(6, 'Passwords need at least 6 characters.')
+  .max(72, 'Passwords can be at most 72 characters.');
+
+export const credentialsSchema = z.object({ username: usernameSchema, password: passwordSchema });
+
 export const roomCodeSchema = z
   .string()
   .trim()

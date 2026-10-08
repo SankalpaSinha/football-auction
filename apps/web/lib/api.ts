@@ -56,8 +56,11 @@ async function request<T>(path: string, init: RequestInit & { token?: string } =
 }
 
 export const api = {
-  claimUsername: (username: string, token?: string) =>
-    request<StoredSession>('/api/session', { method: 'POST', body: JSON.stringify({ username }), token }),
+  register: (username: string, password: string) =>
+    request<StoredSession>('/api/auth/register', { method: 'POST', body: JSON.stringify({ username, password }) }),
+  login: (username: string, password: string) =>
+    request<StoredSession & { claimed?: boolean }>('/api/auth/login', { method: 'POST', body: JSON.stringify({ username, password }) }),
+  logout: (token: string) => request<{ ok: true }>('/api/auth/logout', { method: 'POST', body: '{}', token }),
   me: (token: string) => request<{ user: SessionUser; activeRoom: string | null }>('/api/session', { token }),
   competitions: () => request<{ competitions: CompetitionSummary[]; rules: GameRules }>('/api/competitions'),
   room: (code: string) =>

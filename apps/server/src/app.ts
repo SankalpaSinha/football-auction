@@ -10,7 +10,7 @@ import {
   lineupSchema,
   readySchema,
   skipSchema,
-  usernameSchema,
+  credentialsSchema,
   type Ack,
   type ClientToServer,
   type ErrorCode,
@@ -25,7 +25,7 @@ import { GameError } from './engine/errors';
 import type { GameStore } from './engine/store';
 import { RateLimiter, TokenBucket } from './lib/rateLimit';
 import { RoomManager, roomChannel, userChannel } from './realtime/roomManager';
-import { newToken, UsernameTakenError, type UserStore } from './services/users';
+import { InvalidCredentialsError, login, register, UsernameTakenError, type UserStore } from './services/users';
 
 export interface AppDeps {
   catalog: PlayerCatalog;
@@ -83,28 +83,48 @@ export function createApp(deps: AppDeps) {
     res.json({ ok: true, rooms: manager.roomCount, time: deps.clock.now() });
   });
 
-  app.post('/api/session', async (req, res) => {
+  const registerLimiter = new RateLimiter(20, 60 * 60_000);
+  const loginLimiter = new RateLimiter(10, 15 * 60_000);
+  const fail500 = (res: express.Response, where: string, e: unknown) => {
+    log(`${where} failed`, e);
+    res.status(500).json({ ok: false, code: 'INTERNAL', error: 'Something went wrong.' });
+  };
+
+  app.post('/api/auth/register', async (req, res) => {
+    const parsed = credentialsSchema.safeParse(req.body ?? {});
+    if (!parsed.success) return void res.status(400).json(errorAck('BAD_REQUEST', parsed.error.issues[0]?.message));
+    if (!registerLimiter.take(req.ip ?? 'unknown')) return void res.status(429).json(errorAck('RATE_LIMITED'));
     try {
-      const token = bearer(req.headers.authorization);
-      const parsed = usernameSchema.safeParse(req.body?.username);
-      if (!parsed.success) return void res.status(400).json(errorAck('BAD_REQUEST', parsed.error.issues[0]?.message));
-      if (token) {
-        const existing = await deps.users.findByToken(token);
-        if (existing && existing.username.toLowerCase() === parsed.data.toLowerCase()) {
-          return void res.json({ user: existing, token });
-        }
-      }
-      if (!sessionLimiter.take(req.ip ?? 'unknown')) return void res.status(429).json(errorAck('RATE_LIMITED'));
-      const fresh = newToken();
-      const user = await deps.users.create(parsed.data, fresh);
-      res.json({ user, token: fresh });
+      res.json(await register(deps.users, parsed.data.username, parsed.data.password));
     } catch (e) {
       if (e instanceof UsernameTakenError) {
-        return void res.status(409).json({ ok: false, code: 'USERNAME_TAKEN', error: 'That username is taken.' });
+        return void res.status(409).json({ ok: false, code: 'USERNAME_TAKEN', error: 'That username is taken — sign in instead?' });
       }
-      log('POST /api/session failed', e);
-      res.status(500).json({ ok: false, code: 'INTERNAL', error: 'Something went wrong.' });
+      fail500(res, 'register', e);
     }
+  });
+
+  app.post('/api/auth/login', async (req, res) => {
+    const parsed = credentialsSchema.safeParse(req.body ?? {});
+    if (!parsed.success) return void res.status(400).json(errorAck('BAD_REQUEST', parsed.error.issues[0]?.message));
+    const key = `${req.ip ?? 'unknown'}|${parsed.data.username.toLowerCase()}`;
+    if (!loginLimiter.take(key)) {
+      return void res.status(429).json({ ok: false, code: 'RATE_LIMITED', error: 'Too many attempts — try again in a few minutes.' });
+    }
+    try {
+      res.json(await login(deps.users, parsed.data.username, parsed.data.password));
+    } catch (e) {
+      if (e instanceof InvalidCredentialsError) {
+        return void res.status(401).json({ ok: false, code: 'INVALID_CREDENTIALS', error: 'Wrong username or password.' });
+      }
+      fail500(res, 'login', e);
+    }
+  });
+
+  app.post('/api/auth/logout', async (req, res) => {
+    const token = bearer(req.headers.authorization);
+    if (token) await deps.users.deleteSession(token).catch((e) => log('logout failed', e));
+    res.json({ ok: true });
   });
 
   app.get('/api/session', async (req, res) => {

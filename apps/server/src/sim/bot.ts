@@ -30,10 +30,10 @@ export class Bot {
   ) {}
 
   async login() {
-    const res = await fetch(`${this.base}/api/session`, {
+    const res = await fetch(`${this.base}/api/auth/register`, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ username: this.username }),
+      body: JSON.stringify({ username: this.username, password: `bot-${this.username}-pw` }),
     });
     const body = (await res.json()) as { user: { id: string }; token: string; error?: string };
     if (!res.ok) throw new Error(`login ${this.username}: ${body.error}`);

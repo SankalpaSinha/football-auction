@@ -43,12 +43,13 @@ export default function Home() {
               <button
                 className="text-xs text-dim hover:text-ink"
                 onClick={() => {
+                  void api.logout(session.token).catch(() => {});
                   disconnectSocket();
                   saveSession(null);
                   setSession(null);
                 }}
               >
-                Switch
+                Sign out
               </button>
             </div>
           )}

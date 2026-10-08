@@ -33,6 +33,13 @@ Run `npm run sim` on its own to watch bots play a whole auction in the terminal.
 
 The web app connects to `<same host>:4000`, so a friend on your Wi-Fi can open `http://<your-LAN-IP>:3000`. Next.js prints the address when it starts.
 
+### Accounts
+
+- Players create an account with a unique username (case-insensitive) and a password, then sign in from any browser or device.
+- Each device gets its own session token. The browser keeps the token; the database stores only its SHA-256 hash. Signing out ends just that device's session.
+- Passwords are hashed with scrypt. Failed sign-ins are rate-limited per IP and username, and an unknown username gets the same error as a wrong password.
+- Accounts created before passwords existed are claimed by the first person who signs in with that name and sets a password.
+
 ### Tests
 
 ```bash

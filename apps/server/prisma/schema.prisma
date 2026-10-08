@@ -18,10 +18,12 @@ model User {
   username         String
   /// Lower-cased username — enforces case-insensitive uniqueness.
   usernameKey      String   @unique
-  /// SHA-256 of the session token held by the browser. Replaced by real auth later.
-  sessionTokenHash String   @unique
+  /// scrypt hash (`scrypt$N$r$p$salt$hash`). Null for legacy accounts created before passwords.
+  passwordHash     String?
   createdAt        DateTime @default(now())
   lastSeenAt       DateTime @default(now())
+
+  sessions    Session[]
 
   rating      PlayerRating[]
   memberships RoomPlayer[]
@@ -30,6 +32,18 @@ model User {
   bids        Bid[]
   wonLots     AuctionLot[]
   results     MatchResult[]
+}
+
+/// One signed-in device. The browser keeps the raw token; only its SHA-256 is stored.
+model Session {
+  id         String   @id @default(cuid())
+  userId     String
+  tokenHash  String   @unique
+  createdAt  DateTime @default(now())
+  lastSeenAt DateTime @default(now())
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
 }
 
 // ------------------------------------------------------------ player data

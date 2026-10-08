@@ -2,7 +2,7 @@
 
 A real-time multiplayer football auction game. 2–6 managers share one budget size, bid on players one at a time, and must each finish with exactly 15 players.
 
-**Status:** Phases 1–4 are done: core multiplayer, the live auction, the squad builder and deterministic scoring with a results screen. Next is Phase 5 (AI commentary and results polish).
+**Status:** Phases 1–5 are done: core multiplayer, the live auction, the squad builder, deterministic scoring and the results experience. Next is Phase 6 (profiles, match history, ELO, leaderboard, public rooms).
 
 ---
 
@@ -72,6 +72,11 @@ WAITING_FOR_PLAYERS ⇄ LOBBY → STARTING → AUCTION ⇄ PLAYER_SOLD → SQUAD
 ```
 
 Every action checks the current phase. Formation choice happens inside `SQUAD_BUILDING`, so `FORMATION_SELECTION` isn't used as a separate state. The phases in brackets come with Phase 4–5.
+
+### Results & commentary (Phase 5)
+
+- **Written analysis** (`packages/shared/src/analysis.ts`) is built from the scoring output with fixed rules: a headline, the decisive factor between 1st and 2nd, room awards (biggest bargain, biggest overpay, record signing, best player, best chemistry, tactical mastermind, deepest bench, most frugal) and a verdict for each manager. It needs no AI.
+- **AI pundit (optional)**, in `apps/server/src/services/commentary.ts`, runs only when `ANTHROPIC_API_KEY` is set. It receives the already-decided results as JSON and writes one paragraph, using Claude Opus 5.5 at low effort with server-side refusal fallback. The results never wait for it. If it is slow, refuses or fails, the screen simply shows the written analysis. It explains the result and never changes it.
 
 ### Scoring (Phase 4)
 
@@ -151,7 +156,7 @@ data/
 - [x] **Phase 2:** player database, seeded pool, server timer, bids, skip, budget reserve, SOLD flow, real-time sync
 - [x] **Phase 3:** squad builder: pitch, formations, drag-and-drop XI, bench
 - [x] **Phase 4:** deterministic scoring: position fit, chemistry, tactics, balance, depth, efficiency, plus a results screen
-- [ ] **Phase 5:** results, best buy and overpay, AI commentary (explains the result, never decides it)
+- [x] **Phase 5:** results reveal, written match analysis, room awards, best buy and overpay, optional AI commentary
 - [ ] **Phase 6:** profiles, match history, ELO, leaderboard, ranked mode, public rooms
 - [ ] **Phase 7:** polish, spectator mode, achievements
 

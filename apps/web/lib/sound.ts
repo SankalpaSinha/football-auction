@@ -98,7 +98,7 @@ class SoundKit {
       case 'LINEUP_LOCKED':
         return this.bid();
       case 'RESULTS':
-        return e.winnerId === me ? this.winner() : this.complete();
+        return; // the results screen plays its own reveal sounds
     }
   }
 }

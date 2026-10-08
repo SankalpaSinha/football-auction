@@ -1,5 +1,7 @@
 'use client';
 import { useEffect, useMemo, useState } from 'react';
+import { sound } from '@/lib/sound';
+import { serverNow } from '@/lib/store';
 import { AnimatePresence, motion } from 'motion/react';
 import { SCORING_CONFIG, type PlayerCard, type RankedScore, type RoomView, type ScoreComponent } from '@fa/shared';
 import { PlayerAvatar } from './PlayerAvatar';
@@ -19,22 +21,35 @@ const COMPONENT_LABEL: Record<ScoreComponent, string> = {
 const MEDAL = ['🥇', '🥈', '🥉'];
 
 export function Results({ room, me, onLeave }: { room: RoomView; me: string; onLeave: () => void }) {
-  const rankings = room.results!.rankings;
+  const results = room.results!;
+  const rankings = results.rankings;
   const winner = rankings[0];
   const nameOf = (id: string) => room.members.find((m) => m.userId === id)?.username ?? 'Manager';
   const [selected, setSelected] = useState(rankings.find((r) => r.userId === me)?.userId ?? winner.userId);
-  const [revealed, setRevealed] = useState(false);
+  // Arriving late (refresh / reconnect)? Skip the show.
+  const late = serverNow() - results.evaluatedAt > 20_000;
+  const [shown, setShown] = useState(late ? rankings.length : 0);
+  const done = shown >= rankings.length;
 
   useEffect(() => {
-    const t = setTimeout(() => setRevealed(true), 2200);
+    if (done) return;
+    const t = setTimeout(() => setShown((n) => n + 1), shown === 0 ? 700 : rankings.length - shown === 1 ? 1600 : 1100);
     return () => clearTimeout(t);
-  }, []);
+  }, [shown, done, rankings.length]);
 
   const players = useMemo(() => {
     const m = new Map<string, PlayerCard>();
     for (const mem of room.members) for (const e of mem.squad) m.set(e.player.id, e.player);
     return m;
   }, [room.members]);
+
+  // Drum-roll tick per podium step, fanfare when the winner appears.
+  useEffect(() => {
+    if (late || shown === 0) return;
+    if (shown < rankings.length) sound.tick(false);
+    else if (winner.userId === me) sound.winner();
+    else sound.complete();
+  }, [shown, late, rankings.length, winner.userId, me]);
 
   const sel = rankings.find((r) => r.userId === selected)!;
 
@@ -50,78 +65,59 @@ export function Results({ room, me, onLeave }: { room: RoomView; me: string; onL
         </div>
       </header>
 
-      {/* winner reveal */}
-      <section className="relative mt-4 overflow-hidden rounded-3xl border border-gold/30 px-6 py-10 text-center sm:py-14" style={{ background: 'radial-gradient(ellipse at 50% 0%, rgba(245,197,66,.25), transparent 65%), rgba(255,255,255,.02)' }}>
-        <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="label !text-gold">
-          {room.competition.name} · {room.competition.seasonLabel}
-        </motion.div>
-        <motion.div
-          initial={{ scale: 0.3, opacity: 0, rotate: -20 }}
-          animate={{ scale: 1, opacity: 1, rotate: 0 }}
-          transition={{ type: 'spring', stiffness: 160, damping: 12, delay: 0.2 }}
-          className="mt-3 text-6xl sm:text-7xl"
-        >
-          🏆
-        </motion.div>
-        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.6 }} className="display mt-2 text-xl font-bold tracking-[0.3em] text-gold">
-          Winner
-        </motion.div>
-        <motion.h1
-          initial={{ opacity: 0, y: 30, scale: 0.9 }}
-          animate={{ opacity: 1, y: 0, scale: 1 }}
-          transition={{ delay: 0.9, type: 'spring', stiffness: 120 }}
-          className="display mt-1 text-6xl font-extrabold sm:text-8xl"
-        >
-          {nameOf(winner.userId)}
-        </motion.h1>
-        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 1.2 }} className="display mt-2 text-5xl font-extrabold text-gold num sm:text-6xl">
-          <CountUp to={winner.total} delay={1200} />
-        </motion.div>
-        {winner.userId === me && (
-          <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 1.8 }} className="mt-3 font-semibold text-volt">
-            That’s you. Champion manager.
-          </motion.p>
-        )}
-      </section>
+      {!done ? (
+        <PodiumCountdown rankings={rankings} shown={shown} nameOf={nameOf} me={me} onSkip={() => setShown(rankings.length)} />
+      ) : (
+        <WinnerHero room={room} winner={winner} name={nameOf(winner.userId)} isMe={winner.userId === me} animate={!late} />
+      )}
 
       <AnimatePresence>
-        {revealed && (
-          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="mt-8 grid gap-6 lg:grid-cols-[380px_1fr]">
-            {/* ranking */}
-            <div className="glass h-fit rounded-2xl p-4">
-              <div className="label mb-3">Final ranking</div>
-              <ol className="space-y-2">
-                {rankings.map((r, i) => (
-                  <motion.li key={r.userId} initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.12 }}>
-                    <button
-                      onClick={() => setSelected(r.userId)}
-                      className={`flex w-full items-center gap-3 rounded-xl border px-3 py-2.5 text-left transition ${
-                        selected === r.userId ? 'border-volt/60 bg-volt/[.08]' : 'border-white/5 bg-white/[.02] hover:bg-white/[.05]'
-                      }`}
-                    >
-                      <span className="display w-7 text-center text-xl font-extrabold">{MEDAL[i] ?? r.rank}</span>
-                      <Avatar name={nameOf(r.userId)} size={34} />
-                      <span className="min-w-0 flex-1">
-                        <span className="block truncate font-bold">
-                          {nameOf(r.userId)} {r.userId === me && <span className="text-xs text-muted">(you)</span>}
-                        </span>
-                        <span className="text-xs text-muted">
-                          {room.lineups?.[r.userId]?.formationId} · spent {r.spent}
-                        </span>
-                      </span>
-                      <span className="display text-3xl font-extrabold num">{r.total.toFixed(1)}</span>
-                    </button>
-                  </motion.li>
-                ))}
-              </ol>
-              <p className="mt-4 text-xs text-dim">
-                Scores are calculated by the server with a fixed formula — the same squad always gets the same score. AI match commentary arrives
-                in Phase 5.
-              </p>
-            </div>
+        {done && (
+          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: late ? 0 : 1.6 }}>
+            <Analysis results={results} nameOf={nameOf} players={players} />
 
-            {/* selected manager */}
-            <ManagerReport key={sel.userId} score={sel} name={nameOf(sel.userId)} room={room} players={players} />
+            <div className="mt-6 grid gap-6 lg:grid-cols-[380px_1fr]">
+              <div className="glass h-fit rounded-2xl p-4">
+                <div className="label mb-3">Final ranking</div>
+                <ol className="space-y-2">
+                  {rankings.map((r, i) => (
+                    <li key={r.userId}>
+                      <button
+                        onClick={() => setSelected(r.userId)}
+                        className={`flex w-full items-center gap-3 rounded-xl border px-3 py-2.5 text-left transition ${
+                          selected === r.userId ? 'border-volt/60 bg-volt/[.08]' : 'border-white/5 bg-white/[.02] hover:bg-white/[.05]'
+                        }`}
+                      >
+                        <span className="display w-7 text-center text-xl font-extrabold">{MEDAL[i] ?? r.rank}</span>
+                        <Avatar name={nameOf(r.userId)} size={34} />
+                        <span className="min-w-0 flex-1">
+                          <span className="block truncate font-bold">
+                            {nameOf(r.userId)} {r.userId === me && <span className="text-xs text-muted">(you)</span>}
+                          </span>
+                          <span className="text-xs text-muted">
+                            {room.lineups?.[r.userId]?.formationId} · spent {r.spent}
+                          </span>
+                        </span>
+                        <span className="display text-3xl font-extrabold num">{r.total.toFixed(1)}</span>
+                      </button>
+                    </li>
+                  ))}
+                </ol>
+                <p className="mt-4 text-xs text-dim">
+                  Scores come from a fixed formula on the server — the same squad always gets the same score. Tap a manager to see their
+                  breakdown.
+                </p>
+              </div>
+
+              <ManagerReport
+                key={sel.userId}
+                score={sel}
+                name={nameOf(sel.userId)}
+                verdict={results.report.verdicts[sel.userId]}
+                room={room}
+                players={players}
+              />
+            </div>
           </motion.div>
         )}
       </AnimatePresence>
@@ -129,7 +125,184 @@ export function Results({ room, me, onLeave }: { room: RoomView; me: string; onL
   );
 }
 
-function ManagerReport({ score, name, room, players }: { score: RankedScore; name: string; room: RoomView; players: Map<string, PlayerCard> }) {
+function PodiumCountdown({
+  rankings,
+  shown,
+  nameOf,
+  me,
+  onSkip,
+}: {
+  rankings: RankedScore[];
+  shown: number;
+  nameOf: (id: string) => string;
+  me: string;
+  onSkip: () => void;
+}) {
+  const n = rankings.length;
+  return (
+    <section className="mt-4 rounded-3xl border border-white/10 bg-white/[.02] px-4 py-10 text-center sm:py-14">
+      <div className="label !text-gold">Final standings</div>
+      <h1 className="display mt-2 text-4xl font-extrabold sm:text-6xl">And the results are…</h1>
+      <ol className="mx-auto mt-8 flex max-w-xl flex-col-reverse gap-2">
+        {[...rankings].reverse().map((r, i) => {
+          const visible = i < shown;
+          return (
+            <li key={r.userId} className="h-14">
+              <AnimatePresence mode="wait">
+                {visible ? (
+                  <motion.div
+                    key="in"
+                    initial={{ opacity: 0, x: -40, scale: 0.95 }}
+                    animate={{ opacity: 1, x: 0, scale: 1 }}
+                    className={`flex h-14 items-center gap-3 rounded-xl border px-4 ${r.userId === me ? 'border-volt/50 bg-volt/[.07]' : 'border-white/10 bg-white/[.03]'}`}
+                  >
+                    <span className="display w-8 text-2xl font-extrabold text-muted">{r.rank}</span>
+                    <Avatar name={nameOf(r.userId)} size={32} />
+                    <span className="flex-1 truncate text-left font-bold">{nameOf(r.userId)}</span>
+                    <span className="display text-3xl font-extrabold num">{r.total.toFixed(1)}</span>
+                  </motion.div>
+                ) : (
+                  <motion.div key="out" className="flex h-14 items-center gap-3 rounded-xl border border-dashed border-white/10 px-4 text-dim">
+                    <span className="display w-8 text-2xl font-extrabold">{n - i}</span>
+                    <span className="flex-1 text-left">?</span>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </li>
+          );
+        })}
+      </ol>
+      <Button variant="ghost" size="sm" className="mt-6" onClick={onSkip}>
+        Skip
+      </Button>
+    </section>
+  );
+}
+
+function WinnerHero({ room, winner, name, isMe, animate }: { room: RoomView; winner: RankedScore; name: string; isMe: boolean; animate: boolean }) {
+  const d = animate ? 1 : 0;
+  return (
+    <section
+      className="relative mt-4 overflow-hidden rounded-3xl border border-gold/30 px-6 py-10 text-center sm:py-14"
+      style={{ background: 'radial-gradient(ellipse at 50% 0%, rgba(245,197,66,.25), transparent 65%), rgba(255,255,255,.02)' }}
+    >
+      {animate && <Confetti />}
+      <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="label !text-gold">
+        {room.competition.name} · {room.competition.seasonLabel}
+      </motion.div>
+      <motion.div
+        initial={animate ? { scale: 0.3, opacity: 0, rotate: -20 } : false}
+        animate={{ scale: 1, opacity: 1, rotate: 0 }}
+        transition={{ type: 'spring', stiffness: 160, damping: 12, delay: 0.2 * d }}
+        className="mt-3 text-6xl sm:text-7xl"
+      >
+        🏆
+      </motion.div>
+      <div className="display mt-2 text-xl font-bold tracking-[0.3em] text-gold">Winner</div>
+      <motion.h1
+        initial={animate ? { opacity: 0, y: 30, scale: 0.9 } : false}
+        animate={{ opacity: 1, y: 0, scale: 1 }}
+        transition={{ delay: 0.5 * d, type: 'spring', stiffness: 120 }}
+        className="display mt-1 text-6xl font-extrabold sm:text-8xl"
+      >
+        {name}
+      </motion.h1>
+      <div className="display mt-2 text-5xl font-extrabold text-gold num sm:text-6xl">
+        {animate ? <CountUp to={winner.total} delay={800} /> : winner.total.toFixed(1)}
+      </div>
+      {isMe && <p className="mt-3 font-semibold text-volt">That’s you. Champion manager.</p>}
+    </section>
+  );
+}
+
+function Confetti() {
+  const bits = Array.from({ length: 60 }, (_, i) => i);
+  return (
+    <div className="pointer-events-none absolute inset-0 overflow-hidden">
+      {bits.map((i) => {
+        const left = (i * 37) % 100;
+        const delay = (i % 12) * 0.08;
+        const dur = 2.2 + (i % 5) * 0.35;
+        return (
+          <motion.span
+            key={i}
+            initial={{ y: -40, opacity: 1, rotate: 0 }}
+            animate={{ y: 520, opacity: 0, rotate: 540 }}
+            transition={{ duration: dur, delay, ease: 'easeIn' }}
+            className="absolute top-0 h-3 w-1.5 rounded-sm"
+            style={{ left: `${left}%`, background: ['#f5c542', '#c8ff2e', '#2ee6ff', '#ff6b8a', '#ffffff'][i % 5] }}
+          />
+        );
+      })}
+    </div>
+  );
+}
+
+function Analysis({ results, nameOf, players }: { results: NonNullable<RoomView['results']>; nameOf: (id: string) => string; players: Map<string, PlayerCard> }) {
+  const { report, commentary } = results;
+  return (
+    <section className="mt-6 grid gap-6 lg:grid-cols-[1.2fr_1fr]">
+      <div className="glass rounded-2xl p-5">
+        <div className="label">Match analysis</div>
+        <h2 className="display mt-1 text-3xl font-extrabold">{report.headline}</h2>
+        <p className="mt-3 leading-relaxed text-ink/90">{report.summary}</p>
+        {commentary.status === 'pending' && (
+          <div className="mt-4 flex items-center gap-2 rounded-xl border border-white/10 bg-white/[.03] px-4 py-3 text-sm text-muted">
+            <span className="h-2 w-2 animate-pulse rounded-full bg-cyan" /> The pundit is writing…
+          </div>
+        )}
+        {commentary.status === 'ready' && commentary.text && (
+          <motion.blockquote initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="mt-4 rounded-xl border border-cyan/30 bg-cyan/[.06] px-4 py-3">
+            <div className="mb-1 text-[11px] font-bold uppercase tracking-wider text-cyan">🎙️ Pundit · AI-generated</div>
+            <p className="leading-relaxed">{commentary.text}</p>
+            <div className="mt-2 text-[11px] text-dim">The AI explains the result — the scores above decide it.</div>
+          </motion.blockquote>
+        )}
+      </div>
+      <div className="glass rounded-2xl p-5">
+        <div className="label mb-3">Awards</div>
+        <ul className="grid gap-2 sm:grid-cols-2">
+          {report.awards.map((a, i) => {
+            const p = a.playerId ? players.get(a.playerId) : undefined;
+            return (
+              <motion.li
+                key={a.key}
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ delay: 0.1 + i * 0.06 }}
+                className="flex items-center gap-3 rounded-xl bg-white/[.04] px-3 py-2.5"
+              >
+                {p ? <PlayerAvatar player={p} size={36} /> : <span className="grid h-9 w-9 place-items-center text-xl">{a.emoji}</span>}
+                <div className="min-w-0">
+                  <div className="text-[11px] font-bold uppercase tracking-wider text-muted">
+                    {p ? `${a.emoji} ` : ''}
+                    {a.title}
+                  </div>
+                  <div className="truncate text-sm font-bold">{nameOf(a.userId)}</div>
+                  <div className="line-clamp-2 text-xs text-muted">{a.detail}</div>
+                </div>
+              </motion.li>
+            );
+          })}
+        </ul>
+      </div>
+    </section>
+  );
+}
+
+function ManagerReport({
+  score,
+  name,
+  verdict,
+  room,
+  players,
+}: {
+  score: RankedScore;
+  name: string;
+  verdict?: string;
+  room: RoomView;
+  players: Map<string, PlayerCard>;
+}) {
   const lineup = room.lineups?.[score.userId];
   const best = score.bestPlayerId ? players.get(score.bestPlayerId) : undefined;
   const bestBuy = score.bestBuy ? players.get(score.bestBuy.playerId) : undefined;
@@ -145,6 +318,7 @@ function ManagerReport({ score, name, room, players }: { score: RankedScore; nam
         </h2>
         <span className="display text-4xl font-extrabold text-volt num">{score.total.toFixed(1)}</span>
       </div>
+      {verdict && <p className="mt-2 text-sm text-muted">{verdict}</p>}
 
       <div className="mt-5 grid gap-6 md:grid-cols-[1fr_240px]">
         <div>

@@ -10,6 +10,7 @@ import { NoopGameStore, type GameStore } from './engine/store';
 import { createDb } from './lib/db';
 import { PrismaGameStore } from './services/prismaStore';
 import { MemoryUserStore, PrismaUserStore, type UserStore } from './services/users';
+import { commentatorFromEnv } from './services/commentary';
 
 const env = process.env;
 const port = Number(env.PORT ?? 4000);
@@ -52,12 +53,14 @@ async function main() {
   const catalog = new InMemoryCatalog(data);
   const originEnv = env.CLIENT_ORIGIN ?? 'http://localhost:3000';
   const origins = originEnv === '*' ? true : originEnv.split(',').map((s) => s.trim());
-  const server = createApp({ catalog, users, store, clock: systemClock, rules, corsOrigins: origins });
+  const commentator = commentatorFromEnv();
+  const server = createApp({ catalog, users, store, clock: systemClock, rules, corsOrigins: origins, commentator });
   const actualPort = await server.listen(port);
 
   const comps = catalog.competitions();
   console.log(`⚽ Football Auction server on http://localhost:${actualPort} (${storage})`);
   console.log(`   ${data.players.length} players · ${comps.length} playable competitions`);
+  console.log(`   AI commentary: ${commentator.enabled ? 'on' : 'off (set ANTHROPIC_API_KEY to enable)'}`);
   for (const c of comps) {
     for (const s of c.seasons) console.log(`   - ${c.name} ${s.label}: ${s.poolSize} players, up to ${s.maxPlayers} managers`);
   }

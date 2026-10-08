@@ -2,7 +2,9 @@ import { randomUUID } from 'node:crypto';
 import {
   DEFAULT_FORMATION,
   autoPick,
+  buildMatchReport,
   rankScores,
+  type MatchReport,
   scoreSquad,
   type RankedScore,
   getFormation,
@@ -28,6 +30,7 @@ import { fail } from './errors';
 import { seededRandomOrder, type AuctionOrderStrategy } from './ordering';
 import { newSeed } from './rng';
 import type { GameStore } from './store';
+import type { Commentator } from '../services/commentary';
 
 export interface CompetitionInfo {
   id: string;
@@ -48,6 +51,8 @@ export interface RoomDeps {
   onEvent(room: Room, event: GameEvent): void;
   onClosed(room: Room, reason: string): void;
   onMemberRemoved(room: Room, userId: string): void;
+  /** Optional AI pundit; absent or disabled → written analysis only. */
+  commentator?: Commentator;
   log?: (msg: string, err?: unknown) => void;
 }
 
@@ -98,6 +103,11 @@ export class Room {
   private resultsAt: number | null = null;
   private rankings: RankedScore[] | null = null;
   private evaluatedAt: number | null = null;
+  private report: MatchReport | null = null;
+  private commentary: { status: 'disabled' | 'pending' | 'ready' | 'unavailable'; text: string | null } = {
+    status: 'disabled',
+    text: null,
+  };
   private persistChain: Promise<void> = Promise.resolve();
 
   constructor(
@@ -466,12 +476,45 @@ export class Room {
       return { userId: p.userId, score: scoreSquad(p.squad, { formationId: l.formationId, slots: l.slots }) };
     });
     this.rankings = rankScores(scores);
+    this.report = buildMatchReport(
+      this.rankings,
+      this.participants.map((p) => ({ userId: p.userId, username: p.username, squad: p.squad })),
+    );
+    this.requestCommentary();
     this.evaluatedAt = this.deps.clock.now();
     this.resultsAt = this.evaluatedAt + this.deps.rules.evaluationMs;
     const gameId = this.gameId!;
     const rankings = this.rankings;
     this.persist(() => this.deps.store.gameFinished(gameId, rankings));
     this.evaluationTimer = this.deps.clock.setTimeout(() => this.showResults(), this.deps.rules.evaluationMs);
+  }
+
+  /** Fire-and-forget: the results never wait for (or depend on) the AI paragraph. */
+  private requestCommentary() {
+    const c = this.deps.commentator;
+    if (!c?.enabled || !this.rankings || !this.report) return;
+    this.commentary = { status: 'pending', text: null };
+    const usernames = Object.fromEntries(this.participants.map((p) => [p.userId, p.username]));
+    const playerNames = Object.fromEntries(this.participants.flatMap((p) => p.squad.map((e) => [e.player.id, e.player.name])));
+    const formations = Object.fromEntries([...this.lineups].map(([id, l]) => [id, l.formationId]));
+    c.generate({
+      competition: `${this.competition.name} ${this.competition.seasonLabel}`,
+      rankings: this.rankings,
+      usernames,
+      playerNames,
+      formations,
+      report: this.report,
+    })
+      .then((text) => {
+        if (this.closed) return;
+        this.commentary = text ? { status: 'ready', text } : { status: 'unavailable', text: null };
+        this.changed();
+      })
+      .catch((err) => {
+        this.deps.log?.('commentary failed', err);
+        this.commentary = { status: 'unavailable', text: null };
+        if (!this.closed) this.changed();
+      });
   }
 
   private showResults() {
@@ -620,7 +663,10 @@ export class Room {
         this.phase !== 'SQUAD_BUILDING' && this.lineups.size
           ? Object.fromEntries([...this.lineups].map(([id, l]) => [id, { ...l }]))
           : null,
-      results: this.phase === 'RESULTS' && this.rankings ? { rankings: this.rankings, evaluatedAt: this.evaluatedAt! } : null,
+      results:
+        this.phase === 'RESULTS' && this.rankings && this.report
+          ? { rankings: this.rankings, evaluatedAt: this.evaluatedAt!, report: this.report, commentary: this.commentary }
+          : null,
       resultsAt: this.phase === 'FINAL_EVALUATION' ? this.resultsAt : null,
       feed: this.feed.slice(-40),
       serverTime: this.deps.clock.now(),

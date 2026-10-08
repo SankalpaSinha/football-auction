@@ -7,3 +7,4 @@ export * from './formations';
 export * from './fit';
 export * from './lineup';
 export * from './scoring';
+export * from './analysis';

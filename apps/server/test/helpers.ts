@@ -71,6 +71,7 @@ export function createHarness(opts: {
   settings?: Partial<RoomSettings>;
   start?: boolean;
   seed?: string;
+  commentator?: import('../src/services/commentary').Commentator;
 } = {}): Harness {
   const clock = new ManualClock();
   const events: GameEvent[] = [];
@@ -89,6 +90,7 @@ export function createHarness(opts: {
       rules: testRules(opts.rules),
       store: new NoopGameStore(),
       seed: opts.seed ?? 'fixed-seed',
+      commentator: opts.commentator,
       onChange: () => {},
       onEvent: (_r, e) => events.push(e),
       onClosed: (_r, reason) => closed.push(reason),

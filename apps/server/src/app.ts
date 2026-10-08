@@ -23,6 +23,7 @@ import type { PlayerCatalog } from './data/catalog';
 import type { Clock } from './engine/clock';
 import { GameError } from './engine/errors';
 import type { GameStore } from './engine/store';
+import type { Commentator } from './services/commentary';
 import { RateLimiter, TokenBucket } from './lib/rateLimit';
 import { RoomManager, roomChannel, userChannel } from './realtime/roomManager';
 import { InvalidCredentialsError, login, register, UsernameTakenError, type UserStore } from './services/users';
@@ -36,6 +37,7 @@ export interface AppDeps {
   corsOrigins: string[] | true;
   maxRooms?: number;
   seed?: string;
+  commentator?: Commentator;
   log?: (msg: string, err?: unknown) => void;
 }
 
@@ -71,6 +73,7 @@ export function createApp(deps: AppDeps) {
     rules: deps.rules,
     maxRooms: deps.maxRooms ?? 2000,
     seed: deps.seed,
+    commentator: deps.commentator,
     log,
   });
 

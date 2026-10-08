@@ -6,6 +6,7 @@ import type { Clock } from '../engine/clock';
 import { fail } from '../engine/errors';
 import { Room } from '../engine/room';
 import type { GameStore } from '../engine/store';
+import type { Commentator } from '../services/commentary';
 import { RateLimiter } from '../lib/rateLimit';
 
 const CODE_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // no 0/O/1/I
@@ -19,6 +20,7 @@ export interface ManagerDeps {
   rules: GameRules;
   maxRooms: number;
   seed?: string;
+  commentator?: Commentator;
   log: (msg: string, err?: unknown) => void;
 }
 
@@ -80,6 +82,7 @@ export class RoomManager {
       rules: this.deps.rules,
       store: this.deps.store,
       seed: this.deps.seed,
+      commentator: this.deps.commentator,
       log: this.deps.log,
       onChange: (r) => this.markDirty(r),
       onEvent: (r, e) => this.io.to(roomChannel(r.code)).emit('room:event', e),

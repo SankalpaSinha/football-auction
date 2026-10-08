@@ -2,6 +2,7 @@ import type { Position } from './positions';
 import type { Tier } from './rules';
 import type { ValueVerdict } from './valuation';
 import type { RankedScore } from './scoring';
+import type { MatchReport } from './analysis';
 
 // ---------------------------------------------------------------------------
 // Player data (source-agnostic — the UI never knows where this came from)
@@ -231,7 +232,14 @@ export interface RoomView {
   /** Revealed once every lineup is final. userId → lineup. */
   lineups: Record<string, LineupView> | null;
   /** Final ranking — present once the room reaches RESULTS. */
-  results: { rankings: RankedScore[]; evaluatedAt: number } | null;
+  results: {
+    rankings: RankedScore[];
+    evaluatedAt: number;
+    /** Deterministic written analysis + awards. */
+    report: MatchReport;
+    /** Optional AI pundit paragraph (explains, never decides). */
+    commentary: { status: 'disabled' | 'pending' | 'ready' | 'unavailable'; text: string | null };
+  } | null;
   /** While in FINAL_EVALUATION: when results will be shown. */
   resultsAt: number | null;
   feed: FeedItem[];

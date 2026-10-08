@@ -1,6 +1,7 @@
 import type { Position } from './positions';
 import type { Tier } from './rules';
 import type { ValueVerdict } from './valuation';
+import type { RankedScore } from './scoring';
 
 // ---------------------------------------------------------------------------
 // Player data (source-agnostic — the UI never knows where this came from)
@@ -229,6 +230,10 @@ export interface RoomView {
   squadBuilding: SquadBuildingView | null;
   /** Revealed once every lineup is final. userId → lineup. */
   lineups: Record<string, LineupView> | null;
+  /** Final ranking — present once the room reaches RESULTS. */
+  results: { rankings: RankedScore[]; evaluatedAt: number } | null;
+  /** While in FINAL_EVALUATION: when results will be shown. */
+  resultsAt: number | null;
   feed: FeedItem[];
   serverTime: number;
   version: number;
@@ -247,6 +252,7 @@ export type GameEvent =
   | { type: 'AUCTION_COMPLETE' }
   | { type: 'LINEUP_LOCKED'; userId: string }
   | { type: 'LINEUPS_REVEALED' }
+  | { type: 'RESULTS'; winnerId: string }
   | { type: 'GAME_STARTING'; startsAt: number };
 
 export interface SessionUser {

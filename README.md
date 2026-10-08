@@ -2,7 +2,7 @@
 
 A real-time multiplayer football auction game. 2–6 managers share one budget size, bid on players one at a time, and must each finish with exactly 15 players.
 
-**Status:** Phases 1–3 are done: core multiplayer, the live auction and the squad builder. Next is Phase 4 (deterministic scoring).
+**Status:** Phases 1–4 are done: core multiplayer, the live auction, the squad builder and deterministic scoring with a results screen. Next is Phase 5 (AI commentary and results polish).
 
 ---
 
@@ -66,6 +66,22 @@ WAITING_FOR_PLAYERS ⇄ LOBBY → STARTING → AUCTION ⇄ PLAYER_SOLD → SQUAD
 
 Every action checks the current phase. Formation choice happens inside `SQUAD_BUILDING`, so `FORMATION_SELECTION` isn't used as a separate state. The phases in brackets come with Phase 4–5.
 
+### Scoring (Phase 4)
+
+`packages/shared/src/scoring.ts` holds every weight and threshold in `SCORING_CONFIG`. The server computes the scores; the client only shows a preview.
+
+| Component | Weight | What it measures |
+|---|---|---|
+| Player quality | 35% | Each starter's role rating, using position-specific attribute weights (ST: shooting/pace, CB: defending/physical, GK: diving/reflexes/handling …) |
+| Position fit | 20% | Average fit factor of the XI |
+| Tactics | 15% | Formation demands: defensive solidity, pace out wide, midfield control, protection in front of the defence, attacking threat, creativity |
+| Chemistry | 10% | Links between neighbouring slots (same club +2, nation +1, league +1, max 3), plus players being in position |
+| Squad balance | 10% | Shape of the 15 (GK 1–2, DEF 4–6, MID 4–6, ATT 3–5) and the gap between the defensive, midfield and attacking lines |
+| Depth | 5% | Bench quality and positional cover |
+| Budget efficiency | 5% | Estimated value received per coin spent |
+
+Ties are broken by quality, then position fit, then fewer coins spent. The tests check that the same squad always scores the same, that chemistry can't lift a weak squad over an elite one, and that a balanced XI beats superstar attackers with a weak spine.
+
 ### Squad builder (Phase 3)
 
 - 7 formations in `packages/shared/src/formations.ts`. Each has 11 slots, and slot 0 is the goalkeeper.
@@ -127,7 +143,7 @@ data/
 - [x] **Phase 1:** usernames, private rooms, codes, lobby, ready-up, host transfer, reconnects
 - [x] **Phase 2:** player database, seeded pool, server timer, bids, skip, budget reserve, SOLD flow, real-time sync
 - [x] **Phase 3:** squad builder: pitch, formations, drag-and-drop XI, bench
-- [ ] **Phase 4:** deterministic scoring: position fit, chemistry, tactics, balance, depth, efficiency
+- [x] **Phase 4:** deterministic scoring: position fit, chemistry, tactics, balance, depth, efficiency, plus a results screen
 - [ ] **Phase 5:** results, best buy and overpay, AI commentary (explains the result, never decides it)
 - [ ] **Phase 6:** profiles, match history, ELO, leaderboard, ranked mode, public rooms
 - [ ] **Phase 7:** polish, spectator mode, achievements

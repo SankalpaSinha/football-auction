@@ -44,7 +44,7 @@ async function getJson(url: string, attempt = 0): Promise<any> {
     return getJson(url, attempt + 1);
   }
   if (!res.ok) throw new Error(`HTTP ${res.status} for ${url}`);
-  await sleep(250); // stay well under Wikimedia's rate limits
+  await sleep(600); // stay well under Wikimedia's rate limits
   return res.json();
 }
 
@@ -52,6 +52,45 @@ const wd = (params: Record<string, string>) =>
   `https://www.wikidata.org/w/api.php?${new URLSearchParams({ format: 'json', origin: '*', ...params })}`;
 const commons = (params: Record<string, string>) =>
   `https://commons.wikimedia.org/w/api.php?${new URLSearchParams({ format: 'json', origin: '*', ...params })}`;
+
+const SPARQL = 'https://query.wikidata.org/sparql';
+
+/** Resolve many players at once by exact English label → { playerId: { qid, file } }. */
+async function sparqlBulk(players: { playerId: string; name: string; age: number }[], startYear: number) {
+  const out = new Map<string, { qid: string; file: string }>();
+  for (let i = 0; i < players.length; i += 80) {
+    const chunk = players.slice(i, i + 80);
+    const values = chunk.map((p) => `"${p.name.replace(/["\\]/g, '')}"@en`).join(' ');
+    const query = `SELECT ?name ?p ?img ?dob WHERE {
+      VALUES ?name { ${values} }
+      ?p rdfs:label ?name; wdt:P106 wd:${FOOTBALLER}; wdt:P18 ?img.
+      OPTIONAL { ?p wdt:P569 ?dob }
+    }`;
+    const res = await fetch(`${SPARQL}?${new URLSearchParams({ query, format: 'json' })}`, {
+      headers: { 'user-agent': UA, accept: 'application/sparql-results+json' },
+    });
+    if (!res.ok) {
+      console.warn(`   SPARQL chunk failed (${res.status}) — those players fall back to search`);
+      await sleep(5000);
+      continue;
+    }
+    const rows = ((await res.json()) as any).results.bindings as any[];
+    for (const p of chunk) {
+      const bornAround = startYear - p.age;
+      const hit = rows.find((r) => {
+        if (r.name.value !== p.name.replace(/["\\]/g, '')) return false;
+        const y = r.dob ? Number(String(r.dob.value).slice(0, 4)) : bornAround;
+        return Math.abs(y - bornAround) <= 2;
+      });
+      if (hit) {
+        const file = decodeURIComponent(String(hit.img.value).split('/Special:FilePath/')[1] ?? '').replace(/_/g, ' ');
+        if (file) out.set(p.playerId, { qid: String(hit.p.value).split('/').pop()!, file });
+      }
+    }
+    await sleep(1500);
+  }
+  return out;
+}
 
 const stripHtml = (s: string) => s.replace(/<[^>]*>/g, '').replace(/\s+/g, ' ').trim();
 
@@ -65,43 +104,8 @@ async function pool<T>(items: T[], n: number, fn: (item: T) => Promise<void>) {
 }
 
 
-async function lookup(todo: ReturnType<typeof loadSeasonDataset>['players'], cache: Record<string, ImageEntry>, startYear: number) {
-  // 1. Search candidates by name.
-  const candidates = new Map<string, string[]>();
-  await pool(todo, 2, async (p) => {
-    const r = await getJson(wd({ action: 'wbsearchentities', search: p.name, language: 'en', type: 'item', limit: '7' }));
-    candidates.set(p.playerId, (r.search ?? []).map((x: { id: string }) => x.id));
-  });
-
-  // 2. Fetch claims for all candidate entities in batches of 50.
-  const ids = [...new Set([...candidates.values()].flat())];
-  const claims = new Map<string, any>();
-  for (let i = 0; i < ids.length; i += 50) {
-    const r = await getJson(wd({ action: 'wbgetentities', ids: ids.slice(i, i + 50).join('|'), props: 'claims' }));
-    for (const [id, ent] of Object.entries<any>(r.entities ?? {})) claims.set(id, ent.claims ?? {});
-  }
-
-  const values = (c: any, prop: string) =>
-    (c?.[prop] ?? []).map((s: any) => s.mainsnak?.datavalue?.value).filter(Boolean);
-
-  // 3. Pick the matching footballer and their image.
-  const files = new Map<string, { playerId: string; qid: string }>();
-  for (const p of todo) {
-    const bornAround = startYear - p.age;
-    const match = (candidates.get(p.playerId) ?? []).find((qid) => {
-      const c = claims.get(qid);
-      if (!values(c, 'P106').some((v: any) => v.id === FOOTBALLER)) return false;
-      const dob = values(c, 'P569')[0]?.time as string | undefined;
-      if (!dob) return true;
-      const year = Number(dob.slice(1, 5));
-      return Math.abs(year - bornAround) <= 2;
-    });
-    const image = match ? (values(claims.get(match), 'P18')[0] as string | undefined) : undefined;
-    if (match && image) files.set(`File:${image}`, { playerId: p.playerId, qid: match });
-    else cache[p.playerId] = { none: true, qid: match, checkedAt: new Date().toISOString() };
-  }
-
-  // 4. Thumbnail URL + attribution from Commons.
+/** Thumbnail URL + attribution from Commons for File: titles. */
+async function attachCommons(files: Map<string, { playerId: string; qid: string }>, cache: Record<string, ImageEntry>) {
   const titles = [...files.keys()];
   for (let i = 0; i < titles.length; i += 40) {
     const batch = titles.slice(i, i + 40);
@@ -134,6 +138,45 @@ async function lookup(todo: ReturnType<typeof loadSeasonDataset>['players'], cac
 
 }
 
+async function lookup(todo: ReturnType<typeof loadSeasonDataset>['players'], cache: Record<string, ImageEntry>, startYear: number) {
+  // 1. Search candidates by name.
+  const candidates = new Map<string, string[]>();
+  await pool(todo, 1, async (p) => {
+    const r = await getJson(wd({ action: 'wbsearchentities', search: p.name, language: 'en', type: 'item', limit: '7' }));
+    candidates.set(p.playerId, (r.search ?? []).map((x: { id: string }) => x.id));
+  });
+
+  // 2. Fetch claims for all candidate entities in batches of 50.
+  const ids = [...new Set([...candidates.values()].flat())];
+  const claims = new Map<string, any>();
+  for (let i = 0; i < ids.length; i += 50) {
+    const r = await getJson(wd({ action: 'wbgetentities', ids: ids.slice(i, i + 50).join('|'), props: 'claims' }));
+    for (const [id, ent] of Object.entries<any>(r.entities ?? {})) claims.set(id, ent.claims ?? {});
+  }
+
+  const values = (c: any, prop: string) =>
+    (c?.[prop] ?? []).map((s: any) => s.mainsnak?.datavalue?.value).filter(Boolean);
+
+  // 3. Pick the matching footballer and their image.
+  const files = new Map<string, { playerId: string; qid: string }>();
+  for (const p of todo) {
+    const bornAround = startYear - p.age;
+    const match = (candidates.get(p.playerId) ?? []).find((qid) => {
+      const c = claims.get(qid);
+      if (!values(c, 'P106').some((v: any) => v.id === FOOTBALLER)) return false;
+      const dob = values(c, 'P569')[0]?.time as string | undefined;
+      if (!dob) return true;
+      const year = Number(dob.slice(1, 5));
+      return Math.abs(year - bornAround) <= 2;
+    });
+    const image = match ? (values(claims.get(match), 'P18')[0] as string | undefined) : undefined;
+    if (match && image) files.set(`File:${image}`, { playerId: p.playerId, qid: match });
+    else cache[p.playerId] = { none: true, qid: match, checkedAt: new Date().toISOString() };
+  }
+
+  await attachCommons(files, cache);
+}
+
 async function main() {
   const seasons = loadSeasons(dataDir).filter((s) => seasonIdsOnDisk(dataDir).includes(s.id));
   const season = seasons.find((s) => s.id === (arg('season') ?? '')) ?? seasons.find((s) => s.isCurrent) ?? seasons[0];
@@ -145,10 +188,24 @@ async function main() {
   console.log(`📷 ${season.label}: ${ds.players.length} players, ${todo.length} to look up`);
 
   const save = () => writeFileSync(file, JSON.stringify(cache, null, 1) + '\n');
-  for (let c = 0; c < todo.length; c += 25) {
-    await lookup(todo.slice(c, c + 25), cache, startYear);
+
+  // Fast path: bulk SPARQL by exact name.
+  const bulk = await sparqlBulk(todo, startYear);
+  console.log(`   SPARQL matched ${bulk.size}/${todo.length}`);
+  await attachCommons(
+    new Map([...bulk].map(([playerId, v]) => [`File:${v.file}`, { playerId, qid: v.qid }])),
+    cache,
+  );
+  save();
+  const rest = todo.filter((p) => !cache[p.playerId]);
+  if (!args.includes('--thorough')) {
+    console.log(`   ${rest.length} unmatched — run with --thorough to search them one by one (slow, rate-limited)`);
+  }
+  const slow = args.includes('--thorough') ? rest : [];
+  for (let c = 0; c < slow.length; c += 25) {
+    await lookup(slow.slice(c, c + 25), cache, startYear);
     save();
-    console.log(`   ${Math.min(c + 25, todo.length)}/${todo.length}`);
+    console.log(`   ${Math.min(c + 25, slow.length)}/${slow.length}`);
   }
   writeFileSync(file, JSON.stringify(cache, null, 1) + '\n');
   const found = ds.players.filter((p) => cache[p.playerId]?.url).length;

@@ -38,7 +38,7 @@ beforeAll(async () => {
     users: new MemoryUserStore(),
     store: new NoopGameStore(),
     clock: systemClock,
-    rules: makeRules({ startCountdownMs: 50, soldRevealMs: 15, unsoldRevealMs: 10 }),
+    rules: makeRules({ startCountdownMs: 50, soldRevealMs: 15, unsoldRevealMs: 10, evaluationMs: 50 }),
     corsOrigins: true,
   });
   const port = await server.listen(0);
@@ -120,6 +120,9 @@ describe('multiplayer over websockets', () => {
       expect(l.auto).toBe(false);
       expect(validateLineup(l, m.squad.map((e) => e.player), true)).toBeNull();
     }
+    const results = await a.waitFor((v) => v.phase === 'RESULTS', 20_000);
+    expect(results.results!.rankings).toHaveLength(3);
+    expect(results.results!.rankings[0].rank).toBe(1);
     const ids = new Set<string>();
     for (const m of final.members) {
       expect(m.squad).toHaveLength(15);

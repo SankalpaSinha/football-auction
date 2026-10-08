@@ -6,3 +6,4 @@ export * from './protocol';
 export * from './formations';
 export * from './fit';
 export * from './lineup';
+export * from './scoring';

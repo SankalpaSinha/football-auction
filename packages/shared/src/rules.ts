@@ -28,6 +28,8 @@ export interface GameRules {
   gkUrgencySlots: number;
   /** Time managers get to pick formation + starting XI after the auction. */
   squadBuildingMs: number;
+  /** Suspense pause between lineup reveal and the results. */
+  evaluationMs: number;
   lobbyDisconnectGraceMs: number;
   hostTransferGraceMs: number;
   abandonAfterMs: number;
@@ -57,6 +59,7 @@ export const GAME_RULES: Readonly<GameRules> = {
   unsoldRevealMs: 1_600,
   gkUrgencySlots: 2,
   squadBuildingMs: 180_000,
+  evaluationMs: 4_000,
   lobbyDisconnectGraceMs: 60_000,
   hostTransferGraceMs: 10_000,
   abandonAfterMs: 5 * 60_000,

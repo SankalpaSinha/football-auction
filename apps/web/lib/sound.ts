@@ -73,6 +73,11 @@ class SoundKit {
     [523, 659, 784, 1046].forEach((f, i) => this.tone(f, 0.4, { type: 'triangle', gain: 0.045, delay: i * 0.1 }));
   }
 
+  winner() {
+    [523, 659, 784, 1046, 1318].forEach((f, i) => this.tone(f, 0.5, { type: 'triangle', gain: 0.05, delay: i * 0.12 }));
+    this.tone(1568, 0.9, { type: 'sine', gain: 0.035, delay: 0.65 });
+  }
+
   onEvent(e: GameEvent, me: string) {
     switch (e.type) {
       case 'LOT_OPEN':
@@ -92,6 +97,8 @@ class SoundKit {
         return this.complete();
       case 'LINEUP_LOCKED':
         return this.bid();
+      case 'RESULTS':
+        return e.winnerId === me ? this.winner() : this.complete();
     }
   }
 }

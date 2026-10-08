@@ -1,4 +1,4 @@
-import { FORMATIONS } from '@fa/shared';
+import { FORMATIONS, type RankedScore } from '@fa/shared';
 import type { GameStore } from '../engine/store';
 import type { Db } from '../lib/db';
 
@@ -138,6 +138,42 @@ export class PrismaGameStore implements GameStore {
 
   async auctionCompleted(gameId: string) {
     await this.db.game.update({ where: { id: gameId }, data: { status: 'SQUAD_BUILDING' } });
+  }
+
+  async gameFinished(gameId: string, rankings: RankedScore[]) {
+    await this.db.$transaction(async (tx) => {
+      const game = await tx.game.update({ where: { id: gameId }, data: { status: 'FINISHED', endedAt: new Date() } });
+      await tx.room.update({ where: { id: game.roomId }, data: { status: 'FINISHED' } });
+      for (const r of rankings) {
+        const { userId, rank, total, ...detail } = r;
+        await tx.matchResult.upsert({
+          where: { gameId_userId: { gameId, userId } },
+          create: { gameId, userId, rank, score: total, breakdown: detail as object },
+          update: { rank, score: total, breakdown: detail as object },
+        });
+        // Casual games count towards profile stats; ELO only moves in ranked (Phase 6).
+        const existing = await tx.playerRating.findUnique({ where: { userId_mode: { userId, mode: game.mode } } });
+        await tx.playerRating.upsert({
+          where: { userId_mode: { userId, mode: game.mode } },
+          create: {
+            userId,
+            mode: game.mode,
+            games: 1,
+            wins: rank === 1 ? 1 : 0,
+            podiums: rank <= 3 ? 1 : 0,
+            totalScore: total,
+            highestScore: total,
+          },
+          update: {
+            games: { increment: 1 },
+            wins: { increment: rank === 1 ? 1 : 0 },
+            podiums: { increment: rank <= 3 ? 1 : 0 },
+            totalScore: { increment: total },
+            highestScore: Math.max(existing?.highestScore ?? 0, total),
+          },
+        });
+      }
+    });
   }
 
   async roomClosed(roomId: string, status: 'FINISHED' | 'ABANDONED' | 'CLOSED', gameId: string | null) {

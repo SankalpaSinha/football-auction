@@ -5,6 +5,7 @@ import { useParams, useRouter } from 'next/navigation';
 import { AuctionComplete } from '@/components/AuctionComplete';
 import { AuctionScreen } from '@/components/auction/AuctionScreen';
 import { Lobby } from '@/components/Lobby';
+import { Results } from '@/components/Results';
 import { SquadBuilder } from '@/components/squad/SquadBuilder';
 import { UsernameGate } from '@/components/UsernameGate';
 import { Button, ConnectionBanner, Logo } from '@/components/ui';
@@ -118,6 +119,14 @@ export default function RoomPage() {
         <SquadBuilder room={room} me={session.user.id} />
       ) : (
         <Centered title="Squad builder" body="Managers are picking their lineups…" />
+      );
+      break;
+    case 'RESULTS':
+    case 'FINISHED':
+      screen = room.results ? (
+        <Results room={room} me={session.user.id} onLeave={leave} />
+      ) : (
+        <AuctionComplete room={room} me={session.user.id} onLeave={leave} />
       );
       break;
     default:

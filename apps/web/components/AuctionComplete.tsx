@@ -3,13 +3,11 @@ import { motion } from 'motion/react';
 import { summarizeLineup, type PlayerCard, type RoomView } from '@fa/shared';
 import { coins } from '@/lib/format';
 import { PlayerAvatar } from './PlayerAvatar';
+import { EvaluatingBanner } from './Results';
 import { MiniPitch } from './squad/Pitch';
 import { Avatar, Button, Coin, Logo, Pill, SoundToggle } from './ui';
 
-/**
- * Lineups revealed (FINAL_EVALUATION). Scoring is Phase 4 — stated plainly
- * here rather than shown as a fake result.
- */
+/** Lineups revealed (FINAL_EVALUATION) while the server scores the squads. */
 export function AuctionComplete({ room, me, onLeave }: { room: RoomView; me: string; onLeave: () => void }) {
   const members = [...room.members].sort((a, b) => (a.userId === me ? -1 : b.userId === me ? 1 : a.seat - b.seat));
 
@@ -33,10 +31,7 @@ export function AuctionComplete({ room, me, onLeave }: { room: RoomView; me: str
         <p className="mx-auto mt-3 max-w-xl text-muted">Every manager has named their XI. Here’s how each squad lines up.</p>
       </motion.section>
 
-      <div className="mx-auto mt-6 max-w-2xl rounded-2xl border border-cyan/30 bg-cyan/[.06] px-5 py-4 text-sm text-cyan-50">
-        <span className="font-bold">Next: scoring.</span> The deterministic squad score (quality, position fit, tactics, chemistry,
-        balance, depth) that decides the winner is Phase 4 and isn’t built yet. Lineups are saved.
-      </div>
+      <EvaluatingBanner until={room.resultsAt} />
 
       <div className="mt-8 grid gap-5 md:grid-cols-2 xl:grid-cols-3">
         {members.map((m, i) => {

@@ -1,6 +1,12 @@
 'use client';
 import { motion } from 'motion/react';
-import { getFormation, positionFit, type FitLevel, type PlayerCard } from '@fa/shared';
+import { chemistryLinks, getFormation, positionFit, type ChemistryLink, type FitLevel, type PlayerCard } from '@fa/shared';
+
+export const LINK_COLOR: Record<ChemistryLink['strength'], string> = {
+  STRONG: '#34d399',
+  MEDIUM: '#facc15',
+  WEAK: '#f87171',
+};
 import { PlayerAvatar } from '../PlayerAvatar';
 
 export const FIT_STYLE: Record<FitLevel, { color: string; label: string }> = {
@@ -12,7 +18,18 @@ export const FIT_STYLE: Record<FitLevel, { color: string; label: string }> = {
 };
 
 /** Vertical pitch markings (68 × 100 units). */
-export function PitchSurface({ children, className = '', style }: { children?: React.ReactNode; className?: string; style?: React.CSSProperties }) {
+export function PitchSurface({
+  children,
+  className = '',
+  style,
+  links,
+}: {
+  children?: React.ReactNode;
+  className?: string;
+  style?: React.CSSProperties;
+  /** Chemistry lines between slot coordinates (x/y in %). */
+  links?: { x1: number; y1: number; x2: number; y2: number; strength: ChemistryLink['strength'] }[];
+}) {
   return (
     <div
       className={`relative overflow-hidden rounded-2xl border border-white/10 ${className}`}
@@ -36,6 +53,23 @@ export function PitchSurface({ children, className = '', style }: { children?: R
           <path d="M27 83 A 8 8 0 0 1 41 83" />
         </g>
         <circle cx="34" cy="50" r=".7" fill="rgba(255,255,255,.4)" />
+        {links?.map((l, i) => (
+          <line
+            key={`${i}-${l.strength}`}
+            x1={l.x1 * 0.68}
+            y1={l.y1}
+            x2={l.x2 * 0.68}
+            y2={l.y2}
+            stroke={LINK_COLOR[l.strength]}
+            strokeWidth={l.strength === 'STRONG' ? 0.9 : 0.6}
+            strokeOpacity={l.strength === 'WEAK' ? 0.45 : 0.8}
+            strokeDasharray={l.strength === 'WEAK' ? '1.2 1' : undefined}
+            strokeLinecap="round"
+            className="transition-all duration-500"
+          >
+            {l.strength === 'STRONG' && <animate attributeName="stroke-opacity" values=".55;.95;.55" dur="2.4s" repeatCount="indefinite" />}
+          </line>
+        ))}
       </svg>
       {children}
     </div>
@@ -107,11 +141,33 @@ export function SlotChip({
 }
 
 /** Read-only pitch for the reveal screen. */
-export function MiniPitch({ formationId, slots, players }: { formationId: string; slots: (string | null)[]; players: Map<string, PlayerCard> }) {
+export function linksFor(formationId: string, slots: (string | null)[], players: Map<string, PlayerCard>) {
+  const f = getFormation(formationId);
+  if (!f) return [];
+  return chemistryLinks({ formationId, slots }, players).map((l) => ({
+    x1: f.slots[l.a].x,
+    y1: f.slots[l.a].y,
+    x2: f.slots[l.b].x,
+    y2: f.slots[l.b].y,
+    strength: l.strength,
+  }));
+}
+
+export function MiniPitch({
+  formationId,
+  slots,
+  players,
+  showLinks = true,
+}: {
+  formationId: string;
+  slots: (string | null)[];
+  players: Map<string, PlayerCard>;
+  showLinks?: boolean;
+}) {
   const formation = getFormation(formationId);
   if (!formation) return null;
   return (
-    <PitchSurface className="w-full">
+    <PitchSurface className="w-full" links={showLinks ? linksFor(formationId, slots, players) : undefined}>
       {formation.slots.map((s, i) => (
         <div key={i} className="absolute -translate-x-1/2 -translate-y-1/2" style={{ left: `${s.x}%`, top: `${s.y}%` }}>
           <SlotChip player={slots[i] ? (players.get(slots[i]!) ?? null) : null} role={s.role} compact />

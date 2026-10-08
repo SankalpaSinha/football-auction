@@ -1,4 +1,4 @@
-import type { GameMode, RoomSettings } from '@fa/shared';
+import type { GameMode, RankedScore, RoomSettings } from '@fa/shared';
 import type { LotRecord, Participant } from './auction';
 
 /**
@@ -29,6 +29,7 @@ export interface GameStore {
   lotClosed(gameId: string, lot: LotRecord, participants: Participant[]): Promise<void>;
   auctionCompleted(gameId: string, participants: Participant[]): Promise<void>;
   lineupsFinalized(gameId: string, lineups: { userId: string; formationId: string; slots: string[] }[]): Promise<void>;
+  gameFinished(gameId: string, rankings: RankedScore[]): Promise<void>;
   roomClosed(roomId: string, status: 'FINISHED' | 'ABANDONED' | 'CLOSED', gameId: string | null): Promise<void>;
 }
 
@@ -41,5 +42,6 @@ export class NoopGameStore implements GameStore {
   async lotClosed() {}
   async auctionCompleted() {}
   async lineupsFinalized() {}
+  async gameFinished() {}
   async roomClosed() {}
 }

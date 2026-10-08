@@ -2,6 +2,9 @@ import { randomUUID } from 'node:crypto';
 import {
   DEFAULT_FORMATION,
   autoPick,
+  rankScores,
+  scoreSquad,
+  type RankedScore,
   getFormation,
   validateLineup,
   type LineupInput,
@@ -91,6 +94,10 @@ export class Room {
   private lineups = new Map<string, LineupState>();
   private squadEndsAt: number | null = null;
   private squadTimer: TimerHandle | null = null;
+  private evaluationTimer: TimerHandle | null = null;
+  private resultsAt: number | null = null;
+  private rankings: RankedScore[] | null = null;
+  private evaluatedAt: number | null = null;
   private persistChain: Promise<void> = Promise.resolve();
 
   constructor(
@@ -432,6 +439,7 @@ export class Room {
   private finalizeLineups() {
     if (this.phase !== 'SQUAD_BUILDING') return;
     this.squadTimer?.cancel();
+    this.evaluationTimer?.cancel();
     this.squadTimer = null;
     for (const [userId, state] of this.lineups) {
       if (state.locked) continue;
@@ -445,8 +453,35 @@ export class Room {
     const gameId = this.gameId!;
     const final = [...this.lineups].map(([userId, l]) => ({ userId, formationId: l.formationId, slots: [...l.slots] as string[] }));
     this.persist(() => this.deps.store.lineupsFinalized(gameId, final));
-    this.pushFeed('INFO', 'All lineups are in');
+    this.pushFeed('INFO', 'All lineups are in — evaluating squads…');
     this.deps.onEvent(this, { type: 'LINEUPS_REVEALED' });
+    this.evaluate();
+    this.changed();
+  }
+
+  /** Deterministic scoring. Computed now, shown after a short pause. */
+  private evaluate() {
+    const scores = this.participants.map((p) => {
+      const l = this.lineups.get(p.userId)!;
+      return { userId: p.userId, score: scoreSquad(p.squad, { formationId: l.formationId, slots: l.slots }) };
+    });
+    this.rankings = rankScores(scores);
+    this.evaluatedAt = this.deps.clock.now();
+    this.resultsAt = this.evaluatedAt + this.deps.rules.evaluationMs;
+    const gameId = this.gameId!;
+    const rankings = this.rankings;
+    this.persist(() => this.deps.store.gameFinished(gameId, rankings));
+    this.evaluationTimer = this.deps.clock.setTimeout(() => this.showResults(), this.deps.rules.evaluationMs);
+  }
+
+  private showResults() {
+    this.evaluationTimer = null;
+    this.resultsAt = null;
+    this.phase = 'RESULTS';
+    const winner = this.rankings![0];
+    const name = this.members.get(winner.userId)?.username ?? 'A manager';
+    this.pushFeed('INFO', `🏆 ${name} wins with ${winner.total}`, winner.userId);
+    this.deps.onEvent(this, { type: 'RESULTS', winnerId: winner.userId });
     this.changed();
   }
 
@@ -585,6 +620,8 @@ export class Room {
         this.phase !== 'SQUAD_BUILDING' && this.lineups.size
           ? Object.fromEntries([...this.lineups].map(([id, l]) => [id, { ...l }]))
           : null,
+      results: this.phase === 'RESULTS' && this.rankings ? { rankings: this.rankings, evaluatedAt: this.evaluatedAt! } : null,
+      resultsAt: this.phase === 'FINAL_EVALUATION' ? this.resultsAt : null,
       feed: this.feed.slice(-40),
       serverTime: this.deps.clock.now(),
       version: this.version,

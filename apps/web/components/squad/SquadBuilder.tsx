@@ -9,6 +9,7 @@ import {
   POSITION_GROUP,
   positionFit,
   remapLineup,
+  scoreSquad,
   summarizeLineup,
   validateLineup,
   ERROR_MESSAGES,
@@ -20,7 +21,7 @@ import { emit } from '@/lib/socket';
 import { serverNow, useGame } from '@/lib/store';
 import { PlayerAvatar } from '../PlayerAvatar';
 import { Avatar, Button, Logo, Pill, SoundToggle } from '../ui';
-import { FIT_STYLE, PitchSurface, SlotChip } from './Pitch';
+import { FIT_STYLE, LINK_COLOR, linksFor, PitchSurface, SlotChip } from './Pitch';
 
 type Selection = { kind: 'bench'; id: string } | { kind: 'slot'; index: number } | null;
 
@@ -67,6 +68,12 @@ export function SquadBuilder({ room, me }: { room: RoomView; me: string }) {
   const bench = squad.filter((p) => !starters.has(p.id));
   const complete = validateLineup({ formationId, slots }, squad, true);
   const partial = summary.filled > 0 && summary.filled < 11;
+  // Live preview with the same engine the server uses (the server's score is the one that counts).
+  const projected = useMemo(
+    () => (!complete && self ? scoreSquad(self.squad, { formationId, slots }) : null),
+    [complete, self, formationId, slots],
+  );
+  const pitchLinks = useMemo(() => linksFor(formationId, slots, byId), [formationId, slots, byId]);
 
   // ------------------------------------------------------------ editing
 
@@ -185,7 +192,7 @@ export function SquadBuilder({ room, me }: { room: RoomView; me: string }) {
             ))}
           </div>
 
-          <PitchSurface className="w-full" style={{ maxWidth: 'min(640px, calc((100dvh - 15rem) * 0.68))', minWidth: 'min(100%, 300px)' }}>
+          <PitchSurface className="w-full" links={pitchLinks} style={{ maxWidth: 'min(640px, calc((100dvh - 15rem) * 0.68))', minWidth: 'min(100%, 300px)' }}>
             {formation.slots.map((s, i) => {
               const id = slots[i];
               const player = id ? (byId.get(id) ?? null) : null;
@@ -229,10 +236,19 @@ export function SquadBuilder({ room, me }: { room: RoomView; me: string }) {
             </AnimatePresence>
           </PitchSurface>
 
-          <div className="grid w-full max-w-[640px] grid-cols-3 gap-2 text-center">
+          <div className="grid w-full max-w-[640px] grid-cols-4 gap-2 text-center">
+            <Stat label="Projected score" value={projected ? projected.total.toFixed(1) : '–'} hint="Preview — final scores are calculated by the server" accent />
             <Stat label="Avg OVR" value={summary.averageOverall ? summary.averageOverall.toFixed(1) : '–'} />
-            <Stat label="Effective OVR" value={summary.effectiveOverall ? summary.effectiveOverall.toFixed(1) : '–'} hint="After position fit" />
+            <Stat label="Chemistry" value={projected ? projected.breakdown.chemistry.toFixed(0) : '–'} />
             <Stat label="In position" value={`${summary.fit.NATURAL + summary.fit.SECONDARY}/${summary.filled || 11}`} />
+          </div>
+          <div className="flex w-full max-w-[640px] flex-wrap justify-center gap-x-4 gap-y-1 text-xs text-muted">
+            {(['STRONG', 'MEDIUM', 'WEAK'] as const).map((k) => (
+              <span key={k} className="inline-flex items-center gap-1.5">
+                <span className="h-0.5 w-4 rounded" style={{ background: LINK_COLOR[k] }} />
+                {k === 'STRONG' ? 'Strong link (club)' : k === 'MEDIUM' ? 'Link (nation / league)' : 'No link'}
+              </span>
+            ))}
           </div>
           <div className="flex w-full max-w-[640px] flex-wrap justify-center gap-x-4 gap-y-1 text-xs text-muted">
             {(Object.keys(FIT_STYLE) as (keyof typeof FIT_STYLE)[]).map((k) => (
@@ -408,10 +424,10 @@ function SquadRow({
   );
 }
 
-function Stat({ label, value, hint }: { label: string; value: string; hint?: string }) {
+function Stat({ label, value, hint, accent }: { label: string; value: string; hint?: string; accent?: boolean }) {
   return (
-    <div className="glass rounded-xl px-2 py-2" title={hint}>
-      <div className="display text-2xl font-extrabold num">{value}</div>
+    <div className={`glass rounded-xl px-2 py-2 ${accent ? 'ring-1 ring-volt/40' : ''}`} title={hint}>
+      <div className={`display text-2xl font-extrabold num ${accent ? 'text-volt' : ''}`}>{value}</div>
       <div className="text-[10px] font-semibold uppercase tracking-wider text-muted">{label}</div>
     </div>
   );

@@ -78,7 +78,13 @@ async function main() {
 
   await watcher.waitFor((v) => v.phase === 'SQUAD_BUILDING', 60 * 60_000);
   console.log('\n🏁 Auction complete — bots are picking lineups\n');
-  const final = await watcher.waitFor((v) => v.phase === 'FINAL_EVALUATION', 10 * 60_000);
+  const final = await watcher.waitFor((v) => v.phase === 'RESULTS', 10 * 60_000);
+  console.log('🏆 Results\n');
+  for (const r of final.results!.rankings) {
+    const name = final.members.find((m) => m.userId === r.userId)?.username;
+    console.log(`  ${r.rank}. ${String(name).padEnd(18)} ${r.total.toFixed(1)}  ${Object.entries(r.breakdown).map(([k, v]) => `${k} ${v}`).join(' · ')}`);
+  }
+  console.log('');
   for (const m of final.members) {
     const spent = m.squad.reduce((s, e) => s + e.price, 0);
     const gk = m.squad.filter((e) => e.player.position === 'GK').length;

@@ -16,7 +16,9 @@
     "sim": "tsx src/scripts/simulate.ts",
     "postinstall": "prisma generate",
     "images:fetch": "tsx src/scripts/fetchImages.ts",
-    "user:set-password": "tsx src/scripts/setPassword.ts"
+    "user:set-password": "tsx src/scripts/setPassword.ts",
+    "build": "node build.mjs",
+    "start:prod": "node dist/index.js"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.132.1",

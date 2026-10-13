@@ -30,6 +30,19 @@ export function Lobby({ room, me, onLeave, onJoin }: { room: RoomView; me: strin
     if (!r.ok) toast('error', r.error);
   }
 
+  // Phones get the native share sheet (WhatsApp, Messages…).
+  const [canShare, setCanShare] = useState(false);
+  useEffect(() => setCanShare(typeof navigator !== 'undefined' && !!navigator.share && matchMedia('(pointer: coarse)').matches), []);
+  function share() {
+    navigator
+      .share({
+        title: 'Football Auction',
+        text: `Join my ${room.competition.name} auction — room code ${room.code}`,
+        url: `${window.location.origin}/room/${room.code}`,
+      })
+      .catch(() => {});
+  }
+
   function copy(kind: 'code' | 'link') {
     const text = kind === 'code' ? room.code : `${window.location.origin}/room/${room.code}`;
     navigator.clipboard?.writeText(text).then(
@@ -82,8 +95,8 @@ export function Lobby({ room, me, onLeave, onJoin }: { room: RoomView; me: strin
               <Button variant="secondary" size="sm" onClick={() => copy('code')}>
                 {copied === 'code' ? 'Copied ✓' : 'Copy code'}
               </Button>
-              <Button variant="secondary" size="sm" onClick={() => copy('link')}>
-                {copied === 'link' ? 'Copied ✓' : 'Copy invite link'}
+              <Button variant="secondary" size="sm" onClick={() => (canShare ? share() : copy('link'))}>
+                {copied === 'link' ? 'Copied ✓' : canShare ? 'Share invite' : 'Copy invite link'}
               </Button>
             </div>
           </div>

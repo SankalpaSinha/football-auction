@@ -15,9 +15,9 @@ COPY apps/web/package.json apps/web/
 ARG DATABASE_URL=postgresql://build:build@localhost:5432/build
 RUN DATABASE_URL=$DATABASE_URL npm ci --no-audit --no-fund
 
-# App source + data, then build the website.
+# App source + data, then build the website and bundle the server.
 COPY . .
-RUN npm run build -w @fa/web
+RUN npm run build -w @fa/web && npm run build -w @fa/server
 
 # Don't run as root.
 RUN chown -R node:node /app
@@ -32,4 +32,4 @@ EXPOSE 8080
 WORKDIR /app/apps/server
 
 # On every start: apply migrations, seed player data on the very first boot, run the server.
-CMD ["sh", "-c", "npx prisma migrate deploy && npx tsx src/scripts/import.ts --if-empty && exec npx tsx src/index.ts"]
+CMD ["sh", "-c", "npx prisma migrate deploy && node dist/import.js --if-empty && exec node dist/index.js"]

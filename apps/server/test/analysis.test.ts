@@ -94,3 +94,22 @@ describe('AI commentary (optional)', () => {
     expect(JSON.parse(params.messages[0].content).headline).toBe('A wins');
   });
 });
+
+describe('report wording', () => {
+  it('keeps player names capitalised mid-sentence', async () => {
+    const { buildMatchReport } = await import('@fa/shared');
+    const base = { breakdown: { quality: 70, positionFit: 80, tactics: 80, chemistry: 60, balance: 90, depth: 60, efficiency: 90 }, lines: { gk: 80, def: 80, mid: 80, att: 80 }, tactics: [], links: [], bestPlayerId: null, bestBuy: null, worstBuy: null, spent: 100 };
+    const report = buildMatchReport(
+      [
+        { ...base, userId: 'a', rank: 1, total: 80, notes: [{ kind: 'weakness', text: 'Baleba is out of position at ST' }] },
+        { ...base, userId: 'b', rank: 2, total: 70, notes: [{ kind: 'weakness', text: 'Thin squad: only 1 goalkeeper option' }] },
+      ],
+      [
+        { userId: 'a', username: 'A', squad: [] },
+        { userId: 'b', username: 'B', squad: [] },
+      ],
+    );
+    expect(report.summary).toContain('Baleba is out of position');
+    expect(report.verdicts.b).toContain('weak spot: thin squad');
+  });
+});

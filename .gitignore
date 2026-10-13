@@ -1,9 +1,9 @@
-node_modules
-.next
-.env
-.env.local
-dist
-apps/server/src/generated
 *.log
 .DS_Store
+.env
+.env.local
+.next
+apps/server/src/generated
 coverage
+dist
+node_modules

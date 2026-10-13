@@ -153,11 +153,13 @@ export function buildMatchReport(
     const weakness = r.notes.find((n) => n.kind === 'weakness');
     verdicts[r.userId] =
       `Best at ${COMPONENT_NAMES[best]} (${r.breakdown[best].toFixed(0)}); ` +
-      (weakness ? `let down by ${lowerFirst(weakness.text)}.` : `weakest area was ${COMPONENT_NAMES[worst]} (${r.breakdown[worst].toFixed(0)}).`) +
+      (weakness ? `weak spot: ${lowerFirst(weakness.text)}.` : `weakest area was ${COMPONENT_NAMES[worst]} (${r.breakdown[worst].toFixed(0)}).`) +
       (r.bestPlayerId ? ` Star man: ${pname(r.bestPlayerId)}.` : '');
   }
 
   return { headline, summary: sentences.join(' '), awards, verdicts };
 }
 
-const lowerFirst = (s: string) => (s ? s[0].toLowerCase() + s.slice(1) : s);
+/** Lower-case a note's first letter to embed it mid-sentence — unless it starts with a name. */
+const TEMPLATE_STARTS = ['Thin', 'Lopsided', 'Unbalanced', 'Defensive', 'Pace', 'Midfield', 'Protection', 'Attacking', 'Creativity'];
+const lowerFirst = (s: string) => (TEMPLATE_STARTS.some((w) => s.startsWith(w + ' ')) ? s[0].toLowerCase() + s.slice(1) : s);

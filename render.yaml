@@ -1,0 +1,15 @@
+# Render Blueprint — free web service running the production Docker image.
+# Database: a free Neon Postgres (paste its *direct* connection string as DATABASE_URL).
+services:
+  - type: web
+    name: football-auction
+    runtime: docker
+    plan: free
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /api/health
+    autoDeploy: true
+    envVars:
+      - key: DATABASE_URL
+        sync: false # set in the Render dashboard
+      - key: TRUST_PROXY
+        value: "1"

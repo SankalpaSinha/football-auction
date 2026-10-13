@@ -165,7 +165,11 @@ export function BidPanel({ room, lot, me, remainingMs }: { room: RoomView; lot: 
 
       <div className="flex min-h-5 items-center justify-between text-xs">
         <span className={blocker && !leading ? 'font-semibold text-amber-200' : 'text-dim'}>
-          {leading ? 'Hold tight — anyone can still outbid you' : (blocker ?? 'Keys: 1–4 quick bid · S skip')}
+          {leading ? (
+            'Hold tight — anyone can still outbid you'
+          ) : (
+            blocker ?? <span className="hidden md:inline">Keys: 1–4 quick bid · S skip</span>
+          )}
         </span>
         <span className="text-dim">
           Max bid <span className="font-bold text-ink num">{coins(me?.maxBid)}</span>

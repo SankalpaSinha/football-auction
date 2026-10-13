@@ -224,7 +224,7 @@ function WinnerHero({ room, winner, name, isMe, animate }: { room: RoomView; win
         initial={animate ? { opacity: 0, y: 30, scale: 0.9 } : false}
         animate={{ opacity: 1, y: 0, scale: 1 }}
         transition={{ delay: 0.5 * d, type: 'spring', stiffness: 120 }}
-        className="display mt-1 text-6xl font-extrabold sm:text-8xl"
+        className="display mt-1 break-all text-[clamp(2.4rem,11vw,6rem)] font-extrabold leading-[0.95]"
       >
         {name}
       </motion.h1>

@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from 'next';
 import { Barlow_Condensed, Inter, JetBrains_Mono } from 'next/font/google';
+import { Credit } from '@/components/Credit';
 import { Providers } from '@/components/Providers';
 import './globals.css';
 
@@ -10,15 +11,19 @@ const mono = JetBrains_Mono({ subsets: ['latin'], weight: ['500', '700'], variab
 export const metadata: Metadata = {
   title: 'Football Auction',
   description: 'Live multiplayer football auction — bid, build your 15, outsmart your friends.',
+  appleWebApp: { capable: true, title: 'Football Auction', statusBarStyle: 'black-translucent' },
 };
 
-export const viewport: Viewport = { themeColor: '#05070d', width: 'device-width', initialScale: 1 };
+export const viewport: Viewport = { themeColor: '#05070d', width: 'device-width', initialScale: 1, viewportFit: 'cover' };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" className={`${barlow.variable} ${inter.variable} ${mono.variable}`}>
       <body>
-        <Providers>{children}</Providers>
+        <Providers>
+          {children}
+          <Credit />
+        </Providers>
       </body>
     </html>
   );

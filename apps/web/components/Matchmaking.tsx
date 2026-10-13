@@ -51,7 +51,7 @@ export function PlayNow() {
           <select
             value={competitionId}
             onChange={(e) => setCompetitionId(e.target.value)}
-            className="h-12 rounded-xl border border-white/10 bg-night px-3 text-sm font-semibold outline-none focus:border-volt/60"
+            className="h-12 rounded-xl border border-white/10 bg-night px-3 text-base font-semibold outline-none focus:border-volt/60 sm:text-sm"
             aria-label="Preferred competition"
           >
             <option value="">Any competition</option>

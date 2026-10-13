@@ -9,6 +9,7 @@ import {
   POSITION_GROUP,
   positionFit,
   remapLineup,
+  roleRating,
   scoreSquad,
   summarizeLineup,
   validateLineup,
@@ -36,6 +37,7 @@ export function SquadBuilder({ room, me }: { room: RoomView; me: string }) {
   const [formationId, setFormationId] = useState(mine?.formationId ?? '4-3-3');
   const [slots, setSlots] = useState<(string | null)[]>(mine?.slots ?? Array(11).fill(null));
   const [selected, setSelected] = useState<Selection>(null);
+  const [picker, setPicker] = useState<number | null>(null);
   const [busy, setBusy] = useState(false);
   const locked = !!mine?.locked;
   const formation = getFormation(formationId)!;
@@ -128,7 +130,17 @@ export function SquadBuilder({ room, me }: { room: RoomView; me: string }) {
       if (selected.index === index) return setSelected(null);
       return swapSlots(selected.index, index);
     }
-    setSelected({ kind: 'slot', index });
+    // Nothing selected: open the picker for this position (one tap on phones).
+    setPicker(index);
+  }
+
+  /** From the picker: put this player in the slot (swapping if they're already in the XI). */
+  function pickFor(index: number, id: string) {
+    const current = slots.indexOf(id);
+    if (current === index) return setPicker(null);
+    if (current >= 0) swapSlots(current, index);
+    else placeBench(id, index);
+    setPicker(null);
   }
 
   function clickBench(id: string) {
@@ -381,6 +393,24 @@ export function SquadBuilder({ room, me }: { room: RoomView; me: string }) {
         </aside>
       </main>
 
+      <AnimatePresence>
+        {picker !== null && (
+          <SlotPicker
+            role={formation.slots[picker].role}
+            current={slots[picker]}
+            squad={squad}
+            slots={slots}
+            formationRoles={formation.slots.map((x) => x.role)}
+            onPick={(id) => pickFor(picker, id)}
+            onRemove={() => {
+              removeFromSlot(picker);
+              setPicker(null);
+            }}
+            onClose={() => setPicker(null)}
+          />
+        )}
+      </AnimatePresence>
+
       {/* phones: keep the primary action in reach */}
       <div className="sticky bottom-0 z-30 border-t border-white/10 bg-night/90 px-3 py-2.5 backdrop-blur-xl lg:hidden">
         {locked ? (
@@ -470,3 +500,103 @@ function Deadline({ endsAt }: { endsAt: number }) {
     </span>
   );
 }
+
+const FIT_RANK = { NATURAL: 0, SECONDARY: 1, COMPATIBLE: 2, OUT_OF_POSITION: 3, EXTREME: 4 } as const;
+
+/** Bottom sheet (phones) / dialog (desktop) to choose who plays in one position. */
+function SlotPicker({
+  role,
+  current,
+  squad,
+  slots,
+  formationRoles,
+  onPick,
+  onRemove,
+  onClose,
+}: {
+  role: PlayerCard['position'];
+  current: string | null;
+  squad: PlayerCard[];
+  slots: (string | null)[];
+  formationRoles: PlayerCard['position'][];
+  onPick: (id: string) => void;
+  onRemove: () => void;
+  onClose: () => void;
+}) {
+  const options = squad
+    .map((p) => ({ p, fit: positionFit(p, role), rating: roleRating(p, role) }))
+    .sort((a, b) => FIT_RANK[a.fit.level] - FIT_RANK[b.fit.level] || b.rating - a.rating);
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && onClose();
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [onClose]);
+  return (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      className="fixed inset-0 z-50 flex items-end justify-center bg-night/70 backdrop-blur-sm sm:items-center"
+      onClick={onClose}
+    >
+      <motion.div
+        role="dialog"
+        aria-label={`Choose a player for ${role}`}
+        initial={{ y: 60 }}
+        animate={{ y: 0 }}
+        exit={{ y: 60 }}
+        transition={{ type: 'spring', stiffness: 320, damping: 30 }}
+        onClick={(e) => e.stopPropagation()}
+        className="flex max-h-[80dvh] w-full max-w-md flex-col rounded-t-3xl border border-white/10 bg-deep p-4 pb-[max(1rem,env(safe-area-inset-bottom))] sm:rounded-3xl"
+      >
+        <div className="mx-auto mb-3 h-1 w-10 rounded-full bg-white/20 sm:hidden" />
+        <div className="mb-3 flex items-center justify-between">
+          <h3 className="display text-2xl font-extrabold">
+            Who plays <span className="text-volt">{role}</span>?
+          </h3>
+          <button onClick={onClose} className="rounded-lg px-3 py-1.5 text-sm text-muted hover:bg-white/5" aria-label="Close">
+            ✕
+          </button>
+        </div>
+        <ul className="scrollbar-thin -mx-1 flex-1 space-y-1 overflow-y-auto px-1">
+          {options.map(({ p, fit, rating }) => {
+            const at = slots.indexOf(p.id);
+            const isCurrent = p.id === current;
+            return (
+              <li key={p.id}>
+                <button
+                  onClick={() => onPick(p.id)}
+                  className={`flex w-full items-center gap-3 rounded-xl px-2.5 py-2 text-left transition active:scale-[0.99] ${
+                    isCurrent ? 'bg-volt/15 ring-1 ring-volt' : 'bg-white/[.03] hover:bg-white/[.07]'
+                  }`}
+                >
+                  <PlayerAvatar player={p} size={36} />
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate font-semibold">{p.shortName}</span>
+                    <span className="text-xs text-muted">
+                      {p.position}
+                      {p.secondaryPositions.length ? ` · ${p.secondaryPositions.join('/')}` : ''} ·{' '}
+                      {at >= 0 ? (isCurrent ? 'here now' : `in XI at ${formationRoles[at]}`) : 'bench'}
+                    </span>
+                  </span>
+                  <span className="text-right">
+                    <span className="display block text-xl font-extrabold leading-none num">{Math.round(rating)}</span>
+                    <span className="text-[10px] font-bold uppercase" style={{ color: FIT_STYLE[fit.level].color }}>
+                      {FIT_STYLE[fit.level].label}
+                    </span>
+                  </span>
+                </button>
+              </li>
+            );
+          })}
+        </ul>
+        {current && (
+          <button onClick={onRemove} className="mt-3 h-11 rounded-xl border border-white/10 text-sm font-semibold text-muted hover:bg-white/5">
+            Move to bench
+          </button>
+        )}
+      </motion.div>
+    </motion.div>
+  );
+}
+

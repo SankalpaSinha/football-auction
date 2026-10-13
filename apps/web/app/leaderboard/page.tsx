@@ -60,10 +60,10 @@ export default function LeaderboardPage() {
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-white/10 text-left text-[11px] uppercase tracking-wider text-muted">
-              <th className="px-4 py-3">Rank</th>
+              <th className="px-3 py-3 sm:px-4">Rank</th>
               <th className="px-2 py-3">Manager</th>
               {mode === 'RANKED' && <th className="px-2 py-3 text-right">ELO</th>}
-              <th className="px-2 py-3 text-right">Games</th>
+              <th className="hidden px-2 py-3 text-right sm:table-cell">Games</th>
               <th className="px-2 py-3 text-right">Wins</th>
               <th className="hidden px-2 py-3 text-right md:table-cell">Podiums</th>
               <th className="hidden px-2 py-3 text-right sm:table-cell">Win %</th>
@@ -80,16 +80,16 @@ export default function LeaderboardPage() {
                 transition={{ delay: Math.min(i, 20) * 0.02 }}
                 className={`border-b border-white/5 last:border-0 ${r.username === me ? 'bg-volt/[.07]' : 'hover:bg-white/[.03]'}`}
               >
-                <td className="display px-4 py-2.5 text-xl font-extrabold">{MEDAL[i] ?? r.rank}</td>
+                <td className="display px-3 py-2.5 text-xl font-extrabold sm:px-4">{MEDAL[i] ?? r.rank}</td>
                 <td className="px-2 py-2.5">
-                  <Link href={`/u/${r.username}`} className="flex items-center gap-2.5 font-semibold hover:text-volt">
+                  <Link href={`/u/${r.username}`} className="flex min-w-0 items-center gap-2.5 font-semibold hover:text-volt">
                     <Avatar name={r.username} size={28} />
                     <span className="truncate">{r.username}</span>
                     {r.username === me && <span className="text-xs text-muted">(you)</span>}
                   </Link>
                 </td>
                 {mode === 'RANKED' && <td className="display px-2 py-2.5 text-right text-xl font-extrabold text-volt num">{r.elo}</td>}
-                <td className="px-2 py-2.5 text-right num">{r.games}</td>
+                <td className="hidden px-2 py-2.5 text-right num sm:table-cell">{r.games}</td>
                 <td className="px-2 py-2.5 text-right num">{r.wins}</td>
                 <td className="hidden px-2 py-2.5 text-right num md:table-cell">{r.podiums}</td>
                 <td className="hidden px-2 py-2.5 text-right num sm:table-cell">{r.winRate}%</td>

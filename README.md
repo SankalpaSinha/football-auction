@@ -46,7 +46,7 @@ The web app connects to `<same host>:4000`, so a friend on your Wi-Fi can open `
 ### Tests
 
 ```bash
-npm test            # 89 tests: auction, lineups, scoring, ELO, accounts, matchmaking, spectators, achievements, full games over real sockets
+npm test            # 92 tests: auction, lineups, scoring, ELO, accounts, matchmaking, spectators, achievements, full games over real sockets
 npm run typecheck
 ```
 
@@ -69,6 +69,13 @@ The production image (`Dockerfile`) is a **single service**: the game server als
 | `CLIENT_ORIGIN` | Only if the website is hosted separately |
 
 **Must run as exactly one instance.** Live games are held in memory. A redeploy or restart ends games in progress (players see a clear message, and accounts, stats and finished games are kept). Scaling out needs a shared store such as Redis, which isn't built yet.
+
+**Free hosting: Render + Neon** (`render.yaml` is included):
+
+1. **Neon** (free Postgres, no expiry): create a project, then copy the **direct** connection string (connection pooling off, `?sslmode=require`).
+2. **GitHub:** push this repository.
+3. **Render:** go to New → Blueprint, pick the repo, and paste the Neon string as `DATABASE_URL`. The first deploy builds the image, runs migrations and seeds the players.
+4. Free Render services sleep after 15 minutes without traffic, and the first visit after that takes about a minute to wake. To keep it awake, add a free uptime monitor (for example UptimeRobot) that hits `https://<your-app>.onrender.com/api/health` every 5 minutes. One always-on service fits within Render's 750 free hours a month.
 
 **Railway** (`railway.json` is included): create a project, add PostgreSQL, deploy this folder, then set `DATABASE_URL=${{Postgres.DATABASE_URL}}` and `TRUST_PROXY=1`, and generate a domain.
 
@@ -202,6 +209,7 @@ data/
 - [x] **Phase 5:** results reveal, written match analysis, room awards, best buy and overpay, optional AI commentary
 - [x] **Phase 6:** profiles, match history, ELO, leaderboard, ranked mode, public rooms, "Play now" matchmaking
 - [x] **Phase 7:** spectator mode, achievements, profile statistics (score trend, transfer habits, formations), 3D card tilt, outbid shake
+- [x] **Mobile:** one-tap position picker, native share for invites, Add to Home Screen, no iOS input zoom, responsive results and leaderboard
 
 Future ideas (designed for, not built): tournaments and brackets, friends, chat and voice, replays, daily and weekly challenges, legends, women's football, draft mode, trading.
 

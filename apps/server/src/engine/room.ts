@@ -460,7 +460,8 @@ export class Room {
     state.slots = [...input.slots];
     state.locked = true;
     const name = this.members.get(userId)!.username;
-    this.pushFeed('LOCK', `${name} locked in a ${input.formationId}`, userId);
+    // Don't reveal the formation before everyone has locked in.
+    this.pushFeed('LOCK', `${name} locked in their lineup`, userId);
     this.deps.onEvent(this, { type: 'LINEUP_LOCKED', userId });
     if ([...this.lineups.values()].every((l) => l.locked)) this.finalizeLineups();
     else this.changed();
@@ -504,7 +505,10 @@ export class Room {
       return { userId: p.userId, score: scoreSquad(p.squad, { formationId: l.formationId, slots: l.slots }) };
     });
     this.rankings = rankScores(scores);
-    if (this.settings.mode === 'RANKED') {
+    if (this.settings.mode === 'RANKED' && !this.ratings) {
+      // Never guess ratings: without the real starting ratings this game doesn't move ELO.
+      this.pushFeed('INFO', 'Ratings could not be loaded — ELO was not changed for this game');
+    } else if (this.settings.mode === 'RANKED') {
       this.ratingChanges = computeEloChanges(
         this.rankings.map((r) => ({
           userId: r.userId,
@@ -628,6 +632,7 @@ export class Room {
     this.hostTimer?.cancel();
     this.abandonTimer?.cancel();
     this.squadTimer?.cancel();
+    this.evaluationTimer?.cancel();
     for (const m of this.members.values()) m.removalTimer?.cancel();
     this.auction?.dispose();
     const gameId = this.gameId;

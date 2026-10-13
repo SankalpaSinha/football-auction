@@ -117,7 +117,7 @@ describe('disconnect / reconnect', () => {
     h.room.setConnected('u1', false);
     h.room.setConnected('u2', false);
     expect(h.room.view().auction!.paused).toBe(true);
-    h.clock.advance(60_000);
+    h.clock.advance(30_000);
     expect(h.room.phase).toBe('AUCTION');
     h.room.setConnected('u2', true);
     const lot = h.lot();
@@ -151,4 +151,30 @@ describe('disconnect / reconnect', () => {
     h.room.skip('u2', lot.lotNumber);
     expect(h.room.view().auction!.lastResult!.winnerId).toBe('u1');
   });
+
+  it('a rage-quit cannot freeze the game: absent squads are completed', () => {
+    const h = createHarness({ players: 2 });
+    h.room.leave('u2'); // u2 walks out mid-auction
+    // u1 fills their squad; u2 is offline and treated as passing.
+    for (let guard = 0; guard < 400 && h.member('u1').squad.length < 15; guard++) {
+      if (h.room.phase === 'PLAYER_SOLD') {
+        nextLot(h);
+        continue;
+      }
+      const lot = h.lot();
+      try {
+        h.room.bid('u1', lot.lotNumber, lot.minNextBid);
+      } catch {
+        h.room.skip('u1', lot.lotNumber);
+      }
+      if (h.room.view().auction?.lot?.lotNumber === lot.lotNumber) h.room.skip('u1', lot.lotNumber);
+    }
+    nextLot(h);
+    expect(h.room.view().auction!.paused).toBe(true); // only the absent manager still needs players
+    h.clock.advance(testRules().absentAutoFillMs);
+    expect(h.room.phase).toBe('SQUAD_BUILDING');
+    expect(h.member('u2').squad).toHaveLength(15);
+    expect(h.member('u2').squad.some((e) => e.player.position === 'GK')).toBe(true);
+  });
 });
+

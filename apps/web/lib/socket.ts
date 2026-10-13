@@ -41,6 +41,8 @@ export function connectSocket(token: string): GameSocket {
   const s: GameSocket = io(serverUrl(), {
     auth: { token },
     transports: ['websocket', 'polling'],
+    // Fall back to HTTP long-polling on networks that block WebSockets.
+    tryAllTransports: true,
     reconnectionDelay: 500,
     reconnectionDelayMax: 4000,
   });
@@ -56,15 +58,20 @@ export function connectSocket(token: string): GameSocket {
   });
   s.io.on('reconnect_attempt', () => useGame.getState().setConnection('reconnecting'));
   s.on('connect_error', (err) => {
-    useGame.getState().setConnection(err.message === 'UNAUTHENTICATED' ? 'error' : 'reconnecting');
+    if (err.message === 'UNAUTHENTICATED') return useGame.getState().setConnection('error');
+    useGame.getState().setConnection('reconnecting');
+    // Errors raised by server middleware (e.g. a database hiccup) don't auto-retry — do it ourselves.
+    if (!s.active) setTimeout(() => s.connect(), 2500);
   });
   s.on('room:state', (view) => useGame.getState().setRoom(view));
   s.on('room:event', (e) => {
+    // Only the room on screen makes noise.
+    if (!useGame.getState().activeCode) return;
     useGame.getState().pushEvent(e);
     sound.onEvent(e, useGame.getState().session?.user.id ?? '');
   });
-  s.on('room:closed', ({ reason }) => {
-    useGame.getState().setRoomClosed(reason);
+  s.on('room:closed', ({ code, reason }) => {
+    if (code === useGame.getState().activeCode) useGame.getState().setRoomClosed(reason);
   });
   s.on('session:replaced', () => {
     useGame.getState().setConnection('replaced');

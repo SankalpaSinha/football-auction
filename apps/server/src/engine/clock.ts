@@ -12,7 +12,14 @@ export interface Clock {
 export const systemClock: Clock = {
   now: () => Date.now(),
   setTimeout(fn, ms) {
-    const t = setTimeout(fn, Math.max(0, ms));
+    // Game timers run outside any request handler: a bug in one room must never crash the server.
+    const t = setTimeout(() => {
+      try {
+        fn();
+      } catch (err) {
+        console.error('Game timer failed:', err);
+      }
+    }, Math.max(0, ms));
     return { cancel: () => clearTimeout(t) };
   },
 };

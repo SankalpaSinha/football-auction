@@ -44,7 +44,7 @@ export function ScoreTrend({ trend }: { trend: ProfileView['trend'] }) {
       <svg
         ref={ref}
         viewBox={`0 0 ${W} ${H}`}
-        className="w-full touch-none"
+        className="w-full touch-pan-y"
         role="img"
         aria-label={`Squad score over the last ${trend.length} games, from ${trend[0].score} to ${trend[trend.length - 1].score}`}
         onPointerMove={onMove}

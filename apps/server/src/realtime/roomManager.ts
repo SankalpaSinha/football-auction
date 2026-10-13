@@ -72,6 +72,8 @@ export class RoomManager {
 
   create(user: SessionUser, input: CreateRoomInput): Room {
     if (input.mode === 'RANKED' && input.startingBudget !== GAME_RULES.defaultBudget) fail('RANKED_SETTINGS');
+    // Ranked rooms are always public (harder to farm ELO against your own alt accounts).
+    if (input.mode === 'RANKED') input = { ...input, isPublic: true };
     const meta = this.deps.catalog.meta(input.competitionId, input.seasonId) ?? fail('COMPETITION_UNAVAILABLE');
     const pool = this.deps.catalog.resolvePool(input.competitionId, input.seasonId) ?? fail('COMPETITION_UNAVAILABLE');
     const gks = pool.filter((p) => p.position === 'GK').length;
@@ -79,6 +81,7 @@ export class RoomManager {
     if (this.rooms.size >= this.deps.maxRooms) fail('TOO_MANY_ROOMS', 'The server is full right now — try again soon.');
     if (!this.createLimiter.take(user.id)) fail('TOO_MANY_ROOMS');
     this.leaveCurrentRoomForSwitch(user.id, null);
+    this.stopWatching(user.id);
 
     const settings: RoomSettings = {
       competitionId: input.competitionId,
@@ -102,7 +105,12 @@ export class RoomManager {
       commentator: this.deps.commentator,
       log: this.deps.log,
       onChange: (r) => this.markDirty(r),
-      onEvent: (r, e) => this.io.to(roomChannel(r.code)).emit('room:event', e),
+      onEvent: (r, e) => {
+        this.io.to(roomChannel(r.code)).emit('room:event', e);
+        if (e.type === 'RESULTS') {
+          for (const c of r.view().results?.ratingChanges ?? []) this.elo.set(c.userId, c.after);
+        }
+      },
       onClosed: (r, reason) => this.onClosed(r, reason),
       onMemberRemoved: (r, userId) => {
         if (this.userRoom.get(userId) === r.code) this.userRoom.delete(userId);
@@ -122,8 +130,10 @@ export class RoomManager {
       if (!room.isLobby) fail('GAME_IN_PROGRESS');
       if (room.memberCount >= room.settings.maxPlayers) fail('ROOM_FULL');
     }
+    // Always detach from any other room first — even when rejoining a room you already
+    // belong to — so a user is never "connected" in two rooms at once.
+    this.leaveCurrentRoomForSwitch(user.id, code);
     this.stopWatching(user.id);
-    if (!room.hasMember(user.id)) this.leaveCurrentRoomForSwitch(user.id, code);
     room.join(user);
     this.userRoom.set(user.id, code);
     this.io.in(userChannel(user.id)).socketsJoin(roomChannel(code));
@@ -135,11 +145,18 @@ export class RoomManager {
   spectate(user: SessionUser, code: string): { room: Room; role: 'member' | 'spectator' } {
     const room = this.rooms.get(code) ?? fail('ROOM_NOT_FOUND');
     if (room.hasMember(user.id)) return { room: this.join(user, code), role: 'member' };
+    this.leaveCurrentRoomForSwitch(user.id, null);
     this.stopWatching(user.id);
     room.addSpectator(user.id);
     this.watching.set(user.id, code);
     this.io.in(userChannel(user.id)).socketsJoin([roomChannel(code), spectateChannel(code)]);
     return { room, role: 'spectator' };
+  }
+
+  /** A new socket for someone already watching: put it back in the spectator channels. */
+  reattachSpectator(userId: string) {
+    const code = this.watching.get(userId);
+    if (code && this.rooms.has(code)) this.io.in(userChannel(userId)).socketsJoin([roomChannel(code), spectateChannel(code)]);
   }
 
   stopWatching(userId: string) {
@@ -287,11 +304,15 @@ export class RoomManager {
       // Each manager gets their own snapshot (their lineup draft is private).
       for (const r of rooms) {
         if (r.closed) continue;
+        try {
         for (const userId of r.memberIds()) {
           if (this.userRoom.get(userId) === r.code) this.io.to(userChannel(userId)).emit('room:state', r.view(userId));
         }
         // Spectators share one public snapshot (no private lineups).
         this.io.to(spectateChannel(r.code)).emit('room:state', r.view());
+        } catch (err) {
+          this.deps.log(`[room ${r.code}] broadcast failed`, err);
+        }
       }
     });
   }

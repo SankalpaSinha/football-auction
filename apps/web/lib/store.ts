@@ -16,7 +16,11 @@ interface GameStore {
   sessionLoaded: boolean;
   connection: ConnectionState;
   room: RoomView | null;
+  /** Room code of the room page currently on screen; updates for other rooms are ignored. */
+  activeCode: string | null;
   roomClosed: string | null;
+  /** True once the clock offset has been measured (or seeded from a snapshot). */
+  clockSynced: boolean;
   /** serverTime - Date.now() */
   clockOffset: number;
   lastEvent: (GameEvent & { at: number }) | null;
@@ -26,6 +30,7 @@ interface GameStore {
   setSession(s: StoredSession | null): void;
   setConnection(c: ConnectionState): void;
   setRoom(r: RoomView | null): void;
+  setActiveCode(code: string | null): void;
   setRoomClosed(reason: string | null): void;
   setClockOffset(o: number): void;
   pushEvent(e: GameEvent): void;
@@ -41,7 +46,9 @@ export const useGame = create<GameStore>((set, get) => ({
   sessionLoaded: false,
   connection: 'idle',
   room: null,
+  activeCode: null,
   roomClosed: null,
+  clockSynced: false,
   clockOffset: 0,
   lastEvent: null,
   toasts: [],
@@ -49,14 +56,18 @@ export const useGame = create<GameStore>((set, get) => ({
 
   setSession: (session) => set({ session, sessionLoaded: true }),
   setConnection: (connection) => set({ connection }),
+  setActiveCode: (activeCode) => set({ activeCode }),
   setRoom: (room) => {
     const cur = get().room;
+    if (room && get().activeCode && room.code !== get().activeCode) return;
+    // Until the NTP-style sync finishes, seed the offset from the snapshot's server time.
+    if (room && !get().clockSynced) set({ clockOffset: room.serverTime - Date.now() });
     // Ignore out-of-order snapshots for the same room.
     if (room && cur && cur.id === room.id && room.version < cur.version) return;
     set({ room });
   },
   setRoomClosed: (roomClosed) => set({ roomClosed }),
-  setClockOffset: (clockOffset) => set({ clockOffset }),
+  setClockOffset: (clockOffset) => set({ clockOffset, clockSynced: true }),
   pushEvent: (e) => set({ lastEvent: { ...e, at: Date.now() } }),
   toast: (kind, text) => {
     const id = ++toastSeq;

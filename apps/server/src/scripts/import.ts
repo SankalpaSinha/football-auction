@@ -4,6 +4,7 @@
  *   npm run db:import                                  # every season under data/seed
  *   npm run db:import -- --season 2026-27              # one season
  *   npm run db:import -- --season 2026-27 --file my-players.json   # custom CSV/JSON file
+ *   npm run db:import -- --if-empty                    # only when the database has no players (first deploy)
  *
  * Idempotent: re-running updates existing rows. Players that disappear from a
  * season's dataset are marked INACTIVE (kept for match history).
@@ -31,6 +32,11 @@ const file = arg('file') ? resolve(process.cwd(), arg('file')!) : undefined;
 
 async function main() {
   const db = createDb();
+  if (args.includes('--if-empty') && (await db.playerStats.count()) > 0) {
+    console.log('Player data already present — skipping import.');
+    await db.$disconnect();
+    return;
+  }
   const seasons = loadSeasons(dataDir).filter(
     (s) => seasonIdsOnDisk(dataDir).includes(s.id) && (!onlySeason || s.id === onlySeason),
   );

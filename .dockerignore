@@ -1,0 +1,9 @@
+**/node_modules
+**/.next
+apps/server/src/generated
+.git
+**/*.log
+**/.env
+**/.env.local
+.DS_Store
+coverage

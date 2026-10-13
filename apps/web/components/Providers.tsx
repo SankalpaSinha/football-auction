@@ -14,9 +14,14 @@ export function Providers({ children }: { children: React.ReactNode }) {
     try {
       if (localStorage.getItem('fa.sound') === '0') useGame.getState().setSound(false);
     } catch {}
+    // Every gesture re-arms audio: iOS suspends it after interruptions (calls, screen lock).
     const unlock = () => sound.unlock();
-    window.addEventListener('pointerdown', unlock, { once: true });
-    return () => window.removeEventListener('pointerdown', unlock);
+    window.addEventListener('pointerdown', unlock);
+    window.addEventListener('keydown', unlock);
+    return () => {
+      window.removeEventListener('pointerdown', unlock);
+      window.removeEventListener('keydown', unlock);
+    };
   }, [setSession]);
 
   useEffect(() => {
@@ -41,7 +46,7 @@ function Toaster() {
     warn: 'border-amber/50 bg-amber/10 text-amber-50',
   };
   return (
-    <div className="pointer-events-none fixed inset-x-0 top-3 z-[100] flex flex-col items-center gap-2 px-4">
+    <div role="status" aria-live="polite" className="pointer-events-none fixed inset-x-0 top-3 z-[100] flex flex-col items-center gap-2 px-4">
       <AnimatePresence>
         {toasts.map((t) => (
           <motion.button

@@ -55,28 +55,53 @@ async function main() {
 
   const catalog = new InMemoryCatalog(data);
   if (db) stats = new StatsService(db, catalog);
-  const originEnv = env.CLIENT_ORIGIN ?? 'http://localhost:3000';
-  const origins = originEnv === '*' ? true : originEnv.split(',').map((s) => s.trim());
+  // Production: SERVE_WEB=1 serves the built site from this same process (one domain, no CORS needed).
+  const serveWeb = env.SERVE_WEB === '1';
+  let webHandler: Parameters<typeof createApp>[0]['webHandler'];
+  if (serveWeb) {
+    const { default: next } = await import('next');
+    const web = next({ dev: false, dir: resolve(process.cwd(), env.WEB_DIR ?? '../web') });
+    await web.prepare();
+    const handle = web.getRequestHandler();
+    webHandler = (req, res) => handle(req, res);
+  }
+
+  const originEnv = env.CLIENT_ORIGIN ?? (serveWeb ? '' : 'http://localhost:3000');
+  const origins: string[] | boolean =
+    originEnv === '*' ? true : originEnv === '' ? false : originEnv.split(',').map((s) => s.trim());
   const commentator = commentatorFromEnv();
-  const server = createApp({ catalog, users, store, clock: systemClock, rules, corsOrigins: origins, commentator, stats });
+  const trustProxy = Number(env.TRUST_PROXY ?? 0) || 0;
+  const server = createApp({ catalog, users, store, clock: systemClock, rules, corsOrigins: origins, commentator, stats, webHandler, trustProxy });
   const actualPort = await server.listen(port);
 
   const comps = catalog.competitions();
-  console.log(`⚽ Football Auction server on http://localhost:${actualPort} (${storage})`);
+  console.log(`⚽ Football Auction server on http://localhost:${actualPort} (${storage}${serveWeb ? ', serving web' : ''})`);
   console.log(`   ${data.players.length} players · ${comps.length} playable competitions`);
   console.log(`   AI commentary: ${commentator.enabled ? 'on' : 'off (set ANTHROPIC_API_KEY to enable)'}`);
   for (const c of comps) {
     for (const s of c.seasons) console.log(`   - ${c.name} ${s.label}: ${s.poolSize} players, up to ${s.maxPlayers} managers`);
   }
 
+  let shuttingDown = false;
   const shutdown = async () => {
+    if (shuttingDown) return;
+    shuttingDown = true;
     console.log('\nShutting down…');
-    await server.close();
-    await disconnect();
+    // Don't hang forever on a stuck socket or database call.
+    setTimeout(() => process.exit(0), 8_000).unref();
+    await server.close().catch((e) => console.error(e));
+    await disconnect().catch((e) => console.error(e));
     process.exit(0);
   };
   process.on('SIGINT', shutdown);
   process.on('SIGTERM', shutdown);
+  // Never let one stray rejection take the whole game server down; log it instead.
+  process.on('unhandledRejection', (reason) => console.error('Unhandled rejection:', reason));
+  process.on('uncaughtException', (err) => {
+    // State may be inconsistent after this — log it and let the platform restart the process.
+    console.error('Uncaught exception:', err);
+    void shutdown();
+  });
 }
 
 main().catch((e) => {

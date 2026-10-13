@@ -203,17 +203,19 @@ function useOutbidFlash(me: string, room: RoomView) {
   const [flash, setFlash] = useState(0);
   const [seq, setSeq] = useState(0);
   const seen = useRef<number>(0);
+  const members = useRef(room.members);
+  members.current = room.members;
   useEffect(() => {
     if (!lastEvent || lastEvent.at === seen.current) return;
     seen.current = lastEvent.at;
     if (lastEvent.type === 'BID' && lastEvent.previousBidderId === me && lastEvent.userId !== me) {
-      const who = room.members.find((m) => m.userId === lastEvent.userId)?.username ?? 'Someone';
+      const who = members.current.find((m) => m.userId === lastEvent.userId)?.username ?? 'Someone';
       toast('warn', `Outbid! ${who} bid ${lastEvent.amount}`);
       setFlash(lastEvent.at);
       setSeq((n) => n + 1);
       const t = setTimeout(() => setFlash(0), 900);
       return () => clearTimeout(t);
     }
-  }, [lastEvent, me, room.members, toast]);
+  }, [lastEvent, me, toast]);
   return { flash: flash !== 0, seq };
 }

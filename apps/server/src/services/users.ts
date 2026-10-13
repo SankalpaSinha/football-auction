@@ -12,9 +12,41 @@ export const newToken = () => randomBytes(32).toString('base64url');
 
 const SCRYPT = { N: 16384, r: 8, p: 1, keylen: 64 };
 
+/**
+ * scrypt is deliberately expensive. Cap how many run at once (and how many may queue)
+ * so a login flood can't starve the thread pool the live games also use.
+ */
+const MAX_CONCURRENT_HASHES = 4;
+const MAX_QUEUED_HASHES = 64;
+let activeHashes = 0;
+const hashQueue: (() => void)[] = [];
+
+export class ServerBusyError extends Error {
+  constructor() {
+    super('SERVER_BUSY');
+  }
+}
+
+async function withHashSlot<T>(fn: () => Promise<T>): Promise<T> {
+  if (activeHashes >= MAX_CONCURRENT_HASHES) {
+    if (hashQueue.length >= MAX_QUEUED_HASHES) throw new ServerBusyError();
+    await new Promise<void>((resolve) => hashQueue.push(resolve));
+  }
+  activeHashes++;
+  try {
+    return await fn();
+  } finally {
+    activeHashes--;
+    hashQueue.shift()?.();
+  }
+}
+
+const runScrypt = (pw: string, salt: Buffer, keylen: number, opts: { N: number; r: number; p: number }) =>
+  withHashSlot(() => scrypt(pw, salt, keylen, { ...opts, maxmem: 64 * 1024 * 1024 }));
+
 export async function hashPassword(password: string): Promise<string> {
   const salt = randomBytes(16);
-  const hash = await scrypt(password, salt, SCRYPT.keylen, { N: SCRYPT.N, r: SCRYPT.r, p: SCRYPT.p, maxmem: 64 * 1024 * 1024 });
+  const hash = await runScrypt(password, salt, SCRYPT.keylen, { N: SCRYPT.N, r: SCRYPT.r, p: SCRYPT.p });
   return `scrypt$${SCRYPT.N}$${SCRYPT.r}$${SCRYPT.p}$${salt.toString('base64')}$${hash.toString('base64')}`;
 }
 
@@ -22,11 +54,10 @@ export async function verifyPassword(password: string, stored: string): Promise<
   const [algo, n, r, p, saltB64, hashB64] = stored.split('$');
   if (algo !== 'scrypt' || !saltB64 || !hashB64) return false;
   const expected = Buffer.from(hashB64, 'base64');
-  const actual = await scrypt(password, Buffer.from(saltB64, 'base64'), expected.length, {
+  const actual = await runScrypt(password, Buffer.from(saltB64, 'base64'), expected.length, {
     N: Number(n),
     r: Number(r),
     p: Number(p),
-    maxmem: 64 * 1024 * 1024,
   });
   return actual.length === expected.length && timingSafeEqual(actual, expected);
 }
@@ -44,6 +75,16 @@ export class InvalidCredentialsError extends Error {
     super('INVALID_CREDENTIALS');
   }
 }
+
+/** Account created before passwords existed; only an admin can set its password. */
+export class LegacyAccountError extends Error {
+  constructor() {
+    super('LEGACY_ACCOUNT');
+  }
+}
+
+/** Sessions unused for this long stop working. */
+export const SESSION_IDLE_MS = 90 * 24 * 60 * 60 * 1000;
 
 // ----------------------------------------------------------------- store
 
@@ -144,9 +185,19 @@ export class PrismaUserStore implements UserStore {
   async findByToken(token: string) {
     const s = await this.db.session.findUnique({
       where: { tokenHash: hashToken(token) },
-      select: { user: { select: { id: true, username: true } } },
+      select: { id: true, lastSeenAt: true, user: { select: { id: true, username: true } } },
     });
-    return s?.user ?? null;
+    if (!s) return null;
+    const idle = Date.now() - s.lastSeenAt.getTime();
+    if (idle > SESSION_IDLE_MS) {
+      await this.db.session.delete({ where: { id: s.id } }).catch(() => {});
+      return null;
+    }
+    // Refresh at most hourly to keep this lookup cheap.
+    if (idle > 60 * 60 * 1000) {
+      this.db.session.update({ where: { id: s.id }, data: { lastSeenAt: new Date() } }).catch(() => {});
+    }
+    return s.user;
   }
 
   async deleteSession(token: string) {
@@ -161,8 +212,8 @@ export class PrismaUserStore implements UserStore {
 // --------------------------------------------------------------- service
 
 /**
- * Register / sign in. Accounts created before passwords existed (no hash) are
- * claimed by the first person who signs in with that name and sets a password.
+ * Register / sign in. Accounts created before passwords existed (no hash) can't be
+ * signed into — an admin sets their password with `npm run user:set-password`.
  */
 export async function register(users: UserStore, username: string, password: string) {
   const user = await users.create(username, await hashPassword(password));
@@ -176,13 +227,8 @@ export async function login(users: UserStore, username: string, password: string
     await hashPassword(password);
     throw new InvalidCredentialsError();
   }
-  let claimed = false;
-  if (stored.passwordHash === null) {
-    await users.setPassword(stored.id, await hashPassword(password));
-    claimed = true;
-  } else if (!(await verifyPassword(password, stored.passwordHash))) {
-    throw new InvalidCredentialsError();
-  }
+  if (stored.passwordHash === null) throw new LegacyAccountError();
+  if (!(await verifyPassword(password, stored.passwordHash))) throw new InvalidCredentialsError();
   const user = { id: stored.id, username: stored.username };
-  return { user, token: await users.createSession(user.id), claimed };
+  return { user, token: await users.createSession(user.id) };
 }

@@ -1,0 +1,27 @@
+# Local rehearsal of the production image:  docker compose -f docker-compose.prod.yml up --build
+# Then open http://localhost:8090
+services:
+  db:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: auction
+      POSTGRES_PASSWORD: auction
+      POSTGRES_DB: football_auction
+    volumes:
+      - pgdata-prod:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U auction -d football_auction"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+  app:
+    build: .
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql://auction:auction@db:5432/football_auction
+    ports:
+      - "8090:8080"
+volumes:
+  pgdata-prod:

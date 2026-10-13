@@ -59,7 +59,9 @@ export function BidPanel({ room, lot, me, remainingMs }: { room: RoomView; lot: 
   // Keyboard: 1–4 quick bids, S skip.
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.target instanceof HTMLInputElement) return;
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLSelectElement) return;
+      // Never steal browser shortcuts (Cmd/Ctrl+S…) or act on key auto-repeat.
+      if (e.metaKey || e.ctrlKey || e.altKey || e.repeat) return;
       const idx = ['1', '2', '3', '4'].indexOf(e.key);
       if (idx >= 0 && room.rules.bidIncrements[idx] !== undefined) void bid(amountFor(room.rules.bidIncrements[idx]));
       if (e.key === 's' || e.key === 'S') void skip();

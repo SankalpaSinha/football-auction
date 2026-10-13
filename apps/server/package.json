@@ -15,7 +15,8 @@
     "db:import": "tsx src/scripts/import.ts",
     "sim": "tsx src/scripts/simulate.ts",
     "postinstall": "prisma generate",
-    "images:fetch": "tsx src/scripts/fetchImages.ts"
+    "images:fetch": "tsx src/scripts/fetchImages.ts",
+    "user:set-password": "tsx src/scripts/setPassword.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.132.1",

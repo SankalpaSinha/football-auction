@@ -2,12 +2,13 @@
 import { useEffect, useRef, useState } from 'react';
 import type { LotView } from '@fa/shared';
 import { sound } from '@/lib/sound';
-import { serverNow } from '@/lib/store';
+import { serverNow, useGame } from '@/lib/store';
 
 /** Remaining ms for the open lot, rendered against the synced server clock. */
 export function useCountdown(lot: LotView | null): number {
   const [remaining, setRemaining] = useState(0);
   const lastTick = useRef<string>('');
+  const clockOffset = useGame((s) => s.clockOffset);
 
   useEffect(() => {
     if (!lot) return;
@@ -29,7 +30,7 @@ export function useCountdown(lot: LotView | null): number {
     };
     raf = requestAnimationFrame(loop);
     return () => cancelAnimationFrame(raf);
-  }, [lot]);
+  }, [lot, clockOffset]);
 
   return remaining;
 }

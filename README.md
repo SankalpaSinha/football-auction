@@ -52,6 +52,32 @@ npm run typecheck
 
 ---
 
+## Deployment
+
+The production image (`Dockerfile`) is a **single service**: the game server also serves the built website, so pages, the API and WebSockets share one domain (no CORS). On every start it runs `prisma migrate deploy` and seeds the player data on the first boot (`import --if-empty`).
+
+**Rehearse locally:** run `docker compose -p fa-prod -f docker-compose.prod.yml up --build`, then open http://localhost:8090.
+
+**Environment variables:**
+
+| Variable | Value |
+|---|---|
+| `DATABASE_URL` | PostgreSQL connection string (required) |
+| `TRUST_PROXY` | Number of reverse proxies in front (Railway/Render/Fly: `1`). Leave `0` when exposed directly. Rate limits use the client IP this resolves. |
+| `PORT` | Set by the platform (defaults to 8080 in the image) |
+| `ANTHROPIC_API_KEY` | Optional: turns on the AI pundit |
+| `CLIENT_ORIGIN` | Only if the website is hosted separately |
+
+**Must run as exactly one instance.** Live games are held in memory. A redeploy or restart ends games in progress (players see a clear message, and accounts, stats and finished games are kept). Scaling out needs a shared store such as Redis, which isn't built yet.
+
+**Railway** (`railway.json` is included): create a project, add PostgreSQL, deploy this folder, then set `DATABASE_URL=${{Postgres.DATABASE_URL}}` and `TRUST_PROXY=1`, and generate a domain.
+
+**Admin:** run `npm run user:set-password -w @fa/server -- <username> <password>` to set or reset a password (for example for accounts created before passwords existed). It also signs that user out everywhere.
+
+Don't point `npm run sim` at production: the bot accounts use predictable passwords.
+
+---
+
 ## Architecture
 
 ```

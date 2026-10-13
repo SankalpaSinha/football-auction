@@ -8,8 +8,9 @@ class SoundKit {
   private ctx: AudioContext | null = null;
   enabled = true;
 
-  private audio(): AudioContext | null {
-    if (!this.enabled || typeof window === 'undefined') return null;
+  /** Create/resume the context. Safe to call from any user gesture, even while muted. */
+  private context(): AudioContext | null {
+    if (typeof window === 'undefined') return null;
     if (!this.ctx) {
       const Ctor = window.AudioContext ?? (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
       if (!Ctor) return null;
@@ -19,9 +20,13 @@ class SoundKit {
     return this.ctx;
   }
 
-  /** Call from a user gesture so browsers allow audio later. */
+  private audio(): AudioContext | null {
+    return this.enabled ? this.context() : null;
+  }
+
+  /** Call from user gestures so browsers (notably iOS) allow — and keep allowing — audio. */
   unlock() {
-    this.audio();
+    this.context();
   }
 
   private tone(freq: number, dur: number, opts: { type?: OscillatorType; gain?: number; delay?: number; slideTo?: number } = {}) {

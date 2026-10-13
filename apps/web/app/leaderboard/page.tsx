@@ -17,12 +17,16 @@ export default function LeaderboardPage() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    let current = true; // ignore responses for a tab that is no longer selected
     setRows(null);
     setError(null);
     api
       .leaderboard(mode)
-      .then((r) => setRows(r.rows))
-      .catch((e) => setError(e.message));
+      .then((r) => current && setRows(r.rows))
+      .catch((e) => current && setError(e.message));
+    return () => {
+      current = false;
+    };
   }, [mode]);
 
   return (

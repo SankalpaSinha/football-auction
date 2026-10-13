@@ -52,6 +52,21 @@ export function SquadBuilder({ room, me }: { room: RoomView; me: string }) {
   }, [mine]);
 
   // Debounced draft autosave so the deadline auto-complete keeps your choices.
+  // Unsaved changes are retried after a reconnect and flushed if you navigate away.
+  const connection = useGame((s) => s.connection);
+  const [unsaved, setUnsaved] = useState(false);
+  const pending = useRef<{ formationId: string; slots: (string | null)[] } | null>(null);
+  const save = useRef(async () => {
+    const draft = pending.current;
+    if (!draft) return;
+    const r = await emit('squad:draft', draft);
+    if (r.ok && pending.current === draft) {
+      pending.current = null;
+      setUnsaved(false);
+    } else if (!r.ok && r.code !== 'LINEUP_LOCKED' && r.code !== 'WRONG_PHASE') {
+      setUnsaved(true);
+    }
+  });
   const firstSave = useRef(true);
   useEffect(() => {
     if (firstSave.current) {
@@ -59,9 +74,14 @@ export function SquadBuilder({ room, me }: { room: RoomView; me: string }) {
       return;
     }
     if (locked) return;
-    const t = setTimeout(() => void emit('squad:draft', { formationId, slots }), 400);
+    pending.current = { formationId, slots };
+    const t = setTimeout(() => void save.current(), 400);
     return () => clearTimeout(t);
   }, [formationId, slots, locked]);
+  useEffect(() => {
+    if (connection === 'connected' && pending.current) void save.current();
+  }, [connection]);
+  useEffect(() => () => void save.current(), []);
 
   const summary = summarizeLineup({ formationId, slots }, squad);
   const starters = new Set(slots.filter(Boolean) as string[]);
@@ -286,6 +306,9 @@ export function SquadBuilder({ room, me }: { room: RoomView; me: string }) {
               <Button size="lg" className="mt-3 w-full" disabled={busy || !!complete} onClick={lock}>
                 {complete ? `${summary.filled}/11 picked` : 'Lock in lineup'}
               </Button>
+            )}
+            {unsaved && !locked && (
+              <p className="mt-2 text-center text-xs font-semibold text-amber-200">Changes not saved yet — reconnecting…</p>
             )}
             <p className="mt-2 text-center text-xs text-dim">
               {locked

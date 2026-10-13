@@ -224,5 +224,30 @@ describe('multiplayer over websockets', () => {
     await p1.waitFor((v) => v.spectators === 0);
     for (const b of [p1, p2, fan]) b.disconnect();
   }, 90_000);
+
+  it('rejoining an old game detaches you from your other room (no ghost members)', async () => {
+    const [a, b, c] = await Promise.all(
+      ['GhostA', 'GhostB', 'GhostC'].map(async (n) => (await new Bot(base, n, { aggression: 0 }).login()).connect()),
+    );
+    const { code: x } = await a.must<{ code: string }>('room:create', roomInput);
+    await b.must('room:join', { code: x });
+    await b.must('room:ready', { ready: true });
+    await a.must('room:start');
+    await a.waitFor((v) => v.phase === 'AUCTION');
+
+    await a.must('room:leave'); // walk out of the live game
+    const { code: lobby } = await a.must<{ code: string }>('room:create', { ...roomInput, isPublic: true });
+    await a.must('room:join', { code: x }); // and come back
+
+    const lobbies = (await (await fetch(`${base}/api/rooms/public`)).json()).rooms as { code: string }[];
+    expect(lobbies.some((r) => r.code === lobby)).toBe(false); // the lobby was left (and closed), not haunted
+
+    // While playing a live game you can't wander off to watch another one.
+    const { code: other } = await c.must<{ code: string }>('room:create', { ...roomInput, isPublic: true });
+    const watch = await a.emit('room:spectate', { code: other });
+    expect(watch.ok).toBe(false);
+    if (!watch.ok) expect(watch.code).toBe('ALREADY_IN_GAME');
+    for (const bot of [a, b, c]) bot.disconnect();
+  });
 });
 

@@ -66,7 +66,8 @@ export default function MatchPage() {
               <div className="label mb-3">Final ranking</div>
               <ol className="space-y-2">
                 {m.rankings.map((r, i) => {
-                  const mgr = m.managers.find((x) => x.userId === r.userId)!;
+                  const mgr = m.managers.find((x) => x.userId === r.userId);
+                  if (!mgr) return null;
                   return (
                     <li key={r.userId}>
                       <button
@@ -101,7 +102,7 @@ export default function MatchPage() {
               </div>
             </div>
             <div className="min-w-0">
-              {selected && (
+              {selected && m.rankings.some((r) => r.userId === selected) && (
                 <ManagerReport
                   key={selected}
                   score={m.rankings.find((r) => r.userId === selected)!}
@@ -135,7 +136,8 @@ export default function MatchPage() {
           {tab === 'squads' ? (
             <div className="mt-3 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
               {m.rankings.map((r) => {
-                const mgr = m.managers.find((x) => x.userId === r.userId)!;
+                const mgr = m.managers.find((x) => x.userId === r.userId);
+                if (!mgr) return null;
                 const starters = new Set(mgr.lineup?.slots.filter(Boolean) as string[]);
                 const sorted = [...mgr.squad].sort(
                   (a, b) =>

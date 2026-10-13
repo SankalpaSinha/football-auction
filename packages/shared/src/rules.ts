@@ -26,6 +26,11 @@ export interface GameRules {
   unsoldRevealMs: number;
   /** When someone without a GK is down to this many open slots, GKs are pulled forward. */
   gkUrgencySlots: number;
+  /**
+   * If every manager who still needs players is offline this long, their squads are
+   * auto-completed so the people still playing can finish the game.
+   */
+  absentAutoFillMs: number;
   /** Time managers get to pick formation + starting XI after the auction. */
   squadBuildingMs: number;
   /** Suspense pause between lineup reveal and the results. */
@@ -58,6 +63,7 @@ export const GAME_RULES: Readonly<GameRules> = {
   soldRevealMs: 3_500,
   unsoldRevealMs: 1_600,
   gkUrgencySlots: 2,
+  absentAutoFillMs: 60_000,
   squadBuildingMs: 180_000,
   evaluationMs: 4_000,
   lobbyDisconnectGraceMs: 60_000,

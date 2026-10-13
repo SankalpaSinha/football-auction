@@ -161,7 +161,14 @@ export class PrismaGameStore implements GameStore {
       await tx.room.update({ where: { id: game.roomId }, data: { status: 'FINISHED' } });
       for (const r of rankings) {
         const { userId, rank, total, ...detail } = r;
-        const elo = ratingChanges?.find((c) => c.userId === userId);
+        // Apply the ELO *change* to the rating as it is now (another game may have
+        // finished since this one started) instead of overwriting it with a snapshot.
+        const change = ratingChanges?.find((c) => c.userId === userId);
+        const current = change
+          ? await tx.playerRating.findUnique({ where: { userId_mode: { userId, mode: 'RANKED' } } })
+          : null;
+        const before = current?.elo ?? ELO_CONFIG.initial;
+        const elo = change ? { before, after: Math.max(ELO_CONFIG.floor, before + change.delta) } : null;
         const eloFields = elo ? { eloBefore: elo.before, eloAfter: elo.after } : {};
         await tx.matchResult.upsert({
           where: { gameId_userId: { gameId, userId } },

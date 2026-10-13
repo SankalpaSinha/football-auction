@@ -93,7 +93,10 @@ export class ClaudeCommentator implements Commentator {
 }
 
 /** Enabled only when an API key is configured; the game never needs it. */
-export function commentatorFromEnv(env = process.env, log?: (msg: string, err?: unknown) => void): Commentator {
+export function commentatorFromEnv(
+  env: Record<string, string | undefined> = process.env,
+  log?: (msg: string, err?: unknown) => void,
+): Commentator {
   if (env.AI_COMMENTARY === 'off' || !env.ANTHROPIC_API_KEY) return noCommentator;
   return new ClaudeCommentator(undefined, log);
 }

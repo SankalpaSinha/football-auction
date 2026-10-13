@@ -108,6 +108,8 @@ export class Auction {
   private timer: TimerHandle | null = null;
   private lotCounter = 0;
   private pausedRemainingMs: number | null = null;
+  /** Fires when the only managers who still need players have been gone too long. */
+  private absentTimer: TimerHandle | null = null;
 
   constructor(private readonly opts: AuctionOptions) {
     this.rules = opts.rules;
@@ -195,6 +197,8 @@ export class Auction {
   dispose() {
     this.timer?.cancel();
     this.timer = null;
+    this.absentTimer?.cancel();
+    this.absentTimer = null;
   }
 
   /** Highest bid a participant may currently place (budget minus squad-completion reserve). */
@@ -296,6 +300,22 @@ export class Auction {
     return false;
   }
 
+  private anyAcquirable() {
+    const candidates = [...this.queue, ...this.unsold];
+    for (const p of this.participants.values()) {
+      if (this.slotsLeft(p) <= 0) continue;
+      for (const c of candidates) {
+        try {
+          this.assertCanAcquire(p, c);
+          return true;
+        } catch (e) {
+          if (!(e instanceof GameError)) throw e;
+        }
+      }
+    }
+    return false;
+  }
+
   private allSquadsFull() {
     for (const p of this.participants.values()) if (this.slotsLeft(p) > 0) return false;
     return true;
@@ -333,10 +353,28 @@ export class Auction {
     this.timer?.cancel();
     this.timer = null;
     this.hooks.onFeed('INFO', 'Auction paused — waiting for managers to reconnect');
+    this.absentTimer?.cancel();
+    this.absentTimer = this.clock.setTimeout(() => this.onAbsentTimeout(), this.rules.absentAutoFillMs);
     this.hooks.onChange();
   }
 
+  /** Still nobody back: complete the missing squads so the game can finish. */
+  private onAbsentTimeout() {
+    this.absentTimer = null;
+    if (!this.isPaused || this.stage !== 'LOT_OPEN' || this.anyActiveConnected()) return;
+    const lot = this.lot!;
+    // The current lot goes back into the pool before auto-filling.
+    (lot.reoffer ? this.leftover : this.unsold).push(lot.player);
+    this.lot = null;
+    this.pausedRemainingMs = null;
+    this.hooks.onFeed('INFO', 'Absent managers’ squads were completed automatically');
+    this.autoFill();
+    this.complete();
+  }
+
   private resume() {
+    this.absentTimer?.cancel();
+    this.absentTimer = null;
     const lot = this.lot!;
     lot.endsAt = this.clock.now() + Math.max(this.pausedRemainingMs ?? 0, RESUME_MIN_MS);
     this.pausedRemainingMs = null;
@@ -393,6 +431,12 @@ export class Auction {
   private openNextLot() {
     this.timer = null;
     if (this.allSquadsFull()) return this.complete();
+    // Nothing left that anyone is allowed to buy (e.g. last slot must be a keeper and
+    // none remain to auction) — skip the dead lots and complete squads now.
+    if (!this.anyAcquirable()) {
+      this.autoFill();
+      return this.complete();
+    }
     const next = this.pickNext();
     if (!next) {
       this.autoFill();
@@ -536,6 +580,8 @@ export class Auction {
   private complete() {
     this.timer?.cancel();
     this.timer = null;
+    this.absentTimer?.cancel();
+    this.absentTimer = null;
     this.lot = null;
     this.stage = 'COMPLETE';
     this.hooks.onFeed('INFO', `Auction complete — every squad has ${this.rules.squadSize} players`);

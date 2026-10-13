@@ -71,14 +71,16 @@ describe('accounts', () => {
     expect((await r.json()).code).toBe('INVALID_CREDENTIALS');
   });
 
-  it('a legacy account without a password is claimed by setting one', async () => {
+  it('a legacy account without a password cannot be claimed by just signing in', async () => {
     const legacy = await users.create('OldTimer', null as unknown as string);
     await users.setPassword(legacy.id, null as unknown as string);
-    const claim = await post('/api/auth/login', { username: 'OldTimer', password: 'new-pass-1' });
-    expect(claim.status).toBe(200);
-    expect((await claim.json()).claimed).toBe(true);
-    expect((await post('/api/auth/login', { username: 'OldTimer', password: 'different' })).status).toBe(401);
-    expect((await post('/api/auth/login', { username: 'OldTimer', password: 'new-pass-1' })).status).toBe(200);
+    const attempt = await post('/api/auth/login', { username: 'OldTimer', password: 'attacker-pw' });
+    expect(attempt.status).toBe(409);
+    expect((await attempt.json()).code).toBe('LEGACY_ACCOUNT');
+    // An admin sets the password; then normal sign-in works.
+    const { hashPassword } = await import('../src/services/users');
+    await users.setPassword(legacy.id, await hashPassword('owner-pass-1'));
+    expect((await post('/api/auth/login', { username: 'OldTimer', password: 'owner-pass-1' })).status).toBe(200);
   });
 
   it('rate-limits repeated failed sign-ins', async () => {

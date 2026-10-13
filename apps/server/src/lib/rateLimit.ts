@@ -6,15 +6,20 @@ export class RateLimiter {
     private readonly max: number,
     private readonly windowMs: number,
     private readonly now: () => number = Date.now,
-  ) {}
+  ) {
+    // Sweep expired windows periodically so the map can't grow without bound.
+    const sweep = setInterval(() => this.prune(this.now()), Math.max(windowMs, 60_000));
+    sweep.unref?.();
+  }
 
   /** Returns true if the action is allowed (and counts it). */
   take(key: string): boolean {
     const t = this.now();
     const h = this.hits.get(key);
     if (!h || t - h.windowStart >= this.windowMs) {
+      // Hard ceiling as a last resort against floods of unique keys.
+      if (this.hits.size >= 100_000) return false;
       this.hits.set(key, { windowStart: t, count: 1 });
-      if (this.hits.size > 50_000) this.prune(t);
       return true;
     }
     if (h.count >= this.max) return false;

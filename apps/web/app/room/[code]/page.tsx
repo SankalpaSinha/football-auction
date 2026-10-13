@@ -25,17 +25,26 @@ export default function RoomPage() {
   const roomClosed = useGame((s) => s.roomClosed);
   const [joinError, setJoinError] = useState<{ code: string; error: string } | null>(null);
   const [watching, setWatching] = useState(false);
+  // Don't join until we know whether this visit is to play or to watch (`?watch=1`).
+  const [modeResolved, setModeResolved] = useState(false);
   const joinedFor = useRef<string | null>(null);
+  const toast = useGame((s) => s.toast);
 
-  // `?watch=1` opens the room as a spectator.
   useEffect(() => {
     setWatching(new URLSearchParams(window.location.search).get('watch') === '1');
+    setModeResolved(true);
   }, [code]);
 
-  // Fresh page: forget any previous room view.
+  // This page owns the screen: forget any previous room and ignore updates for others.
   useEffect(() => {
-    useGame.getState().setRoom(null);
-    useGame.getState().setRoomClosed(null);
+    const g = useGame.getState();
+    g.setActiveCode(code);
+    g.setRoom(null);
+    g.setRoomClosed(null);
+    return () => {
+      useGame.getState().setActiveCode(null);
+      useGame.getState().setRoom(null);
+    };
   }, [code]);
 
   useEffect(() => {
@@ -45,29 +54,50 @@ export default function RoomPage() {
 
   // (Re)join — or re-attach as a spectator — whenever the socket (re)connects.
   useEffect(() => {
-    if (!session || connection !== 'connected') return;
+    if (!session || connection !== 'connected' || !modeResolved) return;
     const key = `${code}:${watching}:${Date.now()}`;
     joinedFor.current = key;
+    const onFail = (r: { code: string; error: string }) => {
+      // Drop any stale view so the error is visible instead of a frozen screen.
+      useGame.getState().setRoom(null);
+      setJoinError({ code: r.code, error: r.error });
+    };
     if (watching) {
       emit<{ role: 'member' | 'spectator' }>('room:spectate', { code }).then((r) => {
         if (joinedFor.current !== key) return;
-        setJoinError(r.ok ? null : { code: r.code, error: r.error });
-        if (r.ok && r.data?.role === 'member') setWatching(false);
+        if (!r.ok) return onFail(r);
+        setJoinError(null);
+        if (r.data?.role === 'member') setWatching(false);
       });
     } else {
       emit('room:join', { code }).then((r) => {
         if (joinedFor.current !== key) return;
-        setJoinError(r.ok ? null : { code: r.code, error: r.error });
+        if (!r.ok) return onFail(r);
+        setJoinError(null);
       });
     }
-  }, [session, connection, code, watching]);
+  }, [session, connection, code, watching, modeResolved]);
 
+  // Only sign out when the server confirms the session is really gone (not on a hiccup).
   useEffect(() => {
-    if (connection === 'error') {
-      saveSession(null);
-      useGame.getState().setSession(null);
-    }
-  }, [connection]);
+    if (connection !== 'error' || !session) return;
+    api.me(session.token).then(
+      () => useGame.getState().setConnection('reconnecting'),
+      (e) => {
+        if (e?.status === 401) {
+          saveSession(null);
+          useGame.getState().setSession(null);
+        }
+      },
+    );
+  }, [connection, session]);
+
+  // A spectator taking an open seat: try it, and stay a spectator if it fails.
+  const joinFromWatching = async () => {
+    const r = await emit('room:join', { code });
+    if (!r.ok) return toast('error', r.error);
+    setWatching(false);
+  };
 
   if (!loaded) return null;
 
@@ -134,7 +164,7 @@ export default function RoomPage() {
           room={room}
           me={session.user.id}
           onLeave={leave}
-          onJoin={!isMember ? () => setWatching(false) : undefined}
+          onJoin={!isMember ? joinFromWatching : undefined}
         />
       );
       break;
@@ -205,11 +235,12 @@ function SpectatorSquadWait({ room, onLeave }: { room: RoomView; onLeave: () => 
 function JoinAsGuest({ code }: { code: string }) {
   const [info, setInfo] = useState<{ name: string; competition: { name: string }; members: number; maxPlayers: number } | null>(null);
   const [missing, setMissing] = useState(false);
+  const [offline, setOffline] = useState(false);
   useEffect(() => {
     api
       .room(code)
       .then(setInfo)
-      .catch(() => setMissing(true));
+      .catch((e) => (e?.status === 404 ? setMissing(true) : setOffline(true)));
   }, [code]);
   return (
     <main className="mx-auto flex min-h-dvh max-w-xl flex-col justify-center px-6">
@@ -218,6 +249,7 @@ function JoinAsGuest({ code }: { code: string }) {
       </div>
       <p className="label text-cyan">You’re invited</p>
       <h1 className="display text-5xl font-extrabold">{missing ? 'Room not found' : (info?.name ?? 'Football Auction')}</h1>
+      {offline && <p className="mt-2 text-amber-200">Can’t reach the game server right now — you can still sign in below.</p>}
       {info && (
         <p className="mt-2 text-muted">
           {info.competition.name} · {info.members}/{info.maxPlayers} managers · code <span className="font-mono text-ink">{code}</span>

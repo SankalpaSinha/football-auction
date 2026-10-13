@@ -156,4 +156,28 @@ describe('multiplayer over websockets', () => {
     if (!r.ok) expect(r.code).toBe('ALREADY_IN_GAME');
     for (const bot of [x, y, z]) bot.disconnect();
   });
+
+  it('lists public lobbies and quick match joins or creates one', async () => {
+    const [host, guest, solo] = await Promise.all(
+      ['PubHost', 'PubGuest', 'SoloQ'].map(async (n) => (await new Bot(base, n, { aggression: 0 }).login()).connect()),
+    );
+    const { code } = await host.must<{ code: string }>('room:create', { ...roomInput, isPublic: true });
+    const list = (await (await fetch(`${base}/api/rooms/public`)).json()).rooms as { code: string; members: number }[];
+    expect(list.some((r) => r.code === code)).toBe(true);
+
+    const joined = await guest.must<{ code: string; created: boolean }>('match:quick', { mode: 'CASUAL', competitionId: 'test' });
+    expect(joined).toEqual({ code, created: false });
+
+    // No ranked lobby exists → quick match opens a new public ranked room.
+    const fresh = await solo.must<{ code: string; created: boolean }>('match:quick', { mode: 'RANKED' });
+    expect(fresh.created).toBe(true);
+    const after = (await (await fetch(`${base}/api/rooms/public`)).json()).rooms as { code: string; mode: string }[];
+    expect(after.find((r) => r.code === fresh.code)?.mode).toBe('RANKED');
+
+    // Ranked needs the standard budget.
+    const bad = await host.emit('room:create', { ...roomInput, mode: 'RANKED', startingBudget: 2000 });
+    expect(bad.ok).toBe(false);
+    for (const b of [host, guest, solo]) b.disconnect();
+  });
 });
+

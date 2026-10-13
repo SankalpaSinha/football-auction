@@ -1,4 +1,4 @@
-import { FORMATIONS, type RankedScore } from '@fa/shared';
+import { ELO_CONFIG, FORMATIONS, type EloChange, type GameMode, type RankedScore } from '@fa/shared';
 import type { GameStore } from '../engine/store';
 import type { Db } from '../lib/db';
 
@@ -140,18 +140,30 @@ export class PrismaGameStore implements GameStore {
     await this.db.game.update({ where: { id: gameId }, data: { status: 'SQUAD_BUILDING' } });
   }
 
-  async gameFinished(gameId: string, rankings: RankedScore[]) {
+  async ratingsFor(userIds: string[], mode: GameMode) {
+    const rows = await this.db.playerRating.findMany({ where: { userId: { in: userIds }, mode } });
+    return Object.fromEntries(
+      userIds.map((id) => {
+        const r = rows.find((x) => x.userId === id);
+        return [id, { elo: r?.elo ?? ELO_CONFIG.initial, games: r?.games ?? 0 }];
+      }),
+    );
+  }
+
+  async gameFinished(gameId: string, rankings: RankedScore[], ratingChanges: EloChange[] | null) {
     await this.db.$transaction(async (tx) => {
       const game = await tx.game.update({ where: { id: gameId }, data: { status: 'FINISHED', endedAt: new Date() } });
       await tx.room.update({ where: { id: game.roomId }, data: { status: 'FINISHED' } });
       for (const r of rankings) {
         const { userId, rank, total, ...detail } = r;
+        const elo = ratingChanges?.find((c) => c.userId === userId);
+        const eloFields = elo ? { eloBefore: elo.before, eloAfter: elo.after } : {};
         await tx.matchResult.upsert({
           where: { gameId_userId: { gameId, userId } },
-          create: { gameId, userId, rank, score: total, breakdown: detail as object },
-          update: { rank, score: total, breakdown: detail as object },
+          create: { gameId, userId, rank, score: total, breakdown: detail as object, ...eloFields },
+          update: { rank, score: total, breakdown: detail as object, ...eloFields },
         });
-        // Casual games count towards profile stats; ELO only moves in ranked (Phase 6).
+        // Every finished game counts towards profile stats; ELO only moves in ranked games.
         const existing = await tx.playerRating.findUnique({ where: { userId_mode: { userId, mode: game.mode } } });
         await tx.playerRating.upsert({
           where: { userId_mode: { userId, mode: game.mode } },
@@ -163,6 +175,7 @@ export class PrismaGameStore implements GameStore {
             podiums: rank <= 3 ? 1 : 0,
             totalScore: total,
             highestScore: total,
+            ...(elo ? { elo: elo.after } : {}),
           },
           update: {
             games: { increment: 1 },
@@ -170,6 +183,7 @@ export class PrismaGameStore implements GameStore {
             podiums: { increment: rank <= 3 ? 1 : 0 },
             totalScore: { increment: total },
             highestScore: Math.max(existing?.highestScore ?? 0, total),
+            ...(elo ? { elo: elo.after } : {}),
           },
         });
       }

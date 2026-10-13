@@ -39,6 +39,11 @@ export const createRoomSchema = z.object({
 });
 export type CreateRoomInput = z.infer<typeof createRoomSchema>;
 
+export const quickMatchSchema = z.object({
+  mode: z.enum(['CASUAL', 'RANKED']).default('CASUAL'),
+  competitionId: z.string().min(1).max(64).optional(),
+});
+
 export const joinRoomSchema = z.object({ code: roomCodeSchema });
 export const readySchema = z.object({ ready: z.boolean() });
 export const bidSchema = z.object({
@@ -65,6 +70,7 @@ export interface ClientToServer {
   'squad:draft': (input: unknown, ack: (r: Ack) => void) => void;
   'squad:lock': (input: unknown, ack: (r: Ack) => void) => void;
   'squad:unlock': (input: unknown, ack: (r: Ack) => void) => void;
+  'match:quick': (input: unknown, ack: (r: Ack<{ code: string; created: boolean }>) => void) => void;
   'time:sync': (input: unknown, ack: (r: { serverTime: number }) => void) => void;
 }
 
@@ -91,8 +97,7 @@ export const ERROR_MESSAGES = {
   WRONG_PHASE: 'That is not possible right now.',
   COMPETITION_UNAVAILABLE: 'That competition/season is not available.',
   POOL_TOO_SMALL: 'This player pool is too small for that many players.',
-  RANKED_UNAVAILABLE: 'Ranked mode is not available yet.',
-  PUBLIC_UNAVAILABLE: 'Public rooms are not available yet.',
+  RANKED_SETTINGS: 'Ranked games use the standard 1,000-coin budget.',
   TOO_MANY_ROOMS: 'You have created too many rooms recently.',
   // auction
   NO_ACTIVE_LOT: 'There is no player up for auction.',

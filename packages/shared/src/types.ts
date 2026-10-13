@@ -3,6 +3,7 @@ import type { Tier } from './rules';
 import type { ValueVerdict } from './valuation';
 import type { RankedScore } from './scoring';
 import type { MatchReport } from './analysis';
+import type { EloChange } from './elo';
 
 // ---------------------------------------------------------------------------
 // Player data (source-agnostic — the UI never knows where this came from)
@@ -218,6 +219,8 @@ export interface SquadBuildingView {
 
 export interface RoomView {
   id: string;
+  /** Set once the auction starts; used for the match-history link. */
+  gameId: string | null;
   code: string;
   name: string;
   phase: RoomPhase;
@@ -239,6 +242,8 @@ export interface RoomView {
     report: MatchReport;
     /** Optional AI pundit paragraph (explains, never decides). */
     commentary: { status: 'disabled' | 'pending' | 'ready' | 'unavailable'; text: string | null };
+    /** Ranked games only: rating before/after for each manager. */
+    ratingChanges: EloChange[] | null;
   } | null;
   /** While in FINAL_EVALUATION: when results will be shown. */
   resultsAt: number | null;

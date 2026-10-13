@@ -2,7 +2,7 @@
 
 A real-time multiplayer football auction game. 2–6 managers share one budget size, bid on players one at a time, and must each finish with exactly 15 players.
 
-**Status:** Phases 1–5 are done: core multiplayer, the live auction, the squad builder, deterministic scoring and the results experience. Next is Phase 6 (profiles, match history, ELO, leaderboard, public rooms).
+**Status:** Phases 1–6 are done: multiplayer with accounts, the live auction, the squad builder, deterministic scoring, the results experience, and the competitive layer (ranked ELO, leaderboard, profiles, match history, public rooms and matchmaking). Next is Phase 7 (polish: spectator mode, achievements …).
 
 ---
 
@@ -43,7 +43,7 @@ The web app connects to `<same host>:4000`, so a friend on your Wi-Fi can open `
 ### Tests
 
 ```bash
-npm test            # 51 tests: auction rules, lineups, and full multiplayer games over real sockets
+npm test            # 83 tests: auction, lineups, scoring, ELO, accounts, matchmaking, full games over real sockets
 npm run typecheck
 ```
 
@@ -72,6 +72,14 @@ WAITING_FOR_PLAYERS ⇄ LOBBY → STARTING → AUCTION ⇄ PLAYER_SOLD → SQUAD
 ```
 
 Every action checks the current phase. Formation choice happens inside `SQUAD_BUILDING`, so `FORMATION_SELECTION` isn't used as a separate state. The phases in brackets come with Phase 4–5.
+
+### Competitive layer (Phase 6)
+
+- **ELO** (`packages/shared/src/elo.ts`): every pair of managers in a ranked game is treated as a head-to-head result decided by final rank. Expected scores use the standard 400-point logistic curve. K is 32, or 48 for a player's first 10 games. Each manager beyond two adds 15% to the swing, so a 6-player win is worth more than a 2-player win. Ranked games must use the standard 1,000 budget.
+- **Ranked vs casual:** both count towards profile stats (games, wins, podiums, average and best score). Only ranked games change ELO.
+- **Public rooms and "Play now":** `match:quick` joins the best open public lobby. It prefers the chosen competition, fuller rooms and, for ranked, the closest average ELO. If nothing matches, it opens a new public room. `GET /api/rooms/public` lists open lobbies.
+- **Stats API:** `GET /api/leaderboard?mode=RANKED|CASUAL`, `GET /api/users/:username` (profile, global rank, favourites, recent matches) and `GET /api/matches/:gameId` (ranking, squads, XIs, auction log, report rebuilt from stored scores). These need the database.
+- **Pages:** `/leaderboard`, `/u/<username>`, `/match/<gameId>`.
 
 ### Results & commentary (Phase 5)
 
@@ -157,9 +165,9 @@ data/
 - [x] **Phase 3:** squad builder: pitch, formations, drag-and-drop XI, bench
 - [x] **Phase 4:** deterministic scoring: position fit, chemistry, tactics, balance, depth, efficiency, plus a results screen
 - [x] **Phase 5:** results reveal, written match analysis, room awards, best buy and overpay, optional AI commentary
-- [ ] **Phase 6:** profiles, match history, ELO, leaderboard, ranked mode, public rooms
+- [x] **Phase 6:** profiles, match history, ELO, leaderboard, ranked mode, public rooms, "Play now" matchmaking
 - [ ] **Phase 7:** polish, spectator mode, achievements
 
-Not implemented yet, and labelled in the UI: Ranked mode, public rooms, scoring and results.
+Not implemented yet: spectator mode, achievements, tournaments, friends, chat (Phase 7 and later).
 
 Known limitations: live games aren't recovered after a server restart, and the server runs as a single process. A shared store such as Redis would be needed to scale across several processes.

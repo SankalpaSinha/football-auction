@@ -28,6 +28,9 @@ export function CreateRoom() {
   const [maxPlayers, setMaxPlayers] = useState(4);
   const [timer, setTimer] = useState(GAME_RULES.defaultLotDurationSec);
   const [antiSnipe, setAntiSnipe] = useState(true);
+  const [mode, setMode] = useState<'CASUAL' | 'RANKED'>('CASUAL');
+  const [isPublic, setIsPublic] = useState(false);
+  const ranked = mode === 'RANKED';
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
@@ -57,11 +60,11 @@ export function CreateRoom() {
         name: name.trim() || 'Football Auction',
         competitionId: comp.id,
         seasonId: season.id,
-        startingBudget: budget,
+        startingBudget: ranked ? GAME_RULES.defaultBudget : budget,
         maxPlayers,
         lotDurationSec: timer,
-        mode: 'CASUAL',
-        isPublic: false,
+        mode,
+        isPublic,
         antiSnipe,
       });
       if (!r.ok) throw new Error(r.error);
@@ -138,8 +141,12 @@ export function CreateRoom() {
         </Field>
         <Field label="Starting budget">
           <Chips
-            options={GAME_RULES.budgetOptions.map((b) => ({ value: b, label: b.toLocaleString() }))}
-            value={budget}
+            options={GAME_RULES.budgetOptions.map((b) => ({
+              value: b,
+              label: b.toLocaleString(),
+              disabled: ranked && b !== GAME_RULES.defaultBudget,
+            }))}
+            value={ranked ? GAME_RULES.defaultBudget : budget}
             onChange={setBudget}
             icon={<Coin className="h-3.5 w-3.5" />}
           />
@@ -151,24 +158,32 @@ export function CreateRoom() {
           <Chips
             options={[
               { value: 'CASUAL', label: 'Casual' },
-              { value: 'RANKED', label: 'Ranked', disabled: true, hint: 'Soon' },
+              { value: 'RANKED', label: 'Ranked ⚡' },
             ]}
-            value="CASUAL"
-            onChange={() => {}}
+            value={mode}
+            onChange={(v) => {
+              setMode(v);
+              if (v === 'RANKED') setBudget(GAME_RULES.defaultBudget);
+            }}
           />
         </Field>
         <Field label="Visibility">
           <Chips
             options={[
               { value: 'PRIVATE', label: 'Private · code' },
-              { value: 'PUBLIC', label: 'Public', disabled: true, hint: 'Soon' },
+              { value: 'PUBLIC', label: 'Public' },
             ]}
-            value="PRIVATE"
-            onChange={() => {}}
+            value={isPublic ? 'PUBLIC' : 'PRIVATE'}
+            onChange={(v) => setIsPublic(v === 'PUBLIC')}
           />
         </Field>
       </div>
 
+      {ranked && (
+        <p className="-mt-2 mb-4 text-xs text-muted">
+          Ranked games change everyone’s ELO and use the standard {GAME_RULES.defaultBudget.toLocaleString()}-coin budget so scores are comparable.
+        </p>
+      )}
       <label className="mb-6 flex cursor-pointer items-center gap-3 text-sm text-muted">
         <input type="checkbox" checked={antiSnipe} onChange={(e) => setAntiSnipe(e.target.checked)} className="h-4 w-4 accent-[#c8ff2e]" />
         <span>

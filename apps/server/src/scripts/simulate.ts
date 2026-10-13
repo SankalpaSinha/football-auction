@@ -6,7 +6,7 @@
  *   npm run sim -- --join FBA7K2 --bots 2        # bots join YOUR room; you host and press start
  *
  * Options: --server http://localhost:4000  --bots N  --competition id  --season 2026-27
- *          --aggression 0..1  --think-min ms  --think-max ms
+ *          --aggression 0..1  --think-min ms  --think-max ms  --mode casual|ranked
  */
 import { randomBytes } from 'node:crypto';
 import { Bot } from '../sim/bot';
@@ -23,6 +23,7 @@ const count = Number(arg('bots', join ? '2' : '3'));
 const competitionId = arg('competition', 'premier-league')!;
 const seasonId = arg('season', '2026-27')!;
 const aggression = Number(arg('aggression', '0.6'));
+const mode = (arg('mode', 'casual')!.toUpperCase() === 'RANKED' ? 'RANKED' : 'CASUAL') as 'RANKED' | 'CASUAL';
 const think: [number, number] = [Number(arg('think-min', join ? '900' : '150')), Number(arg('think-max', join ? '4000' : '600'))];
 
 const NAMES = ['BotKlopp', 'BotPep', 'BotAncelotti', 'BotSimeone', 'BotArteta', 'BotXabi'];
@@ -54,6 +55,7 @@ async function main() {
       startingBudget: 1000,
       maxPlayers: Math.max(2, count),
       lotDurationSec: 15,
+      mode,
     }));
     for (const b of bots.slice(1)) {
       await b.must('room:join', { code });

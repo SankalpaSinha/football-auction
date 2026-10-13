@@ -1,5 +1,5 @@
 import { randomInt } from 'node:crypto';
-import type { CreateRoomInput, GameRules, RoomSettings, SessionUser } from '@fa/shared';
+import { ELO_CONFIG, GAME_RULES, type CreateRoomInput, type GameMode, type GameRules, type RoomSettings, type SessionUser } from '@fa/shared';
 import type { Server } from 'socket.io';
 import { maxPlayersForPool, type PlayerCatalog } from '../data/catalog';
 import type { Clock } from '../engine/clock';
@@ -12,6 +12,19 @@ import { RateLimiter } from '../lib/rateLimit';
 const CODE_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // no 0/O/1/I
 export const roomChannel = (code: string) => `room:${code}`;
 export const userChannel = (userId: string) => `user:${userId}`;
+
+export interface PublicRoomInfo {
+  code: string;
+  name: string;
+  mode: GameMode;
+  competition: { id: string; name: string; accent: string; seasonLabel: string };
+  members: number;
+  maxPlayers: number;
+  host: string;
+  avgElo: number;
+  lotDurationSec: number;
+  createdAt: number;
+}
 
 export interface ManagerDeps {
   catalog: PlayerCatalog;
@@ -31,6 +44,8 @@ export class RoomManager {
   private dirty = new Set<Room>();
   private flushScheduled = false;
   private createLimiter: RateLimiter;
+  /** Last known ranked ELO per user (for lobby listings and matchmaking). */
+  private elo = new Map<string, number>();
 
   constructor(
     private readonly io: Server,
@@ -53,8 +68,7 @@ export class RoomManager {
   }
 
   create(user: SessionUser, input: CreateRoomInput): Room {
-    if (input.mode === 'RANKED') fail('RANKED_UNAVAILABLE');
-    if (input.isPublic) fail('PUBLIC_UNAVAILABLE');
+    if (input.mode === 'RANKED' && input.startingBudget !== GAME_RULES.defaultBudget) fail('RANKED_SETTINGS');
     const meta = this.deps.catalog.meta(input.competitionId, input.seasonId) ?? fail('COMPETITION_UNAVAILABLE');
     const pool = this.deps.catalog.resolvePool(input.competitionId, input.seasonId) ?? fail('COMPETITION_UNAVAILABLE');
     const gks = pool.filter((p) => p.position === 'GK').length;
@@ -124,6 +138,79 @@ export class RoomManager {
     if (current.hasMember(userId)) current.leave(userId);
     this.userRoom.delete(userId);
     this.io.in(userChannel(userId)).socketsLeave(roomChannel(current.code));
+  }
+
+  rememberElo(userId: string, elo: number) {
+    this.elo.set(userId, elo);
+  }
+
+  /** Open public lobbies with a free seat. */
+  publicLobbies(): PublicRoomInfo[] {
+    return [...this.rooms.values()]
+      .filter((r) => !r.closed && r.settings.isPublic && r.isLobby && r.memberCount < r.settings.maxPlayers)
+      .map((r) => {
+        const ids = r.memberIds();
+        const elos = ids.map((id) => this.elo.get(id) ?? ELO_CONFIG.initial);
+        return {
+          code: r.code,
+          name: r.name,
+          mode: r.settings.mode,
+          competition: { id: r.competition.id, name: r.competition.name, accent: r.competition.accent, seasonLabel: r.competition.seasonLabel },
+          members: ids.length,
+          maxPlayers: r.settings.maxPlayers,
+          host: r.view().members.find((m) => m.isHost)?.username ?? '',
+          avgElo: Math.round(elos.reduce((a, b) => a + b, 0) / Math.max(1, elos.length)),
+          lotDurationSec: r.settings.lotDurationSec,
+          createdAt: r.createdAt,
+        };
+      })
+      .sort((a, b) => b.members - a.members || a.createdAt - b.createdAt);
+  }
+
+  /**
+   * "Play now": join the best open public lobby for these preferences, or
+   * open a new public one. Prefers the requested competition, fuller rooms,
+   * and (for ranked) the closest average ELO.
+   */
+  quickMatch(user: SessionUser, prefs: { mode: GameMode; competitionId?: string }): { room: Room; created: boolean } {
+    const current = this.roomOf(user.id);
+    if (current?.isLobby && current.settings.isPublic && current.settings.mode === prefs.mode) {
+      return { room: current, created: false };
+    }
+    const myElo = this.elo.get(user.id) ?? ELO_CONFIG.initial;
+    const candidates = this.publicLobbies()
+      .filter((r) => r.mode === prefs.mode && r.code !== current?.code)
+      .map((r) => ({
+        r,
+        score:
+          (prefs.competitionId && r.competition.id !== prefs.competitionId ? 1000 : 0) +
+          (prefs.mode === 'RANKED' ? Math.abs(r.avgElo - myElo) : 0) -
+          r.members * 25,
+      }))
+      .sort((a, b) => a.score - b.score);
+    for (const { r } of candidates) {
+      try {
+        return { room: this.join(user, r.code), created: false };
+      } catch {
+        // filled up or started in the meantime — try the next one
+      }
+    }
+    const comps = this.deps.catalog.competitions();
+    const comp = comps.find((c) => c.id === prefs.competitionId) ?? comps.find((c) => c.id === 'premier-league') ?? comps[0];
+    if (!comp) fail('COMPETITION_UNAVAILABLE');
+    const season = comp.seasons[comp.seasons.length - 1];
+    const room = this.create(user, {
+      name: `${user.username}'s ${prefs.mode === 'RANKED' ? 'ranked' : 'quick'} match`.slice(0, 32),
+      competitionId: comp.id,
+      seasonId: season.id,
+      startingBudget: GAME_RULES.defaultBudget,
+      maxPlayers: Math.min(4, season.maxPlayers),
+      lotDurationSec: GAME_RULES.defaultLotDurationSec,
+      mode: prefs.mode,
+      isPublic: true,
+      antiSnipe: true,
+    });
+    return { room, created: true };
   }
 
   setConnected(userId: string, connected: boolean) {

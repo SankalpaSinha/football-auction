@@ -1,4 +1,24 @@
-import type { CompetitionSummary, GameRules, SessionUser } from '@fa/shared';
+import type {
+  CompetitionSummary,
+  GameMode,
+  GameRules,
+  LeaderboardRow,
+  MatchDetailView,
+  ProfileView,
+  SessionUser,
+} from '@fa/shared';
+
+export interface PublicRoom {
+  code: string;
+  name: string;
+  mode: GameMode;
+  competition: { id: string; name: string; accent: string; seasonLabel: string };
+  members: number;
+  maxPlayers: number;
+  host: string;
+  avgElo: number;
+  lotDurationSec: number;
+}
 import { serverUrl } from './config';
 
 const TOKEN_KEY = 'fa.session';
@@ -63,6 +83,10 @@ export const api = {
   logout: (token: string) => request<{ ok: true }>('/api/auth/logout', { method: 'POST', body: '{}', token }),
   me: (token: string) => request<{ user: SessionUser; activeRoom: string | null }>('/api/session', { token }),
   competitions: () => request<{ competitions: CompetitionSummary[]; rules: GameRules }>('/api/competitions'),
+  publicRooms: () => request<{ rooms: PublicRoom[] }>('/api/rooms/public'),
+  leaderboard: (mode: GameMode) => request<{ mode: GameMode; rows: LeaderboardRow[] }>(`/api/leaderboard?mode=${mode}`),
+  profile: (username: string) => request<ProfileView>(`/api/users/${encodeURIComponent(username)}`),
+  match: (id: string) => request<MatchDetailView>(`/api/matches/${encodeURIComponent(id)}`),
   room: (code: string) =>
     request<{ code: string; name: string; phase: string; members: number; maxPlayers: number; competition: { name: string } }>(
       `/api/rooms/${encodeURIComponent(code)}`,

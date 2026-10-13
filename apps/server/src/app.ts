@@ -8,6 +8,7 @@ import {
   createRoomSchema,
   joinRoomSchema,
   lineupSchema,
+  quickMatchSchema,
   readySchema,
   skipSchema,
   credentialsSchema,
@@ -24,6 +25,7 @@ import type { Clock } from './engine/clock';
 import { GameError } from './engine/errors';
 import type { GameStore } from './engine/store';
 import type { Commentator } from './services/commentary';
+import type { StatsService } from './services/stats';
 import { RateLimiter, TokenBucket } from './lib/rateLimit';
 import { RoomManager, roomChannel, userChannel } from './realtime/roomManager';
 import { InvalidCredentialsError, login, register, UsernameTakenError, type UserStore } from './services/users';
@@ -38,6 +40,8 @@ export interface AppDeps {
   maxRooms?: number;
   seed?: string;
   commentator?: Commentator;
+  /** Profiles / leaderboard / match history — needs the database. */
+  stats?: StatsService;
   log?: (msg: string, err?: unknown) => void;
 }
 
@@ -142,6 +146,51 @@ export function createApp(deps: AppDeps) {
     res.json({ competitions: deps.catalog.competitions(), rules: deps.rules });
   });
 
+  const needStats = (res: express.Response) => {
+    if (deps.stats) return deps.stats;
+    res.status(503).json({ ok: false, code: 'NO_DATABASE', error: 'Stats need the database (STORAGE=db).' });
+    return null;
+  };
+
+  app.get('/api/leaderboard', async (req, res) => {
+    const stats = needStats(res);
+    if (!stats) return;
+    const mode = req.query.mode === 'CASUAL' ? 'CASUAL' : 'RANKED';
+    try {
+      res.json({ mode, rows: await stats.leaderboard(mode) });
+    } catch (e) {
+      fail500(res, 'leaderboard', e);
+    }
+  });
+
+  app.get('/api/users/:username', async (req, res) => {
+    const stats = needStats(res);
+    if (!stats) return;
+    try {
+      const profile = await stats.profile(String(req.params.username).slice(0, 32));
+      if (!profile) return void res.status(404).json({ ok: false, code: 'NOT_FOUND', error: 'No manager with that name.' });
+      res.json(profile);
+    } catch (e) {
+      fail500(res, 'profile', e);
+    }
+  });
+
+  app.get('/api/matches/:id', async (req, res) => {
+    const stats = needStats(res);
+    if (!stats) return;
+    try {
+      const match = await stats.match(String(req.params.id).slice(0, 64));
+      if (!match) return void res.status(404).json({ ok: false, code: 'NOT_FOUND', error: 'Match not found.' });
+      res.json(match);
+    } catch (e) {
+      fail500(res, 'match', e);
+    }
+  });
+
+  app.get('/api/rooms/public', (_req, res) => {
+    res.json({ rooms: manager.publicLobbies() });
+  });
+
   app.get('/api/rooms/:code', (req, res) => {
     const room = manager.get(String(req.params.code).toUpperCase());
     if (!room) return void res.status(404).json(errorAck('ROOM_NOT_FOUND'));
@@ -185,6 +234,11 @@ export function createApp(deps: AppDeps) {
     }
     userSockets.set(user.id, socket);
     socket.join(userChannel(user.id));
+
+    deps.store
+      .ratingsFor([user.id], 'RANKED')
+      .then((r) => manager.rememberElo(user.id, r[user.id].elo))
+      .catch(() => {});
 
     const room = manager.roomOf(user.id);
     if (room) {
@@ -235,6 +289,12 @@ export function createApp(deps: AppDeps) {
     });
 
     on('room:leave', null, () => manager.leave(user.id));
+
+    on('match:quick', quickMatchSchema, (prefs) => {
+      const { room: r, created } = manager.quickMatch(user, prefs);
+      socket.emit('room:state', r.view(user.id));
+      return { code: r.code, created };
+    });
 
     on('room:ready', readySchema, ({ ready }) => {
       const r = manager.roomOf(user.id);

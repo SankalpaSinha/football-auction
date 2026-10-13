@@ -5,10 +5,11 @@ import { useRouter } from 'next/navigation';
 import { motion } from 'motion/react';
 import { ROOM_CODE_RE } from '@fa/shared';
 import { CreateRoom } from '@/components/CreateRoom';
+import { PlayNow, PublicRooms } from '@/components/Matchmaking';
+import { MobileNav, SiteHeader } from '@/components/SiteHeader';
 import { UsernameGate } from '@/components/UsernameGate';
-import { Avatar, Button, Logo, SoundToggle } from '@/components/ui';
+import { Button } from '@/components/ui';
 import { api, saveSession } from '@/lib/api';
-import { disconnectSocket } from '@/lib/socket';
 import { useGame } from '@/lib/store';
 
 export default function Home() {
@@ -33,29 +34,8 @@ export default function Home() {
 
   return (
     <main className="mx-auto min-h-dvh max-w-6xl px-4 pb-16 sm:px-6">
-      <header className="flex h-16 items-center justify-between">
-        <Logo />
-        <div className="flex items-center gap-2">
-          {session && (
-            <div className="flex items-center gap-2 rounded-xl px-2 py-1">
-              <Avatar name={session.user.username} size={28} />
-              <span className="hidden text-sm font-semibold sm:inline">{session.user.username}</span>
-              <button
-                className="text-xs text-dim hover:text-ink"
-                onClick={() => {
-                  void api.logout(session.token).catch(() => {});
-                  disconnectSocket();
-                  saveSession(null);
-                  setSession(null);
-                }}
-              >
-                Sign out
-              </button>
-            </div>
-          )}
-          <SoundToggle />
-        </div>
-      </header>
+      <SiteHeader />
+      {session && <MobileNav />}
 
       {!loaded ? null : !session ? (
         <Hero />
@@ -80,18 +60,13 @@ export default function Home() {
             </Link>
           )}
 
-          <div className="grid gap-6 lg:grid-cols-[1.6fr_1fr]">
+          <PlayNow />
+          <PublicRooms />
+
+          <div className="mt-8 grid gap-6 lg:grid-cols-[1.6fr_1fr]">
             <CreateRoom />
             <div className="flex flex-col gap-6">
               <JoinRoom />
-              <div className="glass cut-corners relative p-6 opacity-70">
-                <p className="label">Coming soon</p>
-                <h3 className="display text-2xl font-extrabold">Public rooms & matchmaking</h3>
-                <p className="mt-2 text-sm text-muted">
-                  Play strangers worldwide, ranked ELO and the global leaderboard arrive in a later phase. For now, share a room code
-                  with friends.
-                </p>
-              </div>
               <HowItWorks />
             </div>
           </div>

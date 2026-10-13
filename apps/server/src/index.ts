@@ -11,6 +11,7 @@ import { createDb } from './lib/db';
 import { PrismaGameStore } from './services/prismaStore';
 import { MemoryUserStore, PrismaUserStore, type UserStore } from './services/users';
 import { commentatorFromEnv } from './services/commentary';
+import { StatsService } from './services/stats';
 
 const env = process.env;
 const port = Number(env.PORT ?? 4000);
@@ -29,9 +30,11 @@ async function main() {
   let users: UserStore;
   let store: GameStore;
   let disconnect = async () => {};
+  let stats: StatsService | undefined;
+  let db: ReturnType<typeof createDb> | undefined;
 
   if (storage === 'db') {
-    const db = createDb();
+    db = createDb();
     data = await catalogFromDb(db);
     if (!data.players.length) {
       console.warn('⚠ No players in the database. Run `npm run db:import` first.');
@@ -40,7 +43,7 @@ async function main() {
     const prismaStore = new PrismaGameStore(db);
     await prismaStore.ensureFormations();
     store = prismaStore;
-    disconnect = () => db.$disconnect();
+    disconnect = () => db!.$disconnect();
   } else {
     const loaded = catalogFromSeedFiles(dataDir);
     if (loaded.errors.length) console.warn(`⚠ ${loaded.errors.length} seed rows skipped`);
@@ -51,10 +54,11 @@ async function main() {
   }
 
   const catalog = new InMemoryCatalog(data);
+  if (db) stats = new StatsService(db, catalog);
   const originEnv = env.CLIENT_ORIGIN ?? 'http://localhost:3000';
   const origins = originEnv === '*' ? true : originEnv.split(',').map((s) => s.trim());
   const commentator = commentatorFromEnv();
-  const server = createApp({ catalog, users, store, clock: systemClock, rules, corsOrigins: origins, commentator });
+  const server = createApp({ catalog, users, store, clock: systemClock, rules, corsOrigins: origins, commentator, stats });
   const actualPort = await server.listen(port);
 
   const comps = catalog.competitions();

@@ -67,7 +67,8 @@ export function Lobby({ room, me, onLeave }: { room: RoomView; me: string; onLea
                 <Coin className="h-3 w-3" /> {room.settings.startingBudget.toLocaleString()} budget
               </Pill>
               <Pill color="#2ee6ff">{room.settings.lotDurationSec}s per player</Pill>
-              <Pill color="#c8ff2e">{room.settings.mode === 'CASUAL' ? 'Casual' : 'Ranked'}</Pill>
+              <Pill color="#c8ff2e">{room.settings.mode === 'CASUAL' ? 'Casual' : 'Ranked ⚡ ELO on the line'}</Pill>
+              <Pill color="#8b94a8">{room.settings.isPublic ? 'Public' : 'Private'}</Pill>
               <Pill color="#8b94a8">{room.rules.squadSize}-man squads</Pill>
               {room.settings.antiSnipe && <Pill color="#8b94a8">Anti-snipe</Pill>}
             </div>
@@ -111,7 +112,9 @@ export function Lobby({ room, me, onLeave }: { room: RoomView; me: string; onLea
                   <Avatar name={m.username} size={48} />
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2">
-                      <span className="truncate text-lg font-bold">{m.username}</span>
+                      <a href={`/u/${m.username}`} target="_blank" rel="noreferrer" className="truncate text-lg font-bold hover:text-volt">
+                        {m.username}
+                      </a>
                       {m.isHost && <span title="Host">👑</span>}
                       {m.userId === me && <span className="text-xs text-muted">(you)</span>}
                     </div>

@@ -1,4 +1,5 @@
-import type { GameMode, RankedScore, RoomSettings } from '@fa/shared';
+import type { EloChange, GameMode, RankedScore, RoomSettings } from '@fa/shared';
+import { ELO_CONFIG } from '@fa/shared';
 import type { LotRecord, Participant } from './auction';
 
 /**
@@ -29,7 +30,9 @@ export interface GameStore {
   lotClosed(gameId: string, lot: LotRecord, participants: Participant[]): Promise<void>;
   auctionCompleted(gameId: string, participants: Participant[]): Promise<void>;
   lineupsFinalized(gameId: string, lineups: { userId: string; formationId: string; slots: string[] }[]): Promise<void>;
-  gameFinished(gameId: string, rankings: RankedScore[]): Promise<void>;
+  gameFinished(gameId: string, rankings: RankedScore[], ratingChanges: EloChange[] | null): Promise<void>;
+  /** Current rating per user for a mode (defaults for users who never played it). */
+  ratingsFor(userIds: string[], mode: GameMode): Promise<Record<string, { elo: number; games: number }>>;
   roomClosed(roomId: string, status: 'FINISHED' | 'ABANDONED' | 'CLOSED', gameId: string | null): Promise<void>;
 }
 
@@ -43,5 +46,8 @@ export class NoopGameStore implements GameStore {
   async auctionCompleted() {}
   async lineupsFinalized() {}
   async gameFinished() {}
+  async ratingsFor(userIds: string[]) {
+    return Object.fromEntries(userIds.map((id) => [id, { elo: ELO_CONFIG.initial, games: 0 }]));
+  }
   async roomClosed() {}
 }

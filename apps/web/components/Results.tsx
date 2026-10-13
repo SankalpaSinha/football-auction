@@ -1,9 +1,10 @@
 'use client';
 import { useEffect, useMemo, useState } from 'react';
+import Link from 'next/link';
 import { sound } from '@/lib/sound';
 import { serverNow } from '@/lib/store';
 import { AnimatePresence, motion } from 'motion/react';
-import { SCORING_CONFIG, type PlayerCard, type RankedScore, type RoomView, type ScoreComponent } from '@fa/shared';
+import { SCORING_CONFIG, type MatchReport, type PlayerCard, type RankedScore, type RoomView, type ScoreComponent } from '@fa/shared';
 import { PlayerAvatar } from './PlayerAvatar';
 import { MiniPitch } from './squad/Pitch';
 import { Avatar, Button, Coin, Logo, Pill, SoundToggle } from './ui';
@@ -74,7 +75,7 @@ export function Results({ room, me, onLeave }: { room: RoomView; me: string; onL
       <AnimatePresence>
         {done && (
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: late ? 0 : 1.6 }}>
-            <Analysis results={results} nameOf={nameOf} players={players} />
+            <Analysis report={results.report} commentary={results.commentary} nameOf={nameOf} players={players} />
 
             <div className="mt-6 grid gap-6 lg:grid-cols-[380px_1fr]">
               <div className="glass h-fit rounded-2xl p-4">
@@ -98,7 +99,12 @@ export function Results({ room, me, onLeave }: { room: RoomView; me: string; onL
                             {room.lineups?.[r.userId]?.formationId} · spent {r.spent}
                           </span>
                         </span>
-                        <span className="display text-3xl font-extrabold num">{r.total.toFixed(1)}</span>
+                        <span className="text-right">
+                          <span className="display block text-3xl font-extrabold leading-none num">{r.total.toFixed(1)}</span>
+                          {results.ratingChanges && (
+                            <EloDelta delta={results.ratingChanges.find((c) => c.userId === r.userId)?.delta ?? 0} />
+                          )}
+                        </span>
                       </button>
                     </li>
                   ))}
@@ -107,6 +113,11 @@ export function Results({ room, me, onLeave }: { room: RoomView; me: string; onL
                   Scores come from a fixed formula on the server — the same squad always gets the same score. Tap a manager to see their
                   breakdown.
                 </p>
+                {room.gameId && (
+                  <Link href={`/match/${room.gameId}`} className="mt-3 inline-block text-sm font-semibold text-volt hover:underline">
+                    Full match page — squads & auction log →
+                  </Link>
+                )}
               </div>
 
               <ManagerReport
@@ -114,8 +125,12 @@ export function Results({ room, me, onLeave }: { room: RoomView; me: string; onL
                 score={sel}
                 name={nameOf(sel.userId)}
                 verdict={results.report.verdicts[sel.userId]}
-                room={room}
+                lineup={room.lineups?.[sel.userId]}
                 players={players}
+                elo={(() => {
+                  const c = results.ratingChanges?.find((x) => x.userId === sel.userId);
+                  return c ? { before: c.before, after: c.after } : null;
+                })()}
               />
             </div>
           </motion.div>
@@ -238,20 +253,29 @@ function Confetti() {
   );
 }
 
-function Analysis({ results, nameOf, players }: { results: NonNullable<RoomView['results']>; nameOf: (id: string) => string; players: Map<string, PlayerCard> }) {
-  const { report, commentary } = results;
+export function Analysis({
+  report,
+  commentary,
+  nameOf,
+  players,
+}: {
+  report: MatchReport;
+  commentary?: NonNullable<RoomView['results']>['commentary'];
+  nameOf: (id: string) => string;
+  players: Map<string, PlayerCard>;
+}) {
   return (
     <section className="mt-6 grid gap-6 lg:grid-cols-[1.2fr_1fr]">
       <div className="glass rounded-2xl p-5">
         <div className="label">Match analysis</div>
         <h2 className="display mt-1 text-3xl font-extrabold">{report.headline}</h2>
         <p className="mt-3 leading-relaxed text-ink/90">{report.summary}</p>
-        {commentary.status === 'pending' && (
+        {commentary?.status === 'pending' && (
           <div className="mt-4 flex items-center gap-2 rounded-xl border border-white/10 bg-white/[.03] px-4 py-3 text-sm text-muted">
             <span className="h-2 w-2 animate-pulse rounded-full bg-cyan" /> The pundit is writing…
           </div>
         )}
-        {commentary.status === 'ready' && commentary.text && (
+        {commentary?.status === 'ready' && commentary.text && (
           <motion.blockquote initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="mt-4 rounded-xl border border-cyan/30 bg-cyan/[.06] px-4 py-3">
             <div className="mb-1 text-[11px] font-bold uppercase tracking-wider text-cyan">🎙️ Pundit · AI-generated</div>
             <p className="leading-relaxed">{commentary.text}</p>
@@ -290,20 +314,21 @@ function Analysis({ results, nameOf, players }: { results: NonNullable<RoomView[
   );
 }
 
-function ManagerReport({
+export function ManagerReport({
   score,
   name,
   verdict,
-  room,
+  lineup,
   players,
+  elo,
 }: {
   score: RankedScore;
   name: string;
   verdict?: string;
-  room: RoomView;
+  lineup?: { formationId: string; slots: (string | null)[] } | null;
   players: Map<string, PlayerCard>;
+  elo?: { before: number; after: number } | null;
 }) {
-  const lineup = room.lineups?.[score.userId];
   const best = score.bestPlayerId ? players.get(score.bestPlayerId) : undefined;
   const bestBuy = score.bestBuy ? players.get(score.bestBuy.playerId) : undefined;
   const worstBuy = score.worstBuy ? players.get(score.worstBuy.playerId) : undefined;
@@ -318,6 +343,12 @@ function ManagerReport({
         </h2>
         <span className="display text-4xl font-extrabold text-volt num">{score.total.toFixed(1)}</span>
       </div>
+      {elo && (
+        <p className="mt-1 text-sm">
+          ELO {elo.before} → <span className="font-bold">{elo.after}</span>{' '}
+          <EloDelta delta={elo.after - elo.before} />
+        </p>
+      )}
       {verdict && <p className="mt-2 text-sm text-muted">{verdict}</p>}
 
       <div className="mt-5 grid gap-6 md:grid-cols-[1fr_240px]">
@@ -473,4 +504,9 @@ export function EvaluatingBanner({ until }: { until: number | null }) {
       </Pill>
     </div>
   );
+}
+
+export function EloDelta({ delta }: { delta: number }) {
+  const cls = delta > 0 ? 'text-emerald-300' : delta < 0 ? 'text-rose-300' : 'text-muted';
+  return <span className={`text-xs font-bold num ${cls}`}>{delta > 0 ? `+${delta}` : delta === 0 ? '±0' : delta} ELO</span>;
 }

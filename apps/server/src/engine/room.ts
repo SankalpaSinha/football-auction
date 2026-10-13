@@ -3,6 +3,9 @@ import {
   DEFAULT_FORMATION,
   autoPick,
   buildMatchReport,
+  computeEloChanges,
+  ELO_CONFIG,
+  type EloChange,
   rankScores,
   type MatchReport,
   scoreSquad,
@@ -104,6 +107,8 @@ export class Room {
   private rankings: RankedScore[] | null = null;
   private evaluatedAt: number | null = null;
   private report: MatchReport | null = null;
+  private ratings: Record<string, { elo: number; games: number }> | null = null;
+  private ratingChanges: EloChange[] | null = null;
   private commentary: { status: 'disabled' | 'pending' | 'ready' | 'unavailable'; text: string | null } = {
     status: 'disabled',
     text: null,
@@ -315,6 +320,12 @@ export class Room {
       }));
 
     const gameId = this.gameId;
+    if (this.settings.mode === 'RANKED') {
+      this.deps.store
+        .ratingsFor(this.participants.map((p) => p.userId), 'RANKED')
+        .then((r) => (this.ratings = r))
+        .catch((err) => this.deps.log?.('could not load ratings', err));
+    }
     this.persist(() =>
       this.deps.store.gameStarted({
         gameId,
@@ -476,6 +487,16 @@ export class Room {
       return { userId: p.userId, score: scoreSquad(p.squad, { formationId: l.formationId, slots: l.slots }) };
     });
     this.rankings = rankScores(scores);
+    if (this.settings.mode === 'RANKED') {
+      this.ratingChanges = computeEloChanges(
+        this.rankings.map((r) => ({
+          userId: r.userId,
+          rank: r.rank,
+          elo: this.ratings?.[r.userId]?.elo ?? ELO_CONFIG.initial,
+          games: this.ratings?.[r.userId]?.games ?? 0,
+        })),
+      );
+    }
     this.report = buildMatchReport(
       this.rankings,
       this.participants.map((p) => ({ userId: p.userId, username: p.username, squad: p.squad })),
@@ -485,7 +506,8 @@ export class Room {
     this.resultsAt = this.evaluatedAt + this.deps.rules.evaluationMs;
     const gameId = this.gameId!;
     const rankings = this.rankings;
-    this.persist(() => this.deps.store.gameFinished(gameId, rankings));
+    const ratingChanges = this.ratingChanges;
+    this.persist(() => this.deps.store.gameFinished(gameId, rankings, ratingChanges));
     this.evaluationTimer = this.deps.clock.setTimeout(() => this.showResults(), this.deps.rules.evaluationMs);
   }
 
@@ -635,6 +657,7 @@ export class Room {
       });
     return {
       id: this.id,
+      gameId: this.gameId,
       code: this.code,
       name: this.name,
       phase: this.phase,
@@ -665,7 +688,13 @@ export class Room {
           : null,
       results:
         this.phase === 'RESULTS' && this.rankings && this.report
-          ? { rankings: this.rankings, evaluatedAt: this.evaluatedAt!, report: this.report, commentary: this.commentary }
+          ? {
+              rankings: this.rankings,
+              evaluatedAt: this.evaluatedAt!,
+              report: this.report,
+              commentary: this.commentary,
+              ratingChanges: this.ratingChanges,
+            }
           : null,
       resultsAt: this.phase === 'FINAL_EVALUATION' ? this.resultsAt : null,
       feed: this.feed.slice(-40),

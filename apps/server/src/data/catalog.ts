@@ -68,6 +68,10 @@ export interface PlayerCatalog {
   competitions(): CompetitionSummary[];
   meta(competitionId: string, seasonId: string): CompetitionMeta | null;
   resolvePool(competitionId: string, seasonId: string): PlayerCard[] | null;
+  /** Any player card by season-specific id, including inactive players (for history). */
+  card(id: string): PlayerCard | undefined;
+  competitionName(competitionId: string): { name: string; accent: string } | undefined;
+  seasonLabel(seasonId: string): string;
 }
 
 export function matchesRules(entry: CatalogEntry, seasonId: string, rules: PoolRules): boolean {
@@ -85,8 +89,10 @@ export function matchesRules(entry: CatalogEntry, seasonId: string, rules: PoolR
 
 export class InMemoryCatalog implements PlayerCatalog {
   private pools = new Map<string, PlayerCard[]>();
+  private cards: Map<string, PlayerCard>;
 
   constructor(private readonly data: CatalogData) {
+    this.cards = new Map(data.players.map((e) => [e.card.id, e.card]));
     for (const comp of data.competitions) {
       for (const [seasonId, rules] of Object.entries(comp.seasons)) {
         const pool = data.players.filter((e) => matchesRules(e, seasonId, rules)).map((e) => e.card);
@@ -132,6 +138,19 @@ export class InMemoryCatalog implements PlayerCatalog {
       accent: c.accent,
       seasonLabel: this.data.seasons.find((s) => s.id === seasonId)?.label ?? seasonId,
     };
+  }
+
+  card(id: string) {
+    return this.cards.get(id);
+  }
+
+  competitionName(competitionId: string) {
+    const c = this.data.competitions.find((x) => x.id === competitionId);
+    return c ? { name: c.name, accent: c.accent } : undefined;
+  }
+
+  seasonLabel(seasonId: string) {
+    return this.data.seasons.find((s) => s.id === seasonId)?.label ?? seasonId;
   }
 
   resolvePool(competitionId: string, seasonId: string): PlayerCard[] | null {

@@ -10,3 +10,4 @@ export * from './scoring';
 export * from './analysis';
 export * from './elo';
 export * from './stats';
+export * from './achievements';

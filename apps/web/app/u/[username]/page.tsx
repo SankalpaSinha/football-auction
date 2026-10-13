@@ -3,6 +3,8 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import type { ProfileView, StatsBlock } from '@fa/shared';
+import { AchievementGrid } from '@/components/Achievements';
+import { FormationBars, ScoreTrend } from '@/components/ProfileCharts';
 import { EloDelta } from '@/components/Results';
 import { MobileNav, SiteHeader } from '@/components/SiteHeader';
 import { Avatar, Pill } from '@/components/ui';
@@ -61,6 +63,50 @@ export default function ProfilePage() {
             <StatsCard title="Ranked ⚡" s={p.ranked} />
             <StatsCard title="Casual" s={p.casual} />
           </div>
+
+          <div className="mt-6 grid gap-6 lg:grid-cols-[1.6fr_1fr]">
+            <div className="glass rounded-2xl p-5">
+              <div className="label mb-3">Squad score · last {p.trend.length} games</div>
+              <ScoreTrend trend={p.trend} />
+            </div>
+            <div className="glass rounded-2xl p-5">
+              <div className="label mb-3">Transfer habits</div>
+              <dl className="grid grid-cols-3 gap-2 text-center">
+                {[
+                  ['Avg spend', String(p.spending.avgSpent)],
+                  ['Bargains', String(p.spending.bargains)],
+                  ['Overpays', String(p.spending.overpays)],
+                ].map(([k, v]) => (
+                  <div key={k} className="rounded-xl bg-white/[.04] px-2 py-2.5">
+                    <dd className="display text-2xl font-extrabold num">{v}</dd>
+                    <dt className="text-[10px] font-semibold uppercase tracking-wider text-muted">{k}</dt>
+                  </div>
+                ))}
+              </dl>
+              <ul className="mt-3 space-y-1.5 text-sm">
+                {p.spending.biggestBargain && (
+                  <li>
+                    🟢 Best bargain: <span className="font-semibold">{p.spending.biggestBargain.playerName}</span>{' '}
+                    <span className="text-muted">
+                      — {p.spending.biggestBargain.price} for ~{p.spending.biggestBargain.value}
+                    </span>
+                  </li>
+                )}
+                {p.spending.recordSigning && (
+                  <li>
+                    💰 Record signing: <span className="font-semibold">{p.spending.recordSigning.playerName}</span>{' '}
+                    <span className="text-muted">— {p.spending.recordSigning.price}</span>
+                  </li>
+                )}
+              </ul>
+              <div className="label mb-2 mt-4">Formations</div>
+              <FormationBars formations={p.formations} />
+            </div>
+          </div>
+
+          <section className="mt-8">
+            <AchievementGrid unlocked={p.achievements} />
+          </section>
 
           <section className="mt-8">
             <h2 className="display mb-3 text-2xl font-extrabold">Recent matches</h2>

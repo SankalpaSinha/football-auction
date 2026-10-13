@@ -187,6 +187,10 @@ export function createApp(deps: AppDeps) {
     }
   });
 
+  app.get('/api/rooms/live', (_req, res) => {
+    res.json({ games: manager.liveGames() });
+  });
+
   app.get('/api/rooms/public', (_req, res) => {
     res.json({ rooms: manager.publicLobbies() });
   });
@@ -290,6 +294,12 @@ export function createApp(deps: AppDeps) {
 
     on('room:leave', null, () => manager.leave(user.id));
 
+    on('room:spectate', joinRoomSchema, ({ code }) => {
+      const { room: r, role } = manager.spectate(user, code);
+      socket.emit('room:state', role === 'member' ? r.view(user.id) : r.view());
+      return { code: r.code, role };
+    });
+
     on('match:quick', quickMatchSchema, (prefs) => {
       const { room: r, created } = manager.quickMatch(user, prefs);
       socket.emit('room:state', r.view(user.id));
@@ -337,6 +347,7 @@ export function createApp(deps: AppDeps) {
     socket.on('disconnect', () => {
       if (socket.data.replaced || userSockets.get(user.id) !== socket) return;
       userSockets.delete(user.id);
+      manager.stopWatching(user.id);
       manager.setConnected(user.id, false);
     });
   });

@@ -2,6 +2,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { sound } from '@/lib/sound';
+import { EarnedBadges } from './Achievements';
 import { serverNow } from '@/lib/store';
 import { AnimatePresence, motion } from 'motion/react';
 import { SCORING_CONFIG, type MatchReport, type PlayerCard, type RankedScore, type RoomView, type ScoreComponent } from '@fa/shared';
@@ -75,6 +76,11 @@ export function Results({ room, me, onLeave }: { room: RoomView; me: string; onL
       <AnimatePresence>
         {done && (
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: late ? 0 : 1.6 }}>
+            {(results.achievements[me]?.length ?? 0) > 0 && (
+              <div className="glass mt-6 rounded-2xl p-5">
+                <EarnedBadges keys={results.achievements[me]} title="🏅 Your achievements this game" />
+              </div>
+            )}
             <Analysis report={results.report} commentary={results.commentary} nameOf={nameOf} players={players} />
 
             <div className="mt-6 grid gap-6 lg:grid-cols-[380px_1fr]">

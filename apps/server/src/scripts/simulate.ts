@@ -7,6 +7,7 @@
  *
  * Options: --server http://localhost:4000  --bots N  --competition id  --season 2026-27
  *          --aggression 0..1  --think-min ms  --think-max ms  --mode casual|ranked
+ *          --names A,B,C (reuse the same bot accounts)  --public
  */
 import { randomBytes } from 'node:crypto';
 import { Bot } from '../sim/bot';
@@ -23,6 +24,8 @@ const count = Number(arg('bots', join ? '2' : '3'));
 const competitionId = arg('competition', 'premier-league')!;
 const seasonId = arg('season', '2026-27')!;
 const aggression = Number(arg('aggression', '0.6'));
+const fixedNames = arg('names')?.split(',').map((n) => n.trim()).filter(Boolean);
+const isPublic = args.includes('--public');
 const mode = (arg('mode', 'casual')!.toUpperCase() === 'RANKED' ? 'RANKED' : 'CASUAL') as 'RANKED' | 'CASUAL';
 const think: [number, number] = [Number(arg('think-min', join ? '900' : '150')), Number(arg('think-max', join ? '4000' : '600'))];
 
@@ -32,7 +35,8 @@ async function main() {
   const tag = randomBytes(2).toString('hex');
   const bots = await Promise.all(
     Array.from({ length: count }, async (_, i) => {
-      const bot = new Bot(base, `${NAMES[i % NAMES.length]}_${tag}`.slice(0, 16), { aggression, thinkMs: think });
+      const name = fixedNames?.[i] ?? `${NAMES[i % NAMES.length]}_${tag}`.slice(0, 16);
+      const bot = new Bot(base, name, { aggression, thinkMs: think });
       await bot.login();
       return bot.connect();
     }),
@@ -56,6 +60,7 @@ async function main() {
       maxPlayers: Math.max(2, count),
       lotDurationSec: 15,
       mode,
+      isPublic,
     }));
     for (const b of bots.slice(1)) {
       await b.must('room:join', { code });

@@ -38,6 +38,18 @@ export interface ProfileView {
   favoriteCompetition: { id: string; name: string } | null;
   favoriteFormation: string | null;
   recent: MatchSummary[];
+  achievements: { key: string; unlockedAt: string }[];
+  /** Oldest → newest. */
+  trend: { score: number; rank: number; players: number; mode: GameMode; endedAt: string }[];
+  spending: {
+    avgSpent: number;
+    bargains: number;
+    overpays: number;
+    signings: number;
+    biggestBargain: { playerName: string; price: number; value: number } | null;
+    recordSigning: { playerName: string; price: number } | null;
+  };
+  formations: { id: string; count: number }[];
 }
 
 export interface MatchDetailManager {

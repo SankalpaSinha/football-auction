@@ -8,6 +8,17 @@ import type {
   SessionUser,
 } from '@fa/shared';
 
+export interface LiveGame {
+  code: string;
+  name: string;
+  mode: GameMode;
+  phase: string;
+  competition: { id: string; name: string; accent: string; seasonLabel: string };
+  managers: string[];
+  spectators: number;
+  lotsOpened: number;
+}
+
 export interface PublicRoom {
   code: string;
   name: string;
@@ -83,6 +94,7 @@ export const api = {
   logout: (token: string) => request<{ ok: true }>('/api/auth/logout', { method: 'POST', body: '{}', token }),
   me: (token: string) => request<{ user: SessionUser; activeRoom: string | null }>('/api/session', { token }),
   competitions: () => request<{ competitions: CompetitionSummary[]; rules: GameRules }>('/api/competitions'),
+  liveGames: () => request<{ games: LiveGame[] }>('/api/rooms/live'),
   publicRooms: () => request<{ rooms: PublicRoom[] }>('/api/rooms/public'),
   leaderboard: (mode: GameMode) => request<{ mode: GameMode; rows: LeaderboardRow[] }>(`/api/leaderboard?mode=${mode}`),
   profile: (username: string) => request<ProfileView>(`/api/users/${encodeURIComponent(username)}`),

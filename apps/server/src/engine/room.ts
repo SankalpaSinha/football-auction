@@ -4,6 +4,7 @@ import {
   autoPick,
   buildMatchReport,
   computeEloChanges,
+  gameAchievements,
   ELO_CONFIG,
   type EloChange,
   rankScores,
@@ -73,6 +74,7 @@ const LOBBY_PHASES: RoomPhase[] = ['WAITING_FOR_PLAYERS', 'LOBBY'];
 
 interface LineupState extends LineupView {}
 const FEED_LIMIT = 60;
+const MAX_SPECTATORS = 50;
 
 /**
  * A room and its state machine:
@@ -90,6 +92,7 @@ export class Room {
   closed = false;
 
   private members = new Map<string, Member>();
+  private spectators = new Set<string>();
   private feed: FeedItem[] = [];
   private feedSeq = 0;
   private version = 0;
@@ -109,6 +112,7 @@ export class Room {
   private report: MatchReport | null = null;
   private ratings: Record<string, { elo: number; games: number }> | null = null;
   private ratingChanges: EloChange[] | null = null;
+  private achievements: Record<string, string[]> = {};
   private commentary: { status: 'disabled' | 'pending' | 'ready' | 'unavailable'; text: string | null } = {
     status: 'disabled',
     text: null,
@@ -136,6 +140,19 @@ export class Room {
 
   hasMember(userId: string) {
     return this.members.has(userId);
+  }
+
+  /** Read-only viewers. They can never act: every action checks membership. */
+  addSpectator(userId: string) {
+    this.assertOpen();
+    if (this.members.has(userId)) return;
+    if (this.spectators.size >= MAX_SPECTATORS) fail('TOO_MANY_SPECTATORS');
+    this.spectators.add(userId);
+    this.changed();
+  }
+
+  removeSpectator(userId: string) {
+    if (this.spectators.delete(userId)) this.changed();
   }
 
   memberIds() {
@@ -497,6 +514,20 @@ export class Room {
         })),
       );
     }
+    this.achievements = gameAchievements({
+      mode: this.settings.mode,
+      startingBudget: this.settings.startingBudget,
+      managers: this.participants.map((p) => {
+        const l = this.lineups.get(p.userId)!;
+        return {
+          userId: p.userId,
+          score: this.rankings!.find((r) => r.userId === p.userId)!,
+          squad: p.squad,
+          lineup: { formationId: l.formationId, slots: l.slots },
+          eloBefore: this.ratingChanges?.find((c) => c.userId === p.userId)?.before,
+        };
+      }),
+    });
     this.report = buildMatchReport(
       this.rankings,
       this.participants.map((p) => ({ userId: p.userId, username: p.username, squad: p.squad })),
@@ -507,7 +538,8 @@ export class Room {
     const gameId = this.gameId!;
     const rankings = this.rankings;
     const ratingChanges = this.ratingChanges;
-    this.persist(() => this.deps.store.gameFinished(gameId, rankings, ratingChanges));
+    const achievements = this.achievements;
+    this.persist(() => this.deps.store.gameFinished(gameId, rankings, ratingChanges, achievements));
     this.evaluationTimer = this.deps.clock.setTimeout(() => this.showResults(), this.deps.rules.evaluationMs);
   }
 
@@ -672,6 +704,7 @@ export class Room {
         minPlayers: rules.minPlayers,
       },
       members,
+      spectators: this.spectators.size,
       startsAt: this.startsAt,
       auction: this.auction ? this.auction.view() : null,
       squadBuilding:
@@ -694,6 +727,7 @@ export class Room {
               report: this.report,
               commentary: this.commentary,
               ratingChanges: this.ratingChanges,
+              achievements: this.achievements,
             }
           : null,
       resultsAt: this.phase === 'FINAL_EVALUATION' ? this.resultsAt : null,

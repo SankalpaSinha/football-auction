@@ -35,8 +35,17 @@ export class Bot {
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ username: this.username, password: `bot-${this.username}-pw` }),
     });
-    const body = (await res.json()) as { user: { id: string }; token: string; error?: string };
-    if (!res.ok) throw new Error(`login ${this.username}: ${body.error}`);
+    let body = (await res.json()) as { user: { id: string }; token: string; error?: string; code?: string };
+    if (res.status === 409) {
+      // Name already registered (e.g. a fixed bot name) — sign in instead.
+      const again = await fetch(`${this.base}/api/auth/login`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ username: this.username, password: `bot-${this.username}-pw` }),
+      });
+      body = await again.json();
+      if (!again.ok) throw new Error(`login ${this.username}: ${body.error}`);
+    } else if (!res.ok) throw new Error(`login ${this.username}: ${body.error}`);
     this.token = body.token;
     this.userId = body.user.id;
     return this;

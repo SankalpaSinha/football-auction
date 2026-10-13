@@ -1,4 +1,4 @@
-import { ELO_CONFIG, FORMATIONS, type EloChange, type GameMode, type RankedScore } from '@fa/shared';
+import { careerAchievements, ELO_CONFIG, FORMATIONS, type EloChange, type GameMode, type RankedScore } from '@fa/shared';
 import type { GameStore } from '../engine/store';
 import type { Db } from '../lib/db';
 
@@ -150,7 +150,12 @@ export class PrismaGameStore implements GameStore {
     );
   }
 
-  async gameFinished(gameId: string, rankings: RankedScore[], ratingChanges: EloChange[] | null) {
+  async gameFinished(
+    gameId: string,
+    rankings: RankedScore[],
+    ratingChanges: EloChange[] | null,
+    achievements: Record<string, string[]>,
+  ) {
     await this.db.$transaction(async (tx) => {
       const game = await tx.game.update({ where: { id: gameId }, data: { status: 'FINISHED', endedAt: new Date() } });
       await tx.room.update({ where: { id: game.roomId }, data: { status: 'FINISHED' } });
@@ -185,6 +190,21 @@ export class PrismaGameStore implements GameStore {
             highestScore: Math.max(existing?.highestScore ?? 0, total),
             ...(elo ? { elo: elo.after } : {}),
           },
+        });
+
+        // Achievements: this game's, plus career ones from the updated totals. Each unlocks once.
+        const totals = await tx.playerRating.findMany({ where: { userId } });
+        const career = careerAchievements({
+          games: totals.reduce((a, t) => a + t.games, 0),
+          wins: totals.reduce((a, t) => a + t.wins, 0),
+          rankedElo: totals.find((t) => t.mode === 'RANKED')?.elo ?? 0,
+        });
+        await tx.userAchievement.createMany({
+          data: [
+            ...(achievements[userId] ?? []).map((key) => ({ userId, key, gameId })),
+            ...career.map((key) => ({ userId, key, gameId })),
+          ],
+          skipDuplicates: true,
         });
       }
     });

@@ -32,6 +32,19 @@ model User {
   bids        Bid[]
   wonLots     AuctionLot[]
   results     MatchResult[]
+  achievements UserAchievement[]
+}
+
+model UserAchievement {
+  id         String   @id @default(cuid())
+  userId     String
+  key        String
+  /// Game where it was first earned.
+  gameId     String?
+  unlockedAt DateTime @default(now())
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, key])
 }
 
 /// One signed-in device. The browser keeps the raw token; only its SHA-256 is stored.

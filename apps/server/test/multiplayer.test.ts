@@ -179,5 +179,44 @@ describe('multiplayer over websockets', () => {
     expect(bad.ok).toBe(false);
     for (const b of [host, guest, solo]) b.disconnect();
   });
+
+  it('spectators watch live but can never act or see private lineups', async () => {
+    const [p1, p2, fan] = await Promise.all(
+      ['Player1', 'Player2', 'Watcher'].map(async (n) => (await new Bot(base, n, { aggression: 0.6 }).login()).connect()),
+    );
+    const { code } = await p1.must<{ code: string }>('room:create', { ...roomInput, isPublic: true });
+    await p2.must('room:join', { code });
+    await p2.must('room:ready', { ready: true });
+    await p1.must('room:start');
+    await p1.waitFor((v) => v.phase === 'AUCTION');
+
+    const live = (await (await fetch(`${base}/api/rooms/live`)).json()).games as { code: string }[];
+    expect(live.some((g) => g.code === code)).toBe(true);
+
+    const r = await fan.must<{ code: string; role: string }>('room:spectate', { code });
+    expect(r.role).toBe('spectator');
+    const seen = await fan.waitFor((v) => v.code === code && (v.auction?.lot !== null || v.phase === 'PLAYER_SOLD'));
+    expect(seen.members.map((m) => m.username).sort()).toEqual(['Player1', 'Player2']);
+    await p1.waitFor((v) => v.spectators === 1);
+
+    const lot = (await fan.waitFor((v) => !!v.auction?.lot)).auction!.lot!;
+    const bid = await fan.emit('auction:bid', { lotNumber: lot.lotNumber, amount: 500 });
+    expect(bid.ok).toBe(false);
+    const join = await fan.emit('room:join', { code });
+    expect(join.ok).toBe(false); // can't join a game in progress
+
+    // Squad building: spectators see lock status but no lineups.
+    const building = await fan.waitFor((v) => v.phase === 'SQUAD_BUILDING' || v.phase === 'RESULTS', 60_000);
+    if (building.phase === 'SQUAD_BUILDING') {
+      expect(building.squadBuilding!.mine).toBeNull();
+      expect(building.lineups).toBeNull();
+    }
+    const results = await fan.waitFor((v) => v.phase === 'RESULTS', 30_000);
+    expect(results.results!.rankings).toHaveLength(2);
+
+    await fan.must('room:leave');
+    await p1.waitFor((v) => v.spectators === 0);
+    for (const b of [p1, p2, fan]) b.disconnect();
+  }, 90_000);
 });
 

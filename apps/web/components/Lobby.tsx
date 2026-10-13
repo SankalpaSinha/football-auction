@@ -6,7 +6,7 @@ import { emit } from '@/lib/socket';
 import { serverNow, useGame } from '@/lib/store';
 import { Avatar, Button, Coin, Logo, Pill, SoundToggle } from './ui';
 
-export function Lobby({ room, me, onLeave }: { room: RoomView; me: string; onLeave: () => void }) {
+export function Lobby({ room, me, onLeave, onJoin }: { room: RoomView; me: string; onLeave: () => void; onJoin?: () => void }) {
   const toast = useGame((s) => s.toast);
   const self = room.members.find((m) => m.userId === me);
   const isHost = room.hostId === me;
@@ -140,7 +140,14 @@ export function Lobby({ room, me, onLeave }: { room: RoomView; me: string; onLea
       </section>
 
       <section className="sticky bottom-0 mt-10 -mx-4 flex flex-col items-center gap-3 bg-gradient-to-t from-night via-night/95 to-transparent px-4 pb-4 pt-6 sm:mx-0 sm:flex-row sm:justify-end sm:bg-none sm:px-0">
-        {isHost ? (
+        {onJoin ? (
+          <>
+            <span className="text-sm text-muted">You’re watching this lobby.</span>
+            <Button size="lg" onClick={onJoin} disabled={room.members.length >= room.settings.maxPlayers} className="w-full sm:w-auto">
+              Join this room
+            </Button>
+          </>
+        ) : isHost ? (
           <>
             {blocker && <span className="text-sm text-muted">{blocker}</span>}
             <Button size="lg" disabled={!!blocker || busy || room.phase !== 'LOBBY'} onClick={() => act('room:start')} className="w-full sm:w-auto">

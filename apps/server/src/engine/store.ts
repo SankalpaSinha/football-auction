@@ -30,7 +30,12 @@ export interface GameStore {
   lotClosed(gameId: string, lot: LotRecord, participants: Participant[]): Promise<void>;
   auctionCompleted(gameId: string, participants: Participant[]): Promise<void>;
   lineupsFinalized(gameId: string, lineups: { userId: string; formationId: string; slots: string[] }[]): Promise<void>;
-  gameFinished(gameId: string, rankings: RankedScore[], ratingChanges: EloChange[] | null): Promise<void>;
+  gameFinished(
+    gameId: string,
+    rankings: RankedScore[],
+    ratingChanges: EloChange[] | null,
+    achievements: Record<string, string[]>,
+  ): Promise<void>;
   /** Current rating per user for a mode (defaults for users who never played it). */
   ratingsFor(userIds: string[], mode: GameMode): Promise<Record<string, { elo: number; games: number }>>;
   roomClosed(roomId: string, status: 'FINISHED' | 'ABANDONED' | 'CLOSED', gameId: string | null): Promise<void>;

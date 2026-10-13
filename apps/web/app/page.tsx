@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { motion } from 'motion/react';
 import { ROOM_CODE_RE } from '@fa/shared';
 import { CreateRoom } from '@/components/CreateRoom';
-import { PlayNow, PublicRooms } from '@/components/Matchmaking';
+import { LiveGames, PlayNow, PublicRooms } from '@/components/Matchmaking';
 import { MobileNav, SiteHeader } from '@/components/SiteHeader';
 import { UsernameGate } from '@/components/UsernameGate';
 import { Button } from '@/components/ui';
@@ -62,6 +62,7 @@ export default function Home() {
 
           <PlayNow />
           <PublicRooms />
+          <LiveGames />
 
           <div className="mt-8 grid gap-6 lg:grid-cols-[1.6fr_1fr]">
             <CreateRoom />

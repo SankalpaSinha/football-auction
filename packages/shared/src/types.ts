@@ -229,6 +229,8 @@ export interface RoomView {
   competition: { id: string; name: string; shortName: string; accent: string; seasonLabel: string };
   rules: { squadSize: number; openingBid: number; minIncrement: number; bidIncrements: number[]; minPlayers: number };
   members: MemberView[];
+  /** People watching read-only. */
+  spectators: number;
   startsAt: number | null;
   auction: AuctionView | null;
   squadBuilding: SquadBuildingView | null;
@@ -244,6 +246,8 @@ export interface RoomView {
     commentary: { status: 'disabled' | 'pending' | 'ready' | 'unavailable'; text: string | null };
     /** Ranked games only: rating before/after for each manager. */
     ratingChanges: EloChange[] | null;
+    /** Achievement keys earned this game, per manager. */
+    achievements: Record<string, string[]>;
   } | null;
   /** While in FINAL_EVALUATION: when results will be shown. */
   resultsAt: number | null;

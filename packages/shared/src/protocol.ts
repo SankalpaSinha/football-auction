@@ -63,6 +63,7 @@ export interface ClientToServer {
   'room:create': (input: unknown, ack: (r: Ack<{ code: string }>) => void) => void;
   'room:join': (input: unknown, ack: (r: Ack<{ code: string }>) => void) => void;
   'room:leave': (input: unknown, ack: (r: Ack) => void) => void;
+  'room:spectate': (input: unknown, ack: (r: Ack<{ code: string; role: 'member' | 'spectator' }>) => void) => void;
   'room:ready': (input: unknown, ack: (r: Ack) => void) => void;
   'room:start': (input: unknown, ack: (r: Ack) => void) => void;
   'auction:bid': (input: unknown, ack: (r: Ack) => void) => void;
@@ -99,6 +100,7 @@ export const ERROR_MESSAGES = {
   POOL_TOO_SMALL: 'This player pool is too small for that many players.',
   RANKED_SETTINGS: 'Ranked games use the standard 1,000-coin budget.',
   TOO_MANY_ROOMS: 'You have created too many rooms recently.',
+  TOO_MANY_SPECTATORS: 'This game has as many spectators as it can take.',
   // auction
   NO_ACTIVE_LOT: 'There is no player up for auction.',
   STALE_LOT: 'That player is no longer up for auction.',

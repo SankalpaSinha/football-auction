@@ -4,6 +4,7 @@ import { AnimatePresence, motion } from 'motion/react';
 import type { RoomView } from '@fa/shared';
 import { useGame } from '@/lib/store';
 import { PlayerCard } from '../PlayerCard';
+import { TiltCard } from '../TiltCard';
 import { Logo, Pill, SoundToggle } from '../ui';
 import { BidPanel } from './BidPanel';
 import { Feed } from './Feed';
@@ -21,7 +22,7 @@ export function AuctionScreen({ room, me }: { room: RoomView; me: string }) {
   const remaining = useCountdown(lot);
   const totalMs = lot?.extended ? 5_000 : room.settings.lotDurationSec * 1000;
   const [tab, setTab] = useState<Tab>('managers');
-  const outbid = useOutbidFlash(me, room);
+  const { flash: outbid, seq: outbidKey } = useOutbidFlash(me, room);
 
   return (
     <div className="flex min-h-dvh flex-col">
@@ -41,6 +42,7 @@ export function AuctionScreen({ room, me }: { room: RoomView; me: string }) {
             </span>
             {auction.unsoldWaiting > 0 && <span className="hidden md:inline">{auction.unsoldWaiting} unsold waiting</span>}
             {auction.reofferRound && <Pill color="#ffb020">Re-offer round</Pill>}
+            {room.spectators > 0 && <span title="Spectators">👀 {room.spectators}</span>}
             <span className="hidden font-mono text-ink/70 lg:inline">{room.code}</span>
             <SoundToggle />
           </div>
@@ -84,7 +86,11 @@ export function AuctionScreen({ room, me }: { room: RoomView; me: string }) {
                       exit={{ y: -30, opacity: 0, scale: 0.9, transition: { duration: 0.2 } }}
                       transition={{ type: 'spring', stiffness: 90, damping: 14 }}
                     >
-                      <PlayerCard player={lot.player} size="lg" className="hidden md:block" />
+                      <div className="hidden md:block">
+                        <TiltCard>
+                          <PlayerCard player={lot.player} size="lg" />
+                        </TiltCard>
+                      </div>
                       <PlayerCard player={lot.player} size="sm" className="md:hidden" />
                     </motion.div>
                   ) : (
@@ -115,7 +121,13 @@ export function AuctionScreen({ room, me }: { room: RoomView; me: string }) {
                   <div className="hidden md:block">
                     <LotInfo room={room} remaining={remaining} totalMs={totalMs} />
                   </div>
-                  <BidPanel room={room} lot={lot} me={self} remainingMs={remaining} />
+                  <motion.div
+                    key={outbidKey}
+                    animate={outbidKey ? { x: [0, -10, 9, -6, 4, 0] } : { x: 0 }}
+                    transition={{ duration: 0.45 }}
+                  >
+                    <BidPanel room={room} lot={lot} me={self} remainingMs={remaining} />
+                  </motion.div>
                 </>
               )}
             </div>
@@ -189,6 +201,7 @@ function useOutbidFlash(me: string, room: RoomView) {
   const lastEvent = useGame((s) => s.lastEvent);
   const toast = useGame((s) => s.toast);
   const [flash, setFlash] = useState(0);
+  const [seq, setSeq] = useState(0);
   const seen = useRef<number>(0);
   useEffect(() => {
     if (!lastEvent || lastEvent.at === seen.current) return;
@@ -197,9 +210,10 @@ function useOutbidFlash(me: string, room: RoomView) {
       const who = room.members.find((m) => m.userId === lastEvent.userId)?.username ?? 'Someone';
       toast('warn', `Outbid! ${who} bid ${lastEvent.amount}`);
       setFlash(lastEvent.at);
+      setSeq((n) => n + 1);
       const t = setTimeout(() => setFlash(0), 900);
       return () => clearTimeout(t);
     }
   }, [lastEvent, me, room.members, toast]);
-  return flash !== 0;
+  return { flash: flash !== 0, seq };
 }

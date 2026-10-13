@@ -2,7 +2,7 @@
 
 A real-time multiplayer football auction game. 2–6 managers share one budget size, bid on players one at a time, and must each finish with exactly 15 players.
 
-**Status:** Phases 1–6 are done: multiplayer with accounts, the live auction, the squad builder, deterministic scoring, the results experience, and the competitive layer (ranked ELO, leaderboard, profiles, match history, public rooms and matchmaking). Next is Phase 7 (polish: spectator mode, achievements …).
+**Status:** All seven phases from the spec are built: multiplayer with accounts, the live auction, the squad builder, deterministic scoring, the results experience, the competitive layer (ranked ELO, leaderboard, profiles, match history, public rooms, matchmaking) and polish (spectator mode, achievements, advanced stats, card effects).
 
 ---
 
@@ -22,6 +22,9 @@ npm run dev                      # server :4000 + web :3000
 Open http://localhost:3000.
 
 ### Playing alone (bots)
+
+Simulator flags: `--bots N`, `--join CODE`, `--mode ranked`, `--public` (so you can watch it under "Live now"), `--names A,B,C` (reuse the same bot accounts so their profiles build up), `--competition id`.
+
 
 1. Create a room in the browser and copy its code.
 2. Run `npm run sim -- --join ABC123 --bots 2`. Bots join and ready up.
@@ -43,7 +46,7 @@ The web app connects to `<same host>:4000`, so a friend on your Wi-Fi can open `
 ### Tests
 
 ```bash
-npm test            # 83 tests: auction, lineups, scoring, ELO, accounts, matchmaking, full games over real sockets
+npm test            # 89 tests: auction, lineups, scoring, ELO, accounts, matchmaking, spectators, achievements, full games over real sockets
 npm run typecheck
 ```
 
@@ -72,6 +75,12 @@ WAITING_FOR_PLAYERS ⇄ LOBBY → STARTING → AUCTION ⇄ PLAYER_SOLD → SQUAD
 ```
 
 Every action checks the current phase. Formation choice happens inside `SQUAD_BUILDING`, so `FORMATION_SELECTION` isn't used as a separate state. The phases in brackets come with Phase 4–5.
+
+### Polish (Phase 7)
+
+- **Spectator mode:** `room:spectate` lets a signed-in user watch any room (public games are listed under "Live now", or open `/room/<code>?watch=1`). Spectators get the shared public snapshot, so they never see lineups before the reveal, and they can't act because every action checks membership. The limit is 50 per room.
+- **Achievements** (`packages/shared/src/achievements.ts`): 16 badges in bronze, silver and gold. Game achievements are worked out deterministically when a game ends and shown on the results. Career achievements (Hat-trick, Veteran, Elite Manager) are checked against profile totals. Each unlocks once (`UserAchievement`).
+- **Profile statistics:** a score trend chart, transfer habits (average spend, bargains and overpays, best bargain, record signing), formation usage, and the achievement collection.
 
 ### Competitive layer (Phase 6)
 
@@ -166,8 +175,8 @@ data/
 - [x] **Phase 4:** deterministic scoring: position fit, chemistry, tactics, balance, depth, efficiency, plus a results screen
 - [x] **Phase 5:** results reveal, written match analysis, room awards, best buy and overpay, optional AI commentary
 - [x] **Phase 6:** profiles, match history, ELO, leaderboard, ranked mode, public rooms, "Play now" matchmaking
-- [ ] **Phase 7:** polish, spectator mode, achievements
+- [x] **Phase 7:** spectator mode, achievements, profile statistics (score trend, transfer habits, formations), 3D card tilt, outbid shake
 
-Not implemented yet: spectator mode, achievements, tournaments, friends, chat (Phase 7 and later).
+Future ideas (designed for, not built): tournaments and brackets, friends, chat and voice, replays, daily and weekly challenges, legends, women's football, draft mode, trading.
 
 Known limitations: live games aren't recovered after a server restart, and the server runs as a single process. A shared store such as Redis would be needed to scale across several processes.

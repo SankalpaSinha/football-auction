@@ -9,6 +9,7 @@ import {
   type RankedScore,
   type SquadEntry,
   type StatsBlock,
+  verdictFor,
 } from '@fa/shared';
 import type { PlayerCatalog } from '../data/catalog';
 import type { Db } from '../lib/db';
@@ -79,10 +80,44 @@ export class StatsService {
     for (const r of results) compCounts.set(r.game.room.competitionId, (compCounts.get(r.game.room.competitionId) ?? 0) + 1);
     const favComp = [...compCounts].sort((a, b) => b[1] - a[1])[0]?.[0];
 
-    const squads = await this.db.squad.findMany({ where: { userId: user.id, formationId: { not: null } }, select: { formationId: true } });
+    const squads = await this.db.squad.findMany({
+      where: { userId: user.id, game: { status: 'FINISHED' } },
+      include: {
+        players: { select: { playerStatsId: true, price: true, acquiredVia: true, lotNumber: true } },
+        game: { select: { auction: { select: { lots: { select: { lotNumber: true, estimatedValue: true } } } } } },
+      },
+      orderBy: { game: { startedAt: 'desc' } },
+      take: 100,
+    });
     const formCounts = new Map<string, number>();
-    for (const s of squads) formCounts.set(s.formationId!, (formCounts.get(s.formationId!) ?? 0) + 1);
-    const favFormation = [...formCounts].sort((a, b) => b[1] - a[1])[0]?.[0] ?? null;
+    for (const s of squads) if (s.formationId) formCounts.set(s.formationId, (formCounts.get(s.formationId) ?? 0) + 1);
+    const formations = [...formCounts].map(([id, count]) => ({ id, count })).sort((a, b) => b.count - a.count);
+    const favFormation = formations[0]?.id ?? null;
+
+    // Spending habits across finished games.
+    let bargains = 0;
+    let overpays = 0;
+    let signings = 0;
+    let biggestBargain: ProfileView['spending']['biggestBargain'] = null;
+    let recordSigning: ProfileView['spending']['recordSigning'] = null;
+    const name = (id: string) => this.catalog.card(id)?.name ?? id;
+    for (const s of squads) {
+      const values = new Map((s.game.auction?.lots ?? []).map((l) => [l.lotNumber, l.estimatedValue]));
+      for (const p of s.players) {
+        if (p.acquiredVia !== 'AUCTION') continue;
+        signings++;
+        const value = values.get(p.lotNumber ?? -1) ?? 0;
+        const v = verdictFor(p.price, value);
+        if (v === 'BARGAIN') bargains++;
+        if (v === 'OVERPAY') overpays++;
+        if (!biggestBargain || value - p.price > biggestBargain.value - biggestBargain.price) {
+          biggestBargain = { playerName: name(p.playerStatsId), price: p.price, value };
+        }
+        if (!recordSigning || p.price > recordSigning.price) recordSigning = { playerName: name(p.playerStatsId), price: p.price };
+      }
+    }
+    const spent = squads.map((s) => s.budgetStart - s.budgetRemaining);
+    const achievements = await this.db.userAchievement.findMany({ where: { userId: user.id }, orderBy: { unlockedAt: 'asc' } });
 
     const recent: MatchSummary[] = results.slice(0, 15).map((r) => ({
       gameId: r.gameId,
@@ -96,6 +131,26 @@ export class StatsService {
     }));
 
     return {
+      achievements: achievements.map((a) => ({ key: a.key, unlockedAt: a.unlockedAt.toISOString() })),
+      trend: results
+        .slice(0, 20)
+        .reverse()
+        .map((r) => ({
+          score: Math.round(r.score * 10) / 10,
+          rank: r.rank,
+          players: r.game._count.results,
+          mode: r.game.mode,
+          endedAt: (r.game.endedAt ?? r.game.startedAt).toISOString(),
+        })),
+      spending: {
+        avgSpent: spent.length ? Math.round(spent.reduce((a, b) => a + b, 0) / spent.length) : 0,
+        bargains,
+        overpays,
+        signings,
+        biggestBargain: biggestBargain && biggestBargain.value > biggestBargain.price ? biggestBargain : null,
+        recordSigning,
+      },
+      formations,
       userId: user.id,
       username: user.username,
       memberSince: user.createdAt.toISOString(),

@@ -12,6 +12,7 @@ import { Button, ConnectionBanner, Logo } from '@/components/ui';
 import { api, saveSession } from '@/lib/api';
 import { emit, ensureConnected, reclaimSession } from '@/lib/socket';
 import { useGame } from '@/lib/store';
+import type { RoomView } from '@fa/shared';
 
 export default function RoomPage() {
   const params = useParams<{ code: string }>();
@@ -22,8 +23,14 @@ export default function RoomPage() {
   const connection = useGame((s) => s.connection);
   const room = useGame((s) => s.room);
   const roomClosed = useGame((s) => s.roomClosed);
-  const [joinError, setJoinError] = useState<string | null>(null);
+  const [joinError, setJoinError] = useState<{ code: string; error: string } | null>(null);
+  const [watching, setWatching] = useState(false);
   const joinedFor = useRef<string | null>(null);
+
+  // `?watch=1` opens the room as a spectator.
+  useEffect(() => {
+    setWatching(new URLSearchParams(window.location.search).get('watch') === '1');
+  }, [code]);
 
   // Fresh page: forget any previous room view.
   useEffect(() => {
@@ -36,16 +43,24 @@ export default function RoomPage() {
     void ensureConnected(session.token);
   }, [session]);
 
-  // (Re)join whenever the socket (re)connects. Joining is idempotent for members.
+  // (Re)join — or re-attach as a spectator — whenever the socket (re)connects.
   useEffect(() => {
     if (!session || connection !== 'connected') return;
-    const key = `${code}:${Date.now()}`;
+    const key = `${code}:${watching}:${Date.now()}`;
     joinedFor.current = key;
-    emit('room:join', { code }).then((r) => {
-      if (joinedFor.current !== key) return;
-      setJoinError(r.ok ? null : r.error);
-    });
-  }, [session, connection, code]);
+    if (watching) {
+      emit<{ role: 'member' | 'spectator' }>('room:spectate', { code }).then((r) => {
+        if (joinedFor.current !== key) return;
+        setJoinError(r.ok ? null : { code: r.code, error: r.error });
+        if (r.ok && r.data?.role === 'member') setWatching(false);
+      });
+    } else {
+      emit('room:join', { code }).then((r) => {
+        if (joinedFor.current !== key) return;
+        setJoinError(r.ok ? null : { code: r.code, error: r.error });
+      });
+    }
+  }, [session, connection, code, watching]);
 
   useEffect(() => {
     if (connection === 'error') {
@@ -78,10 +93,15 @@ export default function RoomPage() {
 
   if (joinError && (!room || room.code !== code)) {
     return (
-      <Centered title="Can’t join this room" body={joinError}>
-        <Link href="/">
-          <Button>Back to home</Button>
-        </Link>
+      <Centered title="Can’t join this room" body={joinError.error}>
+        <div className="flex gap-2">
+          {joinError.code === 'GAME_IN_PROGRESS' && (
+            <Button onClick={() => setWatching(true)}>👀 Watch instead</Button>
+          )}
+          <Link href="/">
+            <Button variant="secondary">Back to home</Button>
+          </Link>
+        </div>
       </Centered>
     );
   }
@@ -97,6 +117,7 @@ export default function RoomPage() {
     );
   }
 
+  const isMember = room.members.some((m) => m.userId === session.user.id);
   const leave = async () => {
     await emit('room:leave');
     useGame.getState().setRoom(null);
@@ -108,7 +129,14 @@ export default function RoomPage() {
     case 'WAITING_FOR_PLAYERS':
     case 'LOBBY':
     case 'STARTING':
-      screen = <Lobby room={room} me={session.user.id} onLeave={leave} />;
+      screen = (
+        <Lobby
+          room={room}
+          me={session.user.id}
+          onLeave={leave}
+          onJoin={!isMember ? () => setWatching(false) : undefined}
+        />
+      );
       break;
     case 'AUCTION':
     case 'PLAYER_SOLD':
@@ -118,7 +146,7 @@ export default function RoomPage() {
       screen = room.squadBuilding?.mine ? (
         <SquadBuilder room={room} me={session.user.id} />
       ) : (
-        <Centered title="Squad builder" body="Managers are picking their lineups…" />
+        <SpectatorSquadWait room={room} onLeave={leave} />
       );
       break;
     case 'RESULTS':
@@ -136,8 +164,41 @@ export default function RoomPage() {
   return (
     <>
       {screen}
+      {!isMember && room.phase !== 'SQUAD_BUILDING' && <SpectatorBadge count={room.spectators} onLeave={leave} />}
       <ConnectionBanner />
     </>
+  );
+}
+
+function SpectatorBadge({ count, onLeave }: { count: number; onLeave: () => void }) {
+  return (
+    <div className="fixed bottom-4 right-4 z-50 flex items-center gap-3 rounded-full border border-cyan/40 bg-night/90 py-1.5 pl-4 pr-1.5 text-sm backdrop-blur-xl">
+      <span className="font-semibold text-cyan">👀 Spectating</span>
+      <span className="text-xs text-muted">{count} watching</span>
+      <button onClick={onLeave} className="rounded-full bg-white/10 px-3 py-1 text-xs font-bold hover:bg-white/20">
+        Stop
+      </button>
+    </div>
+  );
+}
+
+function SpectatorSquadWait({ room, onLeave }: { room: RoomView; onLeave: () => void }) {
+  const sb = room.squadBuilding;
+  return (
+    <Centered title="Squad builder" body="The managers are picking formations and starting XIs. Lineups are revealed together once everyone locks in.">
+      <ul className="w-full max-w-sm space-y-2 text-left">
+        {room.members.map((m) => (
+          <li key={m.userId} className="glass flex items-center justify-between rounded-xl px-4 py-2.5">
+            <span className="font-semibold">{m.username}</span>
+            {sb?.locked[m.userId] ? <span className="text-xs font-bold text-volt">Locked ✓</span> : <span className="text-xs text-muted">Picking…</span>}
+          </li>
+        ))}
+      </ul>
+      <p className="text-xs text-dim">👀 {room.spectators} watching</p>
+      <Button variant="secondary" size="sm" onClick={onLeave}>
+        Stop watching
+      </Button>
+    </Centered>
   );
 }
 

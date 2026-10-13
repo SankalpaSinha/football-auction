@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { AnimatePresence, motion } from 'motion/react';
 import type { CompetitionSummary, GameMode } from '@fa/shared';
-import { api, type PublicRoom } from '@/lib/api';
+import { api, type LiveGame, type PublicRoom } from '@/lib/api';
 import { emit, ensureConnected } from '@/lib/socket';
 import { useGame } from '@/lib/store';
 import { Button, Pill } from './ui';
@@ -131,6 +131,62 @@ export function PublicRooms() {
           </AnimatePresence>
         </ul>
       )}
+    </section>
+  );
+}
+
+const PHASE_LABEL: Record<string, string> = {
+  STARTING: 'Starting',
+  AUCTION: 'Auction live',
+  PLAYER_SOLD: 'Auction live',
+  SQUAD_BUILDING: 'Picking lineups',
+  FINAL_EVALUATION: 'Scoring',
+  RESULTS: 'Results',
+};
+
+/** Public games in progress, open to spectators. */
+export function LiveGames() {
+  const [games, setGames] = useState<LiveGame[]>([]);
+  useEffect(() => {
+    let alive = true;
+    const load = () =>
+      api
+        .liveGames()
+        .then((r) => alive && setGames(r.games))
+        .catch(() => {});
+    void load();
+    const t = setInterval(load, 5000);
+    return () => {
+      alive = false;
+      clearInterval(t);
+    };
+  }, []);
+  if (!games.length) return null;
+  return (
+    <section className="mt-6">
+      <h2 className="display mb-3 flex items-center gap-2 text-2xl font-extrabold">
+        <span className="h-2.5 w-2.5 animate-pulse rounded-full bg-danger" /> Live now
+      </h2>
+      <ul className="grid gap-2 md:grid-cols-2">
+        {games.map((g) => (
+          <li key={g.code}>
+            <Link href={`/room/${g.code}?watch=1`} className="glass flex items-center gap-3 rounded-2xl px-4 py-3 transition hover:bg-white/[.07]">
+              <span className="h-10 w-1.5 rounded-full" style={{ background: g.competition.accent }} />
+              <span className="min-w-0 flex-1">
+                <span className="flex items-center gap-2">
+                  <span className="truncate font-bold">{g.managers.join(' vs ')}</span>
+                  {g.mode === 'RANKED' && <Pill color="#c8ff2e">Ranked</Pill>}
+                </span>
+                <span className="block truncate text-xs text-muted">
+                  {g.competition.name} · {PHASE_LABEL[g.phase] ?? g.phase}
+                  {g.lotsOpened ? ` · lot ${g.lotsOpened}` : ''} · 👀 {g.spectators}
+                </span>
+              </span>
+              <span className="text-[11px] font-bold uppercase tracking-wider text-cyan">Watch →</span>
+            </Link>
+          </li>
+        ))}
+      </ul>
     </section>
   );
 }

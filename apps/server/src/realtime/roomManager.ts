@@ -12,6 +12,7 @@ import { RateLimiter } from '../lib/rateLimit';
 const CODE_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // no 0/O/1/I
 export const roomChannel = (code: string) => `room:${code}`;
 export const userChannel = (userId: string) => `user:${userId}`;
+export const spectateChannel = (code: string) => `spectate:${code}`;
 
 export interface PublicRoomInfo {
   code: string;
@@ -41,6 +42,8 @@ export interface ManagerDeps {
 export class RoomManager {
   private rooms = new Map<string, Room>();
   private userRoom = new Map<string, string>();
+  /** userId → code of the room they are watching. */
+  private watching = new Map<string, string>();
   private dirty = new Set<Room>();
   private flushScheduled = false;
   private createLimiter: RateLimiter;
@@ -114,6 +117,12 @@ export class RoomManager {
 
   join(user: SessionUser, code: string): Room {
     const room = this.rooms.get(code) ?? fail('ROOM_NOT_FOUND');
+    // Validate before touching spectator state, so a refused join doesn't end watching.
+    if (!room.hasMember(user.id)) {
+      if (!room.isLobby) fail('GAME_IN_PROGRESS');
+      if (room.memberCount >= room.settings.maxPlayers) fail('ROOM_FULL');
+    }
+    this.stopWatching(user.id);
     if (!room.hasMember(user.id)) this.leaveCurrentRoomForSwitch(user.id, code);
     room.join(user);
     this.userRoom.set(user.id, code);
@@ -122,7 +131,46 @@ export class RoomManager {
     return room;
   }
 
+  /** Watch a room read-only. A member asking to watch simply re-joins as themselves. */
+  spectate(user: SessionUser, code: string): { room: Room; role: 'member' | 'spectator' } {
+    const room = this.rooms.get(code) ?? fail('ROOM_NOT_FOUND');
+    if (room.hasMember(user.id)) return { room: this.join(user, code), role: 'member' };
+    this.stopWatching(user.id);
+    room.addSpectator(user.id);
+    this.watching.set(user.id, code);
+    this.io.in(userChannel(user.id)).socketsJoin([roomChannel(code), spectateChannel(code)]);
+    return { room, role: 'spectator' };
+  }
+
+  stopWatching(userId: string) {
+    const code = this.watching.get(userId);
+    if (!code) return;
+    this.watching.delete(userId);
+    this.rooms.get(code)?.removeSpectator(userId);
+    this.io.in(userChannel(userId)).socketsLeave([roomChannel(code), spectateChannel(code)]);
+  }
+
+  /** Public games in progress that can be watched. */
+  liveGames() {
+    return [...this.rooms.values()]
+      .filter((r) => !r.closed && r.settings.isPublic && !r.isLobby)
+      .map((r) => {
+        const v = r.view();
+        return {
+          code: r.code,
+          name: r.name,
+          mode: r.settings.mode,
+          phase: r.phase,
+          competition: { id: r.competition.id, name: r.competition.name, accent: r.competition.accent, seasonLabel: r.competition.seasonLabel },
+          managers: v.members.map((m) => m.username),
+          spectators: v.spectators,
+          lotsOpened: v.auction?.lotsOpened ?? 0,
+        };
+      });
+  }
+
   leave(userId: string) {
+    if (this.watching.has(userId)) return this.stopWatching(userId);
     const room = this.roomOf(userId) ?? fail('NOT_IN_ROOM');
     room.leave(userId);
     // Mid-game the member stays in the room (squad intact) but is free to go elsewhere.
@@ -220,6 +268,8 @@ export class RoomManager {
   private onClosed(room: Room, reason: string) {
     this.rooms.delete(room.code);
     this.dirty.delete(room);
+    for (const [userId, code] of this.watching) if (code === room.code) this.watching.delete(userId);
+    this.io.in(spectateChannel(room.code)).socketsLeave(spectateChannel(room.code));
     for (const [userId, code] of this.userRoom) if (code === room.code) this.userRoom.delete(userId);
     this.io.to(roomChannel(room.code)).emit('room:closed', { code: room.code, reason });
     this.io.in(roomChannel(room.code)).socketsLeave(roomChannel(room.code));
@@ -240,6 +290,8 @@ export class RoomManager {
         for (const userId of r.memberIds()) {
           if (this.userRoom.get(userId) === r.code) this.io.to(userChannel(userId)).emit('room:state', r.view(userId));
         }
+        // Spectators share one public snapshot (no private lineups).
+        this.io.to(spectateChannel(r.code)).emit('room:state', r.view());
       }
     });
   }

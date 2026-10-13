@@ -61,7 +61,13 @@ const roomInput = {
 describe('multiplayer over websockets', () => {
   it('rejects duplicate usernames (case-insensitive)', async () => {
     await new Bot(base, 'Dupe').login();
-    await expect(new Bot(base, 'dUPE').login()).rejects.toThrow(/taken/);
+    const r = await fetch(`${base}/api/auth/register`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ username: 'dUPE', password: 'another-pass' }),
+    });
+    expect(r.status).toBe(409);
+    expect((await r.json()).code).toBe('USERNAME_TAKEN');
   });
 
   it('rejects malformed messages and unauthenticated sockets', async () => {

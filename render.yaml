@@ -5,6 +5,7 @@ services:
     name: football-auction
     runtime: docker
     plan: free
+    region: singapore # pick the region closest to your players (oregon, ohio, virginia, frankfurt, singapore)
     dockerfilePath: ./Dockerfile
     healthCheckPath: /api/health
     autoDeploy: true

@@ -119,6 +119,8 @@ export class Auction {
   /** Offered twice with no buyer — only used for auto-fill. */
   private leftover: PlayerCard[] = [];
   private reofferRound = false;
+  /** Released/returned players: their next offer counts as a first offer, even in the re-offer round. */
+  private returned = new Set<string>();
 
   private stage: Stage = 'IDLE';
   private lot: OpenLot | null = null;
@@ -307,6 +309,9 @@ export class Auction {
       return this.hooks.onChange();
     }
     this.hold = { by: vote.requestedBy, until: this.clock.now() + this.rules.maxPauseMs };
+    // An agreed pause supersedes the offline auto-pause countdown; resume() re-checks presence.
+    this.absentTimer?.cancel();
+    this.absentTimer = null;
     this.holdTimer = this.clock.setTimeout(() => {
       this.holdTimer = null;
       this.endHold('Pause time is up — auction resumed');
@@ -352,7 +357,7 @@ export class Auction {
     if (after.budget < this.slotsLeft(after) * this.rules.reservePerSlot) fail('CANT_REFILL');
     this.assertStillCovers([after], entry.player.position === 'GK' ? 1 : 0);
     p.squad = after.squad;
-    this.queue.push(entry.player);
+    this.returnToPool([entry.player]);
     this.idleLots.delete(userId);
     this.hooks.onFeed('INFO', `${p.username} released ${entry.player.shortName} (no refund)`, { userId });
     this.hooks.onEvent({ type: 'RELEASED', userId, playerId });
@@ -490,7 +495,10 @@ export class Auction {
       if (this.slotsLeft(p) > 0) shortfall += need;
     }
     const lot = this.lot;
-    const lotKeeper = this.stage === 'LOT_OPEN' && lot?.player.position === 'GK' ? 1 : 0;
+    // The keeper on the block only helps if it isn't heading to someone who already has one.
+    const topAfter = lot?.highestBidderId ? state(this.participants.get(lot.highestBidderId)!) : null;
+    const lotKeeper =
+      this.stage === 'LOT_OPEN' && lot?.player.position === 'GK' && (!topAfter || this.gkShortfall(topAfter) > 0) ? 1 : 0;
     if (shortfall > this.availableGoalkeepers() + lotKeeper + keepersReturning) fail('TRADE_INVALID', 'Not enough goalkeepers would be left for everyone.');
     if (this.stage === 'LOT_OPEN' && lot?.highestBidderId && lot.currentBid !== null) {
       const top = changed.find((c) => c.userId === lot.highestBidderId);
@@ -903,7 +911,7 @@ export class Auction {
       const idx = this.queue.findIndex((c) => c.position === 'GK');
       if (idx > 0) {
         const [gk] = this.queue.splice(idx, 1);
-        return { player: gk, reoffer: this.reofferRound };
+        return { player: gk, reoffer: this.reofferRound && !this.returned.delete(gk.id) };
       }
       // A keeper passed over once gets one more chance; twice-unsold ones wait for auto-fill.
       const j = this.unsold.findIndex((c) => c.position === 'GK');
@@ -911,7 +919,7 @@ export class Auction {
     }
 
     const player = this.queue.shift();
-    return player ? { player, reoffer: this.reofferRound } : null;
+    return player ? { player, reoffer: this.reofferRound && !this.returned.delete(player.id) } : null;
   }
 
   private someoneUrgentlyNeedsGoalkeeper() {
@@ -995,7 +1003,8 @@ export class Auction {
       this.hooks.onEvent({ type: 'SOLD', lotNumber: lot.lotNumber, userId: winner.userId, amount: price });
     } else {
       outcome = 'UNSOLD';
-      (lot.reoffer ? this.leftover : this.unsold).push(p);
+      // In the re-offer round, a first-time-unsold player goes round once more.
+      (lot.reoffer ? this.leftover : this.reofferRound ? this.queue : this.unsold).push(p);
       this.hooks.onFeed('UNSOLD', `${p.shortName} went unsold`);
       this.hooks.onEvent({ type: 'UNSOLD', lotNumber: lot.lotNumber });
     }
@@ -1045,7 +1054,8 @@ export class Auction {
         this.idleLots.delete(p.userId);
         continue;
       }
-      if (!lot.eligible.has(p.userId) || this.slotsLeft(p) <= 0) continue;
+      // Offline managers keep their squad and can come back; only connected ones can be idle.
+      if (!lot.eligible.has(p.userId) || this.slotsLeft(p) <= 0 || !this.opts.isConnected(p.userId)) continue;
       const n = (this.idleLots.get(p.userId) ?? 0) + 1;
       this.idleLots.set(p.userId, n);
       if (n >= limit) out.push(p);
@@ -1058,12 +1068,19 @@ export class Auction {
     this.hooks.onChange();
   }
 
+  private returnToPool(players: PlayerCard[]) {
+    for (const p of players) {
+      this.queue.push(p);
+      if (this.reofferRound) this.returned.add(p.id);
+    }
+  }
+
   /** Out of the game: their players go back up for auction, their coins are gone. */
   private removeParticipant(p: Participant) {
     this.participants.delete(p.userId);
     this.idleLots.delete(p.userId);
     this.pruneTrades();
-    this.queue.push(...p.squad.map((e) => e.player));
+    this.returnToPool(p.squad.map((e) => e.player));
     this.hooks.onEvent({ type: 'REMOVED', userId: p.userId });
     this.hooks.onRemoved?.(p.userId);
     this.checkPauseVote();

@@ -158,6 +158,7 @@ export const ERROR_MESSAGES = {
   PAUSE_COOLDOWN: 'Wait a little before asking to pause again.',
   NO_PAUSE_VOTE: 'There is no pause vote right now.',
   NOT_PAUSED: 'The auction is not paused.',
+  REMOVED_FROM_GAME: 'You were removed from this game.',
   TRADE_NOT_FOUND: 'That trade offer is no longer open.',
   TRADE_EMPTY: 'A trade needs at least one player.',
   TRADE_PENDING: 'You already have an offer out to that manager.',

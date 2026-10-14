@@ -246,6 +246,19 @@ export class PrismaGameStore implements GameStore {
           skipDuplicates: true,
         });
       }
+
+      // Managers removed for inactivity in a ranked game take a last-place rating loss.
+      const ranked = new Set(rankings.map((r) => r.userId));
+      for (const c of ratingChanges ?? []) {
+        if (ranked.has(c.userId)) continue;
+        const current = await tx.playerRating.findUnique({ where: { userId_mode: { userId: c.userId, mode: 'RANKED' } } });
+        const elo = Math.max(ELO_CONFIG.floor, (current?.elo ?? ELO_CONFIG.initial) + c.delta);
+        await tx.playerRating.upsert({
+          where: { userId_mode: { userId: c.userId, mode: 'RANKED' } },
+          create: { userId: c.userId, mode: 'RANKED', games: 1, elo },
+          update: { games: { increment: 1 }, elo },
+        });
+      }
     });
   }
 

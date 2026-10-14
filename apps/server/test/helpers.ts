@@ -74,6 +74,8 @@ export function createHarness(opts: {
   start?: boolean;
   seed?: string;
   commentator?: import('../src/services/commentary').Commentator;
+  /** Auction the pool in the order given (instead of shuffled). */
+  fixedOrder?: boolean;
 } = {}): Harness {
   const clock = new ManualClock();
   const events: GameEvent[] = [];
@@ -93,6 +95,7 @@ export function createHarness(opts: {
       rules: testRules(opts.rules),
       store: new NoopGameStore(),
       seed: opts.seed ?? 'fixed-seed',
+      orderStrategy: opts.fixedOrder ? { id: 'fixed', order: (pool) => [...pool] } : undefined,
       commentator: opts.commentator,
       onChange: () => {},
       onEvent: (_r, e) => events.push(e),

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { GameError } from '../src/engine/errors';
-import { createHarness, nextLot } from './helpers';
+import { completeAuction, createHarness, nextLot } from './helpers';
 
 const code = (fn: () => void) => {
   try {
@@ -204,5 +204,54 @@ describe('inactive managers', () => {
     h.room.votePause('u2', true);
     h.clock.advance(4 * 60_000);
     expect(h.room.memberIds()).toEqual(['u1', 'u2']);
+  });
+});
+
+describe('inactivity edge cases', () => {
+  it('offline managers are never removed for inactivity — they can come back', () => {
+    const h = createHarness({ players: 3 });
+    h.room.setConnected('u3', false);
+    for (let i = 0; i < 4; i++) {
+      // A bidding war that runs the clock out while u3 is away.
+      const n = h.lot().lotNumber;
+      h.room.bid('u1', n, h.lot().minNextBid);
+      h.room.bid('u2', n, h.lot().minNextBid);
+      h.clock.advance(h.lot().endsAt - h.clock.now());
+      nextLot(h);
+    }
+    expect(h.room.memberIds()).toContain('u3');
+    expect(auction(h).idleLots.u3).toBeUndefined();
+  });
+
+  it('a removed manager cannot rejoin, and is told why', () => {
+    const h = createHarness({ players: 2 });
+    for (let i = 0; i < 3; i++) {
+      const n = h.lot().lotNumber;
+      h.room.bid('u1', n, h.lot().minNextBid);
+      h.clock.advance(h.lot().endsAt - h.clock.now());
+      nextLot(h);
+    }
+    expect(h.room.memberIds()).toEqual(['u1']);
+    expect(code(() => h.room.join({ id: 'u2', username: 'user2' }))).toBe('REMOVED_FROM_GAME');
+  });
+
+  it('in ranked games a removed manager still takes a last-place rating loss', async () => {
+    const h = createHarness({ players: 3, settings: { mode: 'RANKED' } });
+    await new Promise((r) => setTimeout(r, 0)); // ratings load
+    for (let i = 0; i < 3; i++) {
+      const n = h.lot().lotNumber;
+      h.room.bid('u1', n, h.lot().minNextBid);
+      h.room.skip('u2', n);
+      h.clock.advance(h.lot().endsAt - h.clock.now());
+      nextLot(h);
+    }
+    expect(h.room.memberIds()).toEqual(['u1', 'u2']);
+    completeAuction(h);
+    expect(h.room.phase).toBe('SQUAD_BUILDING');
+    h.clock.advance(180_000 + 10_000);
+    const changes = h.room.view().results!.ratingChanges!;
+    expect(changes.map((c) => c.userId).sort()).toEqual(['u1', 'u2', 'u3']);
+    expect(changes.find((c) => c.userId === 'u3')!.delta).toBeLessThan(0);
+    expect(h.room.view().results!.rankings.map((r) => r.userId)).not.toContain('u3');
   });
 });

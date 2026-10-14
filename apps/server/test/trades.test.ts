@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { GameError } from '../src/engine/errors';
-import { createHarness, nextLot } from './helpers';
+import { createHarness, makePool, nextLot } from './helpers';
 
 type H = ReturnType<typeof createHarness>;
 const code = (fn: () => void) => {
@@ -140,5 +140,19 @@ describe('trades', () => {
     // u2 would pay 100 coins on top: no longer covers the bid they hold.
     expect(code(() => h.room.proposeTrade('u1', { toId: 'u2', give: [a], take: [b], coins: -100 }))).toBe('TRADE_INVALID');
     expect(code(() => h.room.proposeTrade('u1', { toId: 'u2', give: [a], take: [b], coins: 0 }))).toBe('OK');
+  });
+});
+
+describe('trades and goalkeepers', () => {
+  it('a trade cannot strand a manager without a keeper while the keeper on the block goes elsewhere', () => {
+    // Keepers come up first: GK1..GK4, then outfielders.
+    const h = createHarness({ players: 3, pool: makePool(120, 4), fixedOrder: true });
+    const gk1 = buy(h, 'u1'); // u1 has a keeper
+    const gk2 = buy(h, 'u3'); // u3 has a keeper
+    expect([gk1, gk2].every((id) => id.startsWith('p00'))).toBe(true);
+    // GK3 is up: u1 bids for a spare keeper (fine — GK4 is still left for u2).
+    h.room.bid('u1', h.lot().lotNumber, 10);
+    // u3 now sells their only keeper to u1: u2 and u3 would both need GK4.
+    expect(code(() => h.room.proposeTrade('u3', { toId: 'u1', give: [gk2], take: [], coins: -20 }))).toBe('TRADE_INVALID');
   });
 });

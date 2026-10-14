@@ -106,6 +106,11 @@ export class RoomManager {
       log: this.deps.log,
       onChange: (r) => this.markDirty(r),
       onEvent: (r, e) => {
+        // Who is negotiating with whom stays between the two managers.
+        if (e.type === 'TRADE_OFFER' || e.type === 'TRADE_DECLINED') {
+          this.io.to([userChannel(e.fromId), userChannel(e.toId)]).emit('room:event', e);
+          return;
+        }
         this.io.to(roomChannel(r.code)).emit('room:event', e);
         if (e.type === 'RESULTS') {
           for (const c of r.view().results?.ratingChanges ?? []) this.elo.set(c.userId, c.after);
@@ -129,6 +134,7 @@ export class RoomManager {
     const room = this.rooms.get(code) ?? fail('ROOM_NOT_FOUND');
     // Validate before touching spectator state, so a refused join doesn't end watching.
     if (!room.hasMember(user.id)) {
+      room.assertNotKicked(user.id);
       if (!room.isLobby) fail('GAME_IN_PROGRESS');
       if (room.memberCount >= room.settings.maxPlayers) fail('ROOM_FULL');
     }

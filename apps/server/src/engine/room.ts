@@ -125,6 +125,8 @@ export class Room {
     text: null,
   };
   private persistChain: Promise<void> = Promise.resolve();
+  /** Managers removed mid-game → why (shown if they try to come back). */
+  private kicked = new Map<string, string>();
 
   constructor(
     readonly code: string,
@@ -147,6 +149,11 @@ export class Room {
 
   hasMember(userId: string) {
     return this.members.has(userId);
+  }
+
+  assertNotKicked(userId: string) {
+    const why = this.kicked.get(userId);
+    if (why) fail('REMOVED_FROM_GAME', `You were removed from this game because ${why}.`);
   }
 
   // ---------------------------------------------------------------- chat
@@ -212,6 +219,7 @@ export class Room {
       this.setConnected(user.id, true);
       return;
     }
+    this.assertNotKicked(user.id);
     if (!this.isLobby) fail('GAME_IN_PROGRESS');
     if (this.members.size >= this.settings.maxPlayers) fail('ROOM_FULL');
 
@@ -415,7 +423,9 @@ export class Room {
           const m = this.members.get(userId);
           if (!m) return;
           const limit = rules.inactiveLotsToRemove;
-          this.deps.onKicked?.(this, userId, `you sat out ${limit} lots in a row without bidding or skipping`);
+          const reason = `you sat out ${limit} lots in a row without bidding or skipping`;
+          this.kicked.set(userId, reason);
+          this.deps.onKicked?.(this, userId, reason);
           this.removeMember(m, `${m.username} was removed for inactivity`);
         },
         onReleased: (userId, playerId) => this.persist(() => this.deps.store.playerReleased(gameId, userId, playerId)),
@@ -601,13 +611,16 @@ export class Room {
       // Never guess ratings: without the real starting ratings this game doesn't move ELO.
       this.pushFeed('INFO', 'Ratings could not be loaded — ELO was not changed for this game');
     } else if (this.settings.mode === 'RANKED') {
+      // Managers removed for inactivity count as joint last, so idling out can't dodge a loss.
+      const last = this.rankings.length + 1;
       this.ratingChanges = computeEloChanges(
-        this.rankings.map((r) => ({
-          userId: r.userId,
-          rank: r.rank,
-          elo: this.ratings?.[r.userId]?.elo ?? ELO_CONFIG.initial,
-          games: this.ratings?.[r.userId]?.games ?? 0,
-        })),
+        [...this.rankings.map((r) => ({ userId: r.userId, rank: r.rank })), ...[...this.kicked.keys()].map((userId) => ({ userId, rank: last }))].map(
+          (r) => ({
+            ...r,
+            elo: this.ratings?.[r.userId]?.elo ?? ELO_CONFIG.initial,
+            games: this.ratings?.[r.userId]?.games ?? 0,
+          }),
+        ),
       );
     }
     this.achievements = gameAchievements({

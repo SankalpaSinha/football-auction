@@ -57,7 +57,18 @@ export function SquadTable({ squad, starters }: { squad: SquadEntry[]; starters?
 }
 
 /** Sheet showing one manager's squad — available any time during the game. */
-export function SquadSheet({ member, squadSize, onClose }: { member: MemberView; squadSize: number; onClose: () => void }) {
+export function SquadSheet({
+  member,
+  squadSize,
+  onClose,
+  action,
+}: {
+  member: MemberView;
+  squadSize: number;
+  onClose: () => void;
+  /** Optional button under the header (e.g. propose a trade). */
+  action?: React.ReactNode;
+}) {
   const spent = member.squad.reduce((s, e) => s + e.price, 0);
   const groups = useMemo(() => {
     const out: Record<string, number> = { GK: 0, DEF: 0, MID: 0, ATT: 0 };
@@ -100,6 +111,7 @@ export function SquadSheet({ member, squadSize, onClose }: { member: MemberView;
             ✕
           </button>
         </div>
+        {action && <div className="mb-3">{action}</div>}
         <div className="mb-3 grid grid-cols-4 gap-1.5 text-center">
           {GROUP_ORDER.map((g) => (
             <div key={g} className="rounded-lg bg-white/[.04] py-1.5">

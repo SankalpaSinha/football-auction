@@ -1,18 +1,36 @@
 'use client';
+import { useState } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
 import { GROUP_ORDER, POSITION_GROUP, type LotView, type MemberView, type RoomView } from '@fa/shared';
 import { coins, GROUP_LABEL, groupSquad } from '@/lib/format';
+import { emit } from '@/lib/socket';
+import { useGame } from '@/lib/store';
 import { Avatar, Coin, ConnectionDot } from '../ui';
+import { dealsOpen } from './Trades';
 
 const GROUP_COLOR = { GK: '#f5c542', DEF: '#2ee6ff', MID: '#c8ff2e', ATT: '#ff6b8a' } as const;
 
 export function SquadPanel({ room, me }: { room: RoomView; me: MemberView | undefined }) {
+  const toast = useGame((s) => s.toast);
+  const [releasing, setReleasing] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
   if (!me) return <div className="glass rounded-2xl p-4 text-sm text-muted">Spectating</div>;
+  const canRelease = dealsOpen(room);
+
+  async function release(playerId: string) {
+    setBusy(true);
+    const r = await emit('squad:release', { playerId });
+    setBusy(false);
+    setReleasing(null);
+    if (!r.ok) toast('error', r.error);
+  }
+
   const size = room.rules.squadSize;
   const grouped = groupSquad(me.squad);
   const hasGk = grouped.GK.length > 0;
   const left = size - me.squad.length;
-  const spent = me.squad.reduce((s, e) => s + e.price, 0);
+  // Coins actually gone (includes released players and trades).
+  const spent = room.settings.startingBudget - (me.budget ?? room.settings.startingBudget);
 
   return (
     <div className="glass flex h-full flex-col rounded-2xl p-4">
@@ -72,12 +90,44 @@ export function SquadPanel({ room, me }: { room: RoomView; me: MemberView | unde
                       initial={{ opacity: 0, x: -20, backgroundColor: 'rgba(200,255,46,.25)' }}
                       animate={{ opacity: 1, x: 0, backgroundColor: 'rgba(255,255,255,.03)' }}
                       transition={{ duration: 0.6 }}
-                      className="flex items-center gap-2 rounded-lg px-2 py-1.5 text-sm"
+                      className="group rounded-lg px-2 py-1.5 text-sm"
                     >
-                      <span className="w-8 text-[11px] font-bold text-muted">{e.player.position}</span>
-                      <span className="min-w-0 flex-1 truncate font-medium">{e.player.shortName}</span>
-                      <span className="display w-6 text-right font-bold">{e.player.overall}</span>
-                      <span className="w-10 text-right text-xs text-muted num">{e.price}</span>
+                      <div className="flex items-center gap-2">
+                        <span className="w-8 text-[11px] font-bold text-muted">{e.player.position}</span>
+                        <span className="min-w-0 flex-1 truncate font-medium">
+                          {e.player.shortName}
+                          {e.via === 'TRADE' && <span className="ml-1 text-[10px]" title="Got in a trade">🤝</span>}
+                        </span>
+                        <span className="display w-6 text-right font-bold">{e.player.overall}</span>
+                        <span className="w-10 text-right text-xs text-muted num">{e.price}</span>
+                        {canRelease && (
+                          <button
+                            onClick={() => setReleasing(releasing === e.player.id ? null : e.player.id)}
+                            aria-label={`Release ${e.player.shortName}`}
+                            title="Release (no refund)"
+                            className="grid h-6 w-6 place-items-center rounded-md text-xs text-dim hover:bg-danger/20 hover:text-rose-200"
+                          >
+                            ✕
+                          </button>
+                        )}
+                      </div>
+                      {releasing === e.player.id && canRelease && (
+                        <div className="mt-1.5 flex items-center gap-2 rounded-md bg-danger/10 px-2 py-1.5 text-xs">
+                          <span className="min-w-0 flex-1 text-rose-100">
+                            Release {e.player.shortName}? You won’t get the {e.price} coins back.
+                          </span>
+                          <button
+                            disabled={busy}
+                            onClick={() => release(e.player.id)}
+                            className="rounded-md bg-danger/30 px-2 py-1 font-bold text-rose-100 disabled:opacity-50"
+                          >
+                            Release
+                          </button>
+                          <button onClick={() => setReleasing(null)} className="rounded-md px-2 py-1 text-muted hover:bg-white/5">
+                            Keep
+                          </button>
+                        </div>
+                      )}
                     </motion.li>
                   ))}
                 </AnimatePresence>
@@ -106,7 +156,7 @@ export function ManagersPanel({
     <div className="glass rounded-2xl p-4">
       <div className="mb-3 flex items-baseline justify-between">
         <span className="label">Live managers</span>
-        {onSelect && <span className="text-[10px] text-dim">tap to see squads</span>}
+        {onSelect && <span className="text-[10px] text-dim">tap to see squads{dealsOpen(room) ? ' · trade' : ''}</span>}
       </div>
       <ul className="space-y-2">
         {room.members.map((m) => {

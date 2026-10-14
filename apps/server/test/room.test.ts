@@ -156,7 +156,7 @@ describe('disconnect / reconnect', () => {
     const h = createHarness({ players: 2 });
     h.room.leave('u2'); // u2 walks out mid-auction
     // u1 fills their squad; u2 is offline and treated as passing.
-    for (let guard = 0; guard < 400 && h.member('u1').squad.length < 15; guard++) {
+    for (let guard = 0; guard < 400 && h.member('u1').squad.length < 18; guard++) {
       if (h.room.phase === 'PLAYER_SOLD') {
         nextLot(h);
         continue;
@@ -174,7 +174,7 @@ describe('disconnect / reconnect', () => {
     expect(h.room.view().auction!.freePick?.userId).toBe('u2');
     h.clock.advance(testRules().absentAutoFillMs);
     expect(h.room.phase).toBe('SQUAD_BUILDING');
-    expect(h.member('u2').squad).toHaveLength(15);
+    expect(h.member('u2').squad).toHaveLength(18);
     expect(h.member('u2').squad.some((e) => e.player.position === 'GK')).toBe(true);
   });
 });

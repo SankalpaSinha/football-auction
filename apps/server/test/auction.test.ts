@@ -43,10 +43,10 @@ describe('bidding', () => {
   it('keeps a reserve so a squad can always be completed', () => {
     const h = createHarness();
     const n = h.lot().lotNumber;
-    // 15 empty slots, 1000 coins: must keep 14 × 10 back.
-    expect(h.member('u1').maxBid).toBe(860);
-    expect(code(() => h.room.bid('u1', n, 870))).toBe('RESERVE_REQUIRED');
-    expect(code(() => h.room.bid('u1', n, 860))).toBe('OK');
+    // 18 empty slots, 1000 coins: must keep 17 × 10 back.
+    expect(h.member('u1').maxBid).toBe(830);
+    expect(code(() => h.room.bid('u1', n, 840))).toBe('RESERVE_REQUIRED');
+    expect(code(() => h.room.bid('u1', n, 830))).toBe('OK');
   });
 
   it('rejects a bid from the current highest bidder', () => {
@@ -201,12 +201,12 @@ describe('squads', () => {
     expect(h.room.phase).toBe('SQUAD_BUILDING');
   }
 
-  it('every manager ends with exactly 15 players, no duplicates, at least one GK', () => {
+  it('every manager ends with exactly 18 players, no duplicates, at least one GK', () => {
     const h = createHarness({ players: 4 });
     playOut(h);
     const ids = new Set<string>();
     for (const m of h.room.view().members) {
-      expect(m.squad).toHaveLength(15);
+      expect(m.squad).toHaveLength(18);
       expect(m.squad.some((s) => s.player.position === 'GK')).toBe(true);
       expect(m.budget).toBeGreaterThanOrEqual(0);
       for (const s of m.squad) {
@@ -218,8 +218,8 @@ describe('squads', () => {
 
   it('a full squad cannot bid', () => {
     const h = createHarness({ players: 2 });
-    // u1 buys 15 players
-    while (h.member('u1').squad.length < 15) {
+    // u1 buys 18 players
+    while (h.member('u1').squad.length < 18) {
       if (h.room.phase === 'PLAYER_SOLD') nextLot(h);
       const lot = h.lot();
       h.room.bid('u1', lot.lotNumber, lot.minNextBid);
@@ -234,7 +234,7 @@ describe('squads', () => {
 
   it('free pick: the last manager chooses players at the opening price', () => {
     const h = createHarness({ players: 2 });
-    while (h.member('u1').squad.length < 15) {
+    while (h.member('u1').squad.length < 18) {
       if (h.room.phase === 'PLAYER_SOLD') nextLot(h);
       const lot = h.lot();
       h.room.bid('u1', lot.lotNumber, lot.minNextBid);
@@ -242,7 +242,7 @@ describe('squads', () => {
     }
     nextLot(h);
     const fp = h.room.view().auction!.freePick!;
-    expect(fp).toMatchObject({ userId: 'u2', picksLeft: 15 });
+    expect(fp).toMatchObject({ userId: 'u2', picksLeft: 18 });
     expect(h.room.view().auction!.lot).toBeNull();
     const pool = h.room.pickPool('u2');
     expect(pool[0].overall).toBeGreaterThanOrEqual(pool[pool.length - 1].overall); // best first
@@ -254,15 +254,15 @@ describe('squads', () => {
     expect(u2.budget).toBe(990);
     expect(code(() => h.room.pick('u2', star.id))).toBe('PLAYER_UNAVAILABLE');
     expect(code(() => h.room.pick('u2', h.member('u1').squad[0].player.id))).toBe('PLAYER_UNAVAILABLE');
-    // Finish: picks continue until 15, then the auction completes.
+    // Finish: picks continue until 18, then the auction completes.
     while (h.room.phase !== 'SQUAD_BUILDING') freePickStep(h);
-    expect(h.member('u2').squad).toHaveLength(15);
+    expect(h.member('u2').squad).toHaveLength(18);
     expect(h.member('u2').squad.some((e) => e.player.position === 'GK')).toBe(true);
   });
 
   it('free pick: running out of time picks the best fitting player for you', () => {
     const h = createHarness({ players: 2 });
-    while (h.member('u1').squad.length < 15) {
+    while (h.member('u1').squad.length < 18) {
       if (h.room.phase === 'PLAYER_SOLD') nextLot(h);
       const lot = h.lot();
       h.room.bid('u1', lot.lotNumber, lot.minNextBid);
@@ -272,7 +272,7 @@ describe('squads', () => {
     const best = h.room.pickPool('u2')[0];
     h.clock.advance(h.room.view().auction!.freePick!.endsAt - h.clock.now());
     expect(h.member('u2').squad[0].player.id).toBe(best.id);
-    expect(h.room.view().auction!.freePick!.picksLeft).toBe(14);
+    expect(h.room.view().auction!.freePick!.picksLeft).toBe(17);
   });
 
   it('forces the last open slot to be a goalkeeper', () => {
@@ -286,7 +286,7 @@ describe('squads', () => {
         continue;
       }
       const lot = h.lot();
-      if (lot.player.position !== 'GK' && h.member('u1').squad.length === 14) {
+      if (lot.player.position !== 'GK' && h.member('u1').squad.length === 17) {
         expect(code(() => h.room.bid('u1', lot.lotNumber, lot.minNextBid))).toBe('NEED_GOALKEEPER');
         blocked = true;
         break;
@@ -332,7 +332,7 @@ describe('squads', () => {
   });
 
   it('unsold players are re-offered before auto-fill', () => {
-    const h = createHarness({ players: 2, pool: makePool(32, 4) });
+    const h = createHarness({ players: 2, pool: makePool(38, 4) });
     const seen = new Map<string, number>();
     for (let guard = 0; guard < 500 && h.room.phase !== 'SQUAD_BUILDING'; guard++) {
       if (h.room.phase === 'PLAYER_SOLD') {
@@ -346,7 +346,7 @@ describe('squads', () => {
     expect(h.room.phase).toBe('SQUAD_BUILDING');
     expect(Math.max(...seen.values())).toBe(2);
     for (const m of h.room.view().members) {
-      expect(m.squad).toHaveLength(15);
+      expect(m.squad).toHaveLength(18);
       expect(m.squad.every((s) => s.via === 'AUTO')).toBe(true);
       expect(m.squad.some((s) => s.player.position === 'GK')).toBe(true);
     }

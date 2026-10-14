@@ -90,7 +90,7 @@ function Hero() {
           <span className="bg-gradient-to-r from-volt to-cyan bg-clip-text text-transparent">Outsmart.</span>
         </h1>
         <p className="mt-6 max-w-lg text-lg text-muted">
-          Every manager gets the same budget. Every star goes under the hammer once. Build a 15-man squad that wins on football
+          Every manager gets the same budget. Every star goes under the hammer once. Build an 18-man squad that wins on football
           knowledge — not just on who spent the most.
         </p>
         <div className="mt-8">
@@ -186,7 +186,7 @@ function JoinRoom() {
 function HowItWorks() {
   const steps = [
     ['Auction', 'One player at a time, 30 seconds, highest bid wins. Skip what you don’t want.'],
-    ['Budget', 'Same coins for everyone. You must finish with exactly 15 — spend wisely.'],
+    ['Budget', 'Same coins for everyone. You must finish with exactly 18 — spend wisely.'],
     ['Squad', 'Pick a formation and starting XI. Scoring rewards balance, fit and chemistry.'],
   ];
   return (

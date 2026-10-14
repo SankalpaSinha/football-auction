@@ -149,7 +149,30 @@ export class PrismaGameStore implements GameStore {
     });
   }
 
-  async ratingsFor(userIds: string[], mode: GameMode) {
+  async playerReleased(gameId: string, _userId: string, playerId: string) {
+    await this.db.squadPlayer.deleteMany({ where: { gameId, playerStatsId: playerId } });
+  }
+
+  async tradeCompleted(
+    gameId: string,
+    moves: { playerId: string; toUserId: string; price: number }[],
+    budgets: { userId: string; budget: number }[],
+  ) {
+    await this.db.$transaction(async (tx) => {
+      for (const m of moves) {
+        const squad = await tx.squad.findUniqueOrThrow({ where: { gameId_userId: { gameId, userId: m.toUserId } } });
+        await tx.squadPlayer.update({
+          where: { gameId_playerStatsId: { gameId, playerStatsId: m.playerId } },
+          data: { squadId: squad.id, price: m.price, acquiredVia: 'TRADE' },
+        });
+      }
+      for (const b of budgets) {
+        await tx.squad.update({ where: { gameId_userId: { gameId, userId: b.userId } }, data: { budgetRemaining: b.budget } });
+      }
+    });
+  }
+
+    async ratingsFor(userIds: string[], mode: GameMode) {
     const rows = await this.db.playerRating.findMany({ where: { userId: { in: userIds }, mode } });
     return Object.fromEntries(
       userIds.map((id) => {

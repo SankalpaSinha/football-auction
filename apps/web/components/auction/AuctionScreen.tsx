@@ -16,6 +16,8 @@ import { useCountdown } from './useCountdown';
 import { FreePickPanel } from './FreePick';
 import { SquadSheet } from '../SquadViews';
 import { PauseBanners, PauseButton } from './PauseControls';
+import { dealsOpen, TradeComposer, TradeInbox } from './Trades';
+import { Button } from '../ui';
 
 type Tab = 'squad' | 'managers' | 'feed';
 
@@ -28,6 +30,9 @@ export function AuctionScreen({ room, me }: { room: RoomView; me: string }) {
   const [tab, setTab] = useState<Tab>('managers');
   const [viewing, setViewing] = useState<string | null>(null);
   const viewed = room.members.find((m) => m.userId === viewing);
+  const [tradeWith, setTradeWith] = useState<string | null>(null);
+  const partner = room.members.find((m) => m.userId === tradeWith);
+  const canTrade = !!self && dealsOpen(room);
   const { flash: outbid, seq: outbidKey } = useOutbidFlash(me, room);
 
   return (
@@ -79,6 +84,7 @@ export function AuctionScreen({ room, me }: { room: RoomView; me: string }) {
         {/* @container: the lot layout adapts to this column's width, not the window's */}
         <section className="@container flex min-w-0 flex-col gap-4">
           <PauseBanners room={room} me={me} />
+          {self && <TradeInbox room={room} me={me} />}
           {auction.freePick ? (
             <FreePickPanel room={room} me={me} />
           ) : (
@@ -184,7 +190,34 @@ export function AuctionScreen({ room, me }: { room: RoomView; me: string }) {
       </main>
 
       <AnimatePresence>
-        {viewed && <SquadSheet member={viewed} squadSize={room.rules.squadSize} onClose={() => setViewing(null)} />}
+        {viewed && (
+          <SquadSheet
+            member={viewed}
+            squadSize={room.rules.squadSize}
+            onClose={() => setViewing(null)}
+            action={
+              canTrade && viewed.userId !== me ? (
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  className="w-full"
+                  onClick={() => {
+                    setTradeWith(viewed.userId);
+                    setViewing(null);
+                  }}
+                >
+                  🤝 Propose a trade
+                </Button>
+              ) : undefined
+            }
+          />
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {partner && self && canTrade && (
+          <TradeComposer room={room} me={self} partner={partner} onClose={() => setTradeWith(null)} />
+        )}
       </AnimatePresence>
 
       <AnimatePresence>

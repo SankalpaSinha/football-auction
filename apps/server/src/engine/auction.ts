@@ -11,8 +11,10 @@ import {
   type LotView,
   type PlayerCard,
   type SquadEntry,
+  type TradeOffer,
   type ValuationConfig,
 } from '@fa/shared';
+import { randomUUID } from 'node:crypto';
 import type { Clock, TimerHandle } from './clock';
 import { fail, GameError } from './errors';
 
@@ -51,6 +53,18 @@ export interface AuctionHooks {
   onComplete(): void;
   /** A manager was taken out of the auction for inactivity; their players are back in the pool. */
   onRemoved?(userId: string): void;
+  /** A manager let a player go (no refund); the player is back in the pool. */
+  onReleased?(userId: string, playerId: string): void;
+  /** Players and coins changed hands. */
+  onTraded?(record: TradeRecord): void;
+}
+
+export interface TradeRecord {
+  fromId: string;
+  toId: string;
+  coins: number;
+  /** Every player that moved, with the price it now carries for its new manager. */
+  moves: { playerId: string; toUserId: string; price: number }[];
 }
 
 export interface AuctionOptions {
@@ -125,6 +139,7 @@ export class Auction {
   /** Lots in a row each manager let run out without acting. */
   private idleLots = new Map<string, number>();
   private readonly startingParticipants: number;
+  private trades = new Map<string, TradeOffer & { timer: TimerHandle }>();
 
   constructor(private readonly opts: AuctionOptions) {
     this.rules = opts.rules;
@@ -222,6 +237,7 @@ export class Auction {
     this.holdTimer = null;
     this.pauseVoteTimer?.cancel();
     this.pauseVoteTimer = null;
+    this.clearTrades();
     this.absentTimer?.cancel();
     this.absentTimer = null;
     this.freePickTimer?.cancel();
@@ -320,6 +336,224 @@ export class Auction {
     this.pauseVoteTimer = null;
   }
 
+  // ------------------------------------------------- release and trades
+
+  /** Trades and releases only happen during normal bidding (not free pick). */
+  private assertDealsOpen() {
+    if (this.stage !== 'LOT_OPEN' && this.stage !== 'REVEAL') fail('WRONG_PHASE');
+  }
+
+  /** Let a player go: no refund, the slot opens up and the player goes back into the pool. */
+  release(userId: string, playerId: string) {
+    this.assertDealsOpen();
+    const p = this.participants.get(userId) ?? fail('NOT_PARTICIPANT');
+    const entry = p.squad.find((e) => e.player.id === playerId) ?? fail('NOT_YOUR_PLAYER');
+    const after: Participant = { ...p, squad: p.squad.filter((e) => e !== entry) };
+    if (after.budget < this.slotsLeft(after) * this.rules.reservePerSlot) fail('CANT_REFILL');
+    this.assertStillCovers([after], entry.player.position === 'GK' ? 1 : 0);
+    p.squad = after.squad;
+    this.queue.push(entry.player);
+    this.idleLots.delete(userId);
+    this.hooks.onFeed('INFO', `${p.username} released ${entry.player.shortName} (no refund)`, { userId });
+    this.hooks.onEvent({ type: 'RELEASED', userId, playerId });
+    this.hooks.onReleased?.(userId, playerId);
+    this.pruneTrades();
+    this.afterSquadChange();
+  }
+
+  proposeTrade(fromId: string, input: { toId: string; give: string[]; take: string[]; coins: number }) {
+    this.assertDealsOpen();
+    const from = this.participants.get(fromId) ?? fail('NOT_PARTICIPANT');
+    const to = this.participants.get(input.toId) ?? fail('NOT_PARTICIPANT');
+    if (from === to) fail('BAD_REQUEST');
+    const give = [...new Set(input.give)];
+    const take = [...new Set(input.take)];
+    if (give.length + take.length === 0) fail('TRADE_EMPTY');
+    const max = this.rules.maxTradePlayers;
+    if (give.length > max || take.length > max) fail('BAD_REQUEST', `At most ${max} players each side.`);
+    for (const t of this.trades.values()) if (t.fromId === fromId && t.toId === to.userId) fail('TRADE_PENDING');
+    const now = this.clock.now();
+    const offer: TradeOffer = {
+      id: randomUUID(),
+      fromId,
+      toId: to.userId,
+      give,
+      take,
+      coins: input.coins,
+      createdAt: now,
+      expiresAt: now + this.rules.tradeOfferMs,
+    };
+    this.checkTrade(offer);
+    const timer = this.clock.setTimeout(() => {
+      if (this.trades.delete(offer.id)) this.hooks.onChange();
+    }, this.rules.tradeOfferMs);
+    this.trades.set(offer.id, { ...offer, timer });
+    this.idleLots.delete(fromId);
+    this.hooks.onEvent({ type: 'TRADE_OFFER', fromId, toId: to.userId });
+    this.hooks.onChange();
+  }
+
+  respondTrade(userId: string, tradeId: string, accept: boolean) {
+    const t = this.trades.get(tradeId);
+    if (!t || t.toId !== userId) fail('TRADE_NOT_FOUND');
+    this.idleLots.delete(userId);
+    if (!accept) {
+      this.dropTrade(t.id);
+      this.hooks.onEvent({ type: 'TRADE_DECLINED', fromId: t.fromId, toId: t.toId });
+      return this.hooks.onChange();
+    }
+    this.assertDealsOpen();
+    try {
+      this.checkTrade(t);
+    } catch (e) {
+      this.dropTrade(t.id);
+      this.hooks.onChange();
+      throw e;
+    }
+    this.dropTrade(t.id);
+    this.executeTrade(t);
+  }
+
+  cancelTrade(userId: string, tradeId: string) {
+    const t = this.trades.get(tradeId);
+    if (!t || t.fromId !== userId) fail('TRADE_NOT_FOUND');
+    this.dropTrade(t.id);
+    this.hooks.onChange();
+  }
+
+  /** Offers involving a manager (only they see them). */
+  tradesFor(userId: string): TradeOffer[] {
+    return [...this.trades.values()]
+      .filter((t) => t.fromId === userId || t.toId === userId)
+      .map(({ timer: _timer, ...t }) => ({ ...t, give: [...t.give], take: [...t.take] }));
+  }
+
+  private dropTrade(id: string) {
+    this.trades.get(id)?.timer.cancel();
+    this.trades.delete(id);
+  }
+
+  private clearTrades() {
+    for (const t of this.trades.values()) t.timer.cancel();
+    this.trades.clear();
+  }
+
+  /** Forget offers whose players or managers have gone elsewhere. */
+  private pruneTrades() {
+    for (const t of [...this.trades.values()]) {
+      const from = this.participants.get(t.fromId);
+      const to = this.participants.get(t.toId);
+      const owns = (p: Participant | undefined, ids: string[]) => !!p && ids.every((id) => p.squad.some((e) => e.player.id === id));
+      if (!owns(from, t.give) || !owns(to, t.take)) this.dropTrade(t.id);
+    }
+  }
+
+  /** Both squads as they would be after the trade (throws if it breaks a rule). */
+  private checkTrade(t: TradeOffer): { from: Participant; to: Participant; moved: SquadEntry[][] } {
+    const from = this.participants.get(t.fromId) ?? fail('TRADE_INVALID', 'That manager has left the game.');
+    const to = this.participants.get(t.toId) ?? fail('TRADE_INVALID', 'That manager has left the game.');
+    const pick = (p: Participant, ids: string[]) =>
+      ids.map((id) => p.squad.find((e) => e.player.id === id) ?? fail('TRADE_INVALID', `${p.username} no longer has that player.`));
+    const out = pick(from, t.give);
+    const back = pick(to, t.take);
+    const fromAfter: Participant = {
+      ...from,
+      budget: from.budget - t.coins,
+      squad: [...from.squad.filter((e) => !out.includes(e)), ...back],
+    };
+    const toAfter: Participant = {
+      ...to,
+      budget: to.budget + t.coins,
+      squad: [...to.squad.filter((e) => !back.includes(e)), ...out],
+    };
+    for (const p of [fromAfter, toAfter]) {
+      if (p.squad.length > this.rules.squadSize) fail('TRADE_INVALID', `${p.username} would have more than ${this.rules.squadSize} players.`);
+      if (p.budget < this.slotsLeft(p) * this.rules.reservePerSlot) {
+        fail('TRADE_INVALID', `${p.username} wouldn’t have enough coins left to complete their squad.`);
+      }
+    }
+    this.assertStillCovers([fromAfter, toAfter]);
+    return { from: fromAfter, to: toAfter, moved: [out, back] };
+  }
+
+  /**
+   * Squad changes mid-lot must keep the game sound: every squad can still get a
+   * keeper, and whoever holds the top bid can still pay for (and fit) the player.
+   */
+  private assertStillCovers(changed: Participant[], keepersReturning = 0) {
+    const state = (p: Participant) => changed.find((c) => c.userId === p.userId) ?? p;
+    let shortfall = 0;
+    for (const original of this.participants.values()) {
+      const p = state(original);
+      const need = this.gkShortfall(p);
+      if (need > 0 && this.slotsLeft(p) < need) fail('TRADE_INVALID', `${p.username} would be left without a goalkeeper.`);
+      if (this.slotsLeft(p) > 0) shortfall += need;
+    }
+    const lot = this.lot;
+    const lotKeeper = this.stage === 'LOT_OPEN' && lot?.player.position === 'GK' ? 1 : 0;
+    if (shortfall > this.availableGoalkeepers() + lotKeeper + keepersReturning) fail('TRADE_INVALID', 'Not enough goalkeepers would be left for everyone.');
+    if (this.stage === 'LOT_OPEN' && lot?.highestBidderId && lot.currentBid !== null) {
+      const top = changed.find((c) => c.userId === lot.highestBidderId);
+      if (top) {
+        const fits = this.slotsLeft(top) > 0 && !(lot.player.position !== 'GK' && this.gkShortfall(top) >= this.slotsLeft(top));
+        if (!fits || this.maxBid(top) < lot.currentBid) {
+          fail('TRADE_INVALID', `${top.username} holds the top bid and couldn’t take that player afterwards.`);
+        }
+      }
+    }
+  }
+
+  private executeTrade(t: TradeOffer) {
+    const from = this.participants.get(t.fromId)!;
+    const to = this.participants.get(t.toId)!;
+    const { from: fromAfter, to: toAfter, moved } = this.checkTrade(t);
+    const [out, back] = moved;
+    // What each side gave up (players at their price + coins) becomes the price of what it got.
+    const reprice = (incoming: SquadEntry[], outgoing: SquadEntry[], coinsPaid: number) => {
+      const basis = Math.max(0, outgoing.reduce((s, e) => s + e.price, 0) + coinsPaid);
+      const weight = incoming.reduce((s, e) => s + Math.max(1, e.estimatedValue), 0);
+      let left = basis;
+      return incoming.map((e, i) => {
+        const last = i === incoming.length - 1;
+        const price = last ? left : Math.min(left, Math.round((basis * Math.max(1, e.estimatedValue)) / weight));
+        left -= price;
+        return { ...e, price, via: 'TRADE' as const };
+      });
+    };
+    const toFrom = reprice(back, out, t.coins);
+    const toTo = reprice(out, back, -t.coins);
+    from.budget = fromAfter.budget;
+    to.budget = toAfter.budget;
+    from.squad = [...from.squad.filter((e) => !out.includes(e)), ...toFrom];
+    to.squad = [...to.squad.filter((e) => !back.includes(e)), ...toTo];
+
+    const names = (es: SquadEntry[]) => es.map((e) => e.player.shortName).join(', ');
+    const parts = [
+      out.length ? `${names(out)} → ${to.username}` : '',
+      back.length ? `${names(back)} → ${from.username}` : '',
+      t.coins > 0 ? `${from.username} pays ${t.coins}` : t.coins < 0 ? `${to.username} pays ${-t.coins}` : '',
+    ].filter(Boolean);
+    this.hooks.onFeed('INFO', `🤝 Trade: ${parts.join(' · ')}`, { userId: from.userId });
+    this.hooks.onEvent({ type: 'TRADED', fromId: from.userId, toId: to.userId });
+    this.hooks.onTraded?.({
+      fromId: from.userId,
+      toId: to.userId,
+      coins: t.coins,
+      moves: [
+        ...toFrom.map((e) => ({ playerId: e.player.id, toUserId: from.userId, price: e.price })),
+        ...toTo.map((e) => ({ playerId: e.player.id, toUserId: to.userId, price: e.price })),
+      ],
+    });
+    this.pruneTrades();
+    this.afterSquadChange();
+  }
+
+  /** A squad changed mid-lot: maybe nobody can bid any more. */
+  private afterSquadChange() {
+    if (this.stage === 'LOT_OPEN' && this.closeIfNobodyCanBid()) return;
+    this.hooks.onChange();
+  }
+
   // ------------------------------------------------------------- free pick
 
   get inFreePick() {
@@ -345,6 +579,7 @@ export class Auction {
 
   private startFreePick(p: Participant) {
     this.clearHold();
+    this.clearTrades();
     this.stage = 'FREE_PICK';
     this.lot = null;
     this.lastResult = null;
@@ -827,6 +1062,7 @@ export class Auction {
   private removeParticipant(p: Participant) {
     this.participants.delete(p.userId);
     this.idleLots.delete(p.userId);
+    this.pruneTrades();
     this.queue.push(...p.squad.map((e) => e.player));
     this.hooks.onEvent({ type: 'REMOVED', userId: p.userId });
     this.hooks.onRemoved?.(p.userId);
@@ -889,6 +1125,7 @@ export class Auction {
 
   private complete() {
     this.clearHold();
+    this.clearTrades();
     this.timer?.cancel();
     this.timer = null;
     this.absentTimer?.cancel();

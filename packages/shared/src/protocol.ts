@@ -61,6 +61,16 @@ export const chatSchema = z.object({
     .refine((t) => t.length > 0, 'Type a message first.'),
 });
 
+const playerIdSchema = z.string().min(1).max(120);
+export const releaseSchema = z.object({ playerId: playerIdSchema });
+export const tradeProposeSchema = z.object({
+  toId: z.string().min(1).max(64),
+  give: z.array(playerIdSchema).max(5),
+  take: z.array(playerIdSchema).max(5),
+  coins: z.number().int().min(-100_000).max(100_000),
+});
+export const tradeRespondSchema = z.object({ tradeId: z.string().min(1).max(64), accept: z.boolean() });
+export const tradeCancelSchema = z.object({ tradeId: z.string().min(1).max(64) });
 export const pauseVoteSchema = z.object({ agree: z.boolean() });
 export const pickSchema = z.object({ playerId: z.string().min(1).max(120) });
 export const lineupSchema = z.object({
@@ -84,6 +94,10 @@ export interface ClientToServer {
   'auction:pause': (input: unknown, ack: (r: Ack) => void) => void;
   'auction:pause-vote': (input: unknown, ack: (r: Ack) => void) => void;
   'auction:resume': (input: unknown, ack: (r: Ack) => void) => void;
+  'squad:release': (input: unknown, ack: (r: Ack) => void) => void;
+  'trade:propose': (input: unknown, ack: (r: Ack) => void) => void;
+  'trade:respond': (input: unknown, ack: (r: Ack) => void) => void;
+  'trade:cancel': (input: unknown, ack: (r: Ack) => void) => void;
   'auction:pool': (input: unknown, ack: (r: Ack<{ players: PlayerCard[] }>) => void) => void;
   'squad:draft': (input: unknown, ack: (r: Ack) => void) => void;
   'squad:lock': (input: unknown, ack: (r: Ack) => void) => void;
@@ -144,6 +158,11 @@ export const ERROR_MESSAGES = {
   PAUSE_COOLDOWN: 'Wait a little before asking to pause again.',
   NO_PAUSE_VOTE: 'There is no pause vote right now.',
   NOT_PAUSED: 'The auction is not paused.',
+  TRADE_NOT_FOUND: 'That trade offer is no longer open.',
+  TRADE_EMPTY: 'A trade needs at least one player.',
+  TRADE_PENDING: 'You already have an offer out to that manager.',
+  TRADE_INVALID: 'That trade is no longer possible.',
+  CANT_REFILL: 'You couldn’t afford to fill the empty slot again.',
   // squad building
   INVALID_FORMATION: 'Unknown formation.',
   LINEUP_INCOMPLETE: 'Fill all 11 positions first.',

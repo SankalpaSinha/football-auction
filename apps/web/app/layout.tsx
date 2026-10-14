@@ -10,7 +10,7 @@ const mono = JetBrains_Mono({ subsets: ['latin'], weight: ['500', '700'], variab
 
 export const metadata: Metadata = {
   title: 'Football Auction',
-  description: 'Live multiplayer football auction — bid, build your 15, outsmart your friends.',
+  description: 'Live multiplayer football auction — bid, build your 18, outsmart your friends.',
   appleWebApp: { capable: true, title: 'Football Auction', statusBarStyle: 'black-translucent' },
 };
 

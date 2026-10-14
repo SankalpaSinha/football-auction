@@ -31,6 +31,14 @@ export interface GameStore {
   auctionCompleted(gameId: string, participants: Participant[]): Promise<void>;
   /** A manager was removed mid-auction: drop their squad (its players are back in the pool). */
   participantRemoved(gameId: string, userId: string): Promise<void>;
+  /** A manager let a player go (no refund). */
+  playerReleased(gameId: string, userId: string, playerId: string): Promise<void>;
+  /** Players moved between squads (with their new price) and both budgets changed. */
+  tradeCompleted(
+    gameId: string,
+    moves: { playerId: string; toUserId: string; price: number }[],
+    budgets: { userId: string; budget: number }[],
+  ): Promise<void>;
   lineupsFinalized(gameId: string, lineups: { userId: string; formationId: string; slots: string[] }[]): Promise<void>;
   gameFinished(
     gameId: string,
@@ -52,6 +60,8 @@ export class NoopGameStore implements GameStore {
   async lotClosed() {}
   async auctionCompleted() {}
   async participantRemoved() {}
+  async playerReleased() {}
+  async tradeCompleted() {}
   async lineupsFinalized() {}
   async gameFinished() {}
   async ratingsFor(userIds: string[]) {

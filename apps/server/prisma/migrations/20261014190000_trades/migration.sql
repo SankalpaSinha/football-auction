@@ -1,0 +1,1 @@
+ALTER TYPE "Acquisition" ADD VALUE 'TRADE';

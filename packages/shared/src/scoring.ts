@@ -63,7 +63,7 @@ export const SCORING_CONFIG = {
     linkDistance: 27,
   },
   balance: {
-    ranges: { GK: [1, 2], DEF: [4, 6], MID: [4, 6], ATT: [3, 5] } as Record<PositionGroup, [number, number]>,
+    ranges: { GK: [1, 3], DEF: [5, 7], MID: [5, 7], ATT: [3, 6] } as Record<PositionGroup, [number, number]>,
     perPlayerOutside: 8,
     /** Gap between the strongest and weakest outfield line (role rating) tolerated before penalties. */
     lineGapTolerance: 4,
@@ -180,7 +180,7 @@ export function chemistryLinks(lineup: LineupInput, byId: Map<string, PlayerCard
 }
 
 /**
- * Score one manager's squad. `squad` is all 15 acquisitions (prices included);
+ * Score one manager's squad. `squad` is every acquisition (18 by default) (prices included);
  * `lineup` must be complete (11 slots).
  */
 export function scoreSquad(squad: SquadEntry[], lineup: LineupInput): SquadScore {

@@ -14,6 +14,10 @@ import {
   readySchema,
   skipSchema,
   pauseVoteSchema,
+  releaseSchema,
+  tradeProposeSchema,
+  tradeRespondSchema,
+  tradeCancelSchema,
   credentialsSchema,
   type Ack,
   type ClientToServer,
@@ -449,6 +453,10 @@ export function createApp(deps: AppDeps) {
     on('auction:pause', null, () => inRoom().requestPause(user.id));
     on('auction:pause-vote', pauseVoteSchema, ({ agree }) => inRoom().votePause(user.id, agree));
     on('auction:resume', null, () => inRoom().resumePause(user.id));
+    on('squad:release', releaseSchema, ({ playerId }) => inRoom().release(user.id, playerId));
+    on('trade:propose', tradeProposeSchema, (t) => inRoom().proposeTrade(user.id, t));
+    on('trade:respond', tradeRespondSchema, ({ tradeId, accept }) => inRoom().respondTrade(user.id, tradeId, accept));
+    on('trade:cancel', tradeCancelSchema, ({ tradeId }) => inRoom().cancelTrade(user.id, tradeId));
     on('squad:draft', lineupSchema, (l) => inRoom().saveLineupDraft(user.id, l));
     on('squad:lock', lineupSchema, (l) => inRoom().lockLineup(user.id, l));
     on('squad:unlock', null, () => inRoom().unlockLineup(user.id));

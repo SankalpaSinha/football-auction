@@ -418,6 +418,14 @@ export class Room {
           this.deps.onKicked?.(this, userId, `you sat out ${limit} lots in a row without bidding or skipping`);
           this.removeMember(m, `${m.username} was removed for inactivity`);
         },
+        onReleased: (userId, playerId) => this.persist(() => this.deps.store.playerReleased(gameId, userId, playerId)),
+        onTraded: (record) => {
+          const budgets = [record.fromId, record.toId].map((id) => ({
+            userId: id,
+            budget: this.participants.find((p) => p.userId === id)!.budget,
+          }));
+          this.persist(() => this.deps.store.tradeCompleted(gameId, record.moves, budgets));
+        },
         onComplete: () => {
           const snapshot = this.participants.map((p) => ({ ...p, squad: [...p.squad] }));
           this.persist(() => this.deps.store.auctionCompleted(gameId, snapshot));
@@ -459,6 +467,26 @@ export class Room {
   resumePause(userId: string) {
     this.assertInAuction(userId);
     this.auction!.resumeHold(userId);
+  }
+
+  release(userId: string, playerId: string) {
+    this.assertInAuction(userId);
+    this.auction!.release(userId, playerId);
+  }
+
+  proposeTrade(userId: string, input: { toId: string; give: string[]; take: string[]; coins: number }) {
+    this.assertInAuction(userId);
+    this.auction!.proposeTrade(userId, input);
+  }
+
+  respondTrade(userId: string, tradeId: string, accept: boolean) {
+    this.assertInAuction(userId);
+    this.auction!.respondTrade(userId, tradeId, accept);
+  }
+
+  cancelTrade(userId: string, tradeId: string) {
+    this.assertInAuction(userId);
+    this.auction!.cancelTrade(userId, tradeId);
   }
 
   /** Players still available — only meaningful during free pick. */
@@ -802,6 +830,7 @@ export class Room {
           : null,
       resultsAt: this.phase === 'FINAL_EVALUATION' ? this.resultsAt : null,
       feed: this.feed.slice(-40),
+      trades: viewerId && this.auction && !this.auction.isComplete ? this.auction.tradesFor(viewerId) : [],
       serverTime: this.deps.clock.now(),
       version: this.version,
     };

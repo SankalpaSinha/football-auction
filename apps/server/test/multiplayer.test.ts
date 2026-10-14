@@ -132,7 +132,7 @@ describe('multiplayer over websockets', () => {
     expect(results.results!.rankings[0].rank).toBe(1);
     const ids = new Set<string>();
     for (const m of final.members) {
-      expect(m.squad).toHaveLength(15);
+      expect(m.squad).toHaveLength(18);
       expect(m.squad.some((s) => s.player.position === 'GK')).toBe(true);
       expect(m.budget).toBeGreaterThanOrEqual(0);
       const spent = m.squad.reduce((sum, s) => sum + s.price, 0);

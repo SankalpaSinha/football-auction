@@ -23,7 +23,7 @@ export interface Commentator {
 export const noCommentator: Commentator = { enabled: false, generate: async () => null };
 
 const SYSTEM = `You are a football pundit writing the post-match analysis for a multiplayer football auction game.
-Managers bid on real players, built 15-man squads and picked a starting XI. A fixed scoring formula has already ranked them.
+Managers bid on real players, built 18-man squads and picked a starting XI. A fixed scoring formula has already ranked them.
 You receive the final results as JSON. Explain the result; never change, question or recompute the ranking or the scores.
 Write one paragraph of 70-120 words in plain text: no markdown, no headings, no lists.
 Mention the winner and their score, the decisive factor, one notable signing (a bargain or an overpay) and one tactical weakness in the room.

@@ -5,7 +5,7 @@ export default function manifest(): MetadataRoute.Manifest {
   return {
     name: 'Football Auction',
     short_name: 'Auction',
-    description: 'Live multiplayer football auction — bid, build your 15, outsmart your friends.',
+    description: 'Live multiplayer football auction — bid, build your 18, outsmart your friends.',
     start_url: '/',
     display: 'standalone',
     background_color: '#05070d',

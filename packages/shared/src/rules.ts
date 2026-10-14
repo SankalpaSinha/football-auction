@@ -44,6 +44,10 @@ export interface GameRules {
    * others are playing) before they are removed. They are warned one lot earlier.
    */
   inactiveLotsToRemove: number;
+  /** Trade offers lapse after this long. */
+  tradeOfferMs: number;
+  /** Most players each side can put into one trade. */
+  maxTradePlayers: number;
   /** Time managers get to pick formation + starting XI after the auction. */
   squadBuildingMs: number;
   /** Suspense pause between lineup reveal and the results. */
@@ -59,7 +63,7 @@ export interface GameRules {
  * be tuned without touching game logic.
  */
 export const GAME_RULES: Readonly<GameRules> = {
-  squadSize: 15,
+  squadSize: 18,
   minGoalkeepers: 1,
   minPlayers: 2,
   maxPlayers: 6,
@@ -82,6 +86,8 @@ export const GAME_RULES: Readonly<GameRules> = {
   maxPauseMs: 5 * 60_000,
   pauseRequestCooldownMs: 30_000,
   inactiveLotsToRemove: 3,
+  tradeOfferMs: 90_000,
+  maxTradePlayers: 3,
   squadBuildingMs: 180_000,
   evaluationMs: 4_000,
   lobbyDisconnectGraceMs: 60_000,

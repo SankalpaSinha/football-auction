@@ -214,7 +214,7 @@ export function SquadBuilder({ room, me }: { room: RoomView; me: string }) {
       <main className="mx-auto grid w-full max-w-[1400px] flex-1 gap-5 p-3 sm:p-5 lg:grid-cols-[minmax(0,1fr)_400px]">
         {/* pitch */}
         <section className="flex min-w-0 flex-col items-center gap-4">
-          <div className="scrollbar-thin flex w-full max-w-[640px] gap-1.5 overflow-x-auto pb-1">
+          <div className="scrollbar-thin flex w-full max-w-[640px] gap-1.5 overflow-x-auto pb-1 sm:flex-wrap sm:justify-center sm:overflow-visible">
             {FORMATIONS.map((f) => (
               <button
                 key={f.id}

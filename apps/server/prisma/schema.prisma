@@ -318,6 +318,7 @@ enum Acquisition {
   AUCTION
   PICK
   AUTO
+  TRADE
 }
 
 model Squad {

@@ -109,7 +109,7 @@ export interface RoomSettings {
 }
 
 /** AUCTION = won a lot · PICK = chosen in free pick · AUTO = auto-assigned. */
-export type Acquisition = 'AUCTION' | 'PICK' | 'AUTO';
+export type Acquisition = 'AUCTION' | 'PICK' | 'AUTO' | 'TRADE';
 
 export interface SquadEntry {
   player: PlayerCard;
@@ -271,6 +271,8 @@ export interface RoomView {
   /** While in FINAL_EVALUATION: when results will be shown. */
   resultsAt: number | null;
   feed: FeedItem[];
+  /** Trade offers you sent or received (only yours are shown). */
+  trades: TradeOffer[];
   serverTime: number;
   version: number;
 }
@@ -290,11 +292,32 @@ export type GameEvent =
   | { type: 'PAUSED' }
   | { type: 'RESUMED' }
   | { type: 'REMOVED'; userId: string }
+  | { type: 'TRADE_OFFER'; fromId: string; toId: string }
+  | { type: 'TRADE_DECLINED'; fromId: string; toId: string }
+  | { type: 'TRADED'; fromId: string; toId: string }
+  | { type: 'RELEASED'; userId: string; playerId: string }
   | { type: 'AUCTION_COMPLETE' }
   | { type: 'LINEUP_LOCKED'; userId: string }
   | { type: 'LINEUPS_REVEALED' }
   | { type: 'RESULTS'; winnerId: string }
   | { type: 'GAME_STARTING'; startsAt: number };
+
+/**
+ * A proposed swap between two managers during the auction. `coins` > 0: the
+ * proposer pays the recipient; < 0: the proposer asks the recipient for coins.
+ */
+export interface TradeOffer {
+  id: string;
+  fromId: string;
+  toId: string;
+  /** Players from the proposer's squad. */
+  give: string[];
+  /** Players from the recipient's squad. */
+  take: string[];
+  coins: number;
+  createdAt: number;
+  expiresAt: number;
+}
 
 export interface ChatMessage {
   id: number;

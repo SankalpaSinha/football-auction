@@ -128,7 +128,7 @@ export class PrismaGameStore implements GameStore {
             gameId,
             playerStatsId: lot.player.id,
             price: lot.price,
-            acquiredVia: lot.outcome === 'AUTO_ASSIGNED' ? 'AUTO' : 'AUCTION',
+            acquiredVia: lot.outcome === 'AUTO_ASSIGNED' ? 'AUTO' : lot.outcome === 'PICKED' ? 'PICK' : 'AUCTION',
             lotNumber: lot.lotNumber,
           },
         });

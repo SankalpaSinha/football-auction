@@ -47,6 +47,10 @@ class SoundKit {
     osc.stop(t + dur + 0.02);
   }
 
+  chat() {
+    this.tone(1320, 0.06, { type: 'sine', gain: 0.025 });
+    this.tone(1760, 0.08, { type: 'sine', gain: 0.02, delay: 0.05 });
+  }
   bid() {
     this.tone(880, 0.09, { type: 'triangle', gain: 0.05 });
   }

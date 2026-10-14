@@ -1,6 +1,6 @@
 import type { MatchReport } from './analysis';
 import type { RankedScore } from './scoring';
-import type { GameMode, SquadEntry } from './types';
+import type { GameMode, LotOutcome, SquadEntry } from './types';
 
 export interface StatsBlock {
   games: number;
@@ -77,7 +77,7 @@ export interface MatchDetailView {
     lotNumber: number;
     playerId: string;
     playerName: string;
-    outcome: 'SOLD' | 'UNSOLD' | 'AUTO_ASSIGNED';
+    outcome: LotOutcome;
     winner: string | null;
     price: number | null;
     estimatedValue: number;

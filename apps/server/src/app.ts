@@ -9,6 +9,8 @@ import {
   joinRoomSchema,
   lineupSchema,
   quickMatchSchema,
+  pickSchema,
+  chatSchema,
   readySchema,
   skipSchema,
   credentialsSchema,
@@ -52,6 +54,8 @@ export interface AppDeps {
    * X-Forwarded-For is ignored, so clients can't spoof their IP.
    */
   trustProxy?: number;
+  /** Account registrations allowed per IP per hour (tests raise this). */
+  registrationsPerHour?: number;
   /** Production single-service mode: serves the built Next.js site for every non-API route. */
   webHandler?: (req: import('node:http').IncomingMessage, res: import('node:http').ServerResponse) => Promise<void>;
   maxRooms?: number;
@@ -123,7 +127,7 @@ export function createApp(deps: AppDeps) {
     res.json({ ok: true, rooms: manager.roomCount, time: deps.clock.now() });
   });
 
-  const registerLimiter = new RateLimiter(20, 60 * 60_000);
+  const registerLimiter = new RateLimiter(deps.registrationsPerHour ?? 20, 60 * 60_000);
   const loginLimiter = new RateLimiter(10, 15 * 60_000);
   // Per-IP cap regardless of username (stops spraying many names from one address).
   const loginIpLimiter = new RateLimiter(40, 15 * 60_000);
@@ -317,6 +321,7 @@ export function createApp(deps: AppDeps) {
     const actions = new TokenBucket(15, 30, () => deps.clock.now());
     const bids = new TokenBucket(6, 10, () => deps.clock.now());
     const syncs = new TokenBucket(2, 8, () => deps.clock.now());
+    const chats = new TokenBucket(1, 5, () => deps.clock.now());
     // Failed room lookups by code — guessing private codes gets cut off quickly.
     let codeMisses = 0;
     const lookup = <T>(fn: () => T): T => {
@@ -403,6 +408,35 @@ export function createApp(deps: AppDeps) {
       },
       bids,
     );
+
+    on('auction:pick', pickSchema, ({ playerId }) => {
+      const r = manager.roomOf(user.id);
+      if (!r) throw new GameError('NOT_IN_ROOM');
+      r.pick(user.id, playerId);
+    });
+
+    on('auction:pool', null, () => {
+      const r = manager.roomOf(user.id) ?? manager.watchedRoom(user.id);
+      if (!r) throw new GameError('NOT_IN_ROOM');
+      return { players: r.pickPool(user.id) };
+    });
+
+    on(
+      'chat:send',
+      chatSchema,
+      ({ text }) => {
+        const r = manager.roomOf(user.id) ?? manager.watchedRoom(user.id);
+        if (!r) throw new GameError('NOT_IN_ROOM');
+        r.sendChat(user.id, text);
+      },
+      chats,
+    );
+
+    on('chat:history', null, () => {
+      const r = manager.roomOf(user.id) ?? manager.watchedRoom(user.id);
+      if (!r) throw new GameError('NOT_IN_ROOM');
+      return { code: r.code, messages: r.chatHistory(user.id) };
+    });
 
     on('auction:skip', skipSchema, ({ lotNumber }) => {
       const r = manager.roomOf(user.id);

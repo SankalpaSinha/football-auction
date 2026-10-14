@@ -1,5 +1,6 @@
 'use client';
 import { useEffect, useState } from 'react';
+import { ChatButton } from './ChatPanel';
 import { AnimatePresence, motion } from 'motion/react';
 import type { RoomView } from '@fa/shared';
 import { emit } from '@/lib/socket';
@@ -61,7 +62,8 @@ export function Lobby({ room, me, onLeave, onJoin }: { room: RoomView; me: strin
       <header className="flex h-16 items-center justify-between">
         <Logo />
         <div className="flex items-center gap-1">
-          <SoundToggle />
+          <ChatButton />
+            <SoundToggle />
           <Button variant="ghost" size="sm" onClick={onLeave}>
             Leave
           </Button>

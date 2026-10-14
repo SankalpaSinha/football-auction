@@ -112,6 +112,7 @@ export class RoomManager {
         }
       },
       onClosed: (r, reason) => this.onClosed(r, reason),
+      onChat: (r, msg) => this.io.to(roomChannel(r.code)).emit('room:chat', { ...msg, code: r.code }),
       onMemberRemoved: (r, userId) => {
         if (this.userRoom.get(userId) === r.code) this.userRoom.delete(userId);
         this.io.in(userChannel(userId)).socketsLeave(roomChannel(r.code));
@@ -151,6 +152,11 @@ export class RoomManager {
     this.watching.set(user.id, code);
     this.io.in(userChannel(user.id)).socketsJoin([roomChannel(code), spectateChannel(code)]);
     return { room, role: 'spectator' };
+  }
+
+  watchedRoom(userId: string): Room | undefined {
+    const code = this.watching.get(userId);
+    return code ? this.rooms.get(code) : undefined;
   }
 
   /** A new socket for someone already watching: put it back in the spectator channels. */

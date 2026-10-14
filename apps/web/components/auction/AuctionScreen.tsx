@@ -1,5 +1,6 @@
 'use client';
 import { useEffect, useRef, useState } from 'react';
+import { ChatButton } from '../ChatPanel';
 import { AnimatePresence, motion } from 'motion/react';
 import type { RoomView } from '@fa/shared';
 import { useGame } from '@/lib/store';
@@ -12,6 +13,8 @@ import { ManagersPanel, SquadPanel } from './Panels';
 import { SoldOverlay } from './SoldOverlay';
 import { Timer } from './Timer';
 import { useCountdown } from './useCountdown';
+import { FreePickPanel } from './FreePick';
+import { SquadSheet } from '../SquadViews';
 
 type Tab = 'squad' | 'managers' | 'feed';
 
@@ -22,6 +25,8 @@ export function AuctionScreen({ room, me }: { room: RoomView; me: string }) {
   const remaining = useCountdown(lot);
   const totalMs = lot?.extended ? 5_000 : room.settings.lotDurationSec * 1000;
   const [tab, setTab] = useState<Tab>('managers');
+  const [viewing, setViewing] = useState<string | null>(null);
+  const viewed = room.members.find((m) => m.userId === viewing);
   const { flash: outbid, seq: outbidKey } = useOutbidFlash(me, room);
 
   return (
@@ -44,6 +49,7 @@ export function AuctionScreen({ room, me }: { room: RoomView; me: string }) {
             {auction.reofferRound && <Pill color="#ffb020">Re-offer round</Pill>}
             {room.spectators > 0 && <span title="Spectators">👀 {room.spectators}</span>}
             <span className="hidden font-mono text-ink/70 lg:inline">{room.code}</span>
+            <ChatButton />
             <SoundToggle />
           </div>
         </div>
@@ -69,6 +75,9 @@ export function AuctionScreen({ room, me }: { room: RoomView; me: string }) {
 
         {/* centre — the lot */}
         <section className="flex min-w-0 flex-col gap-4">
+          {auction.freePick ? (
+            <FreePickPanel room={room} me={me} />
+          ) : (
           <div className="glass relative flex flex-col gap-4 overflow-hidden rounded-3xl p-3 sm:p-6 md:flex-row md:items-start md:justify-center md:gap-6">
             <div
               className="pointer-events-none absolute -left-24 top-0 h-96 w-96 rounded-full opacity-40 blur-3xl"
@@ -132,6 +141,7 @@ export function AuctionScreen({ room, me }: { room: RoomView; me: string }) {
               )}
             </div>
           </div>
+          )}
 
           {/* mobile tabs */}
           <div className="lg:hidden">
@@ -147,7 +157,7 @@ export function AuctionScreen({ room, me }: { room: RoomView; me: string }) {
               ))}
             </div>
             {tab === 'squad' && <SquadPanel room={room} me={self} />}
-            {tab === 'managers' && <ManagersPanel room={room} lot={lot} me={me} />}
+            {tab === 'managers' && <ManagersPanel room={room} lot={lot} me={me} onSelect={setViewing} />}
             {tab === 'feed' && (
               <div className="glass rounded-2xl p-3">
                 <Feed items={room.feed} me={me} className="max-h-80" />
@@ -164,9 +174,13 @@ export function AuctionScreen({ room, me }: { room: RoomView; me: string }) {
 
         {/* right — managers */}
         <aside className="hidden lg:block">
-          <ManagersPanel room={room} lot={lot} me={me} />
+          <ManagersPanel room={room} lot={lot} me={me} onSelect={setViewing} />
         </aside>
       </main>
+
+      <AnimatePresence>
+        {viewed && <SquadSheet member={viewed} squadSize={room.rules.squadSize} onClose={() => setViewing(null)} />}
+      </AnimatePresence>
 
       <AnimatePresence>
         {room.phase === 'PLAYER_SOLD' && auction.lastResult && (

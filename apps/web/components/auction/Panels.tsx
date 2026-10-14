@@ -90,10 +90,24 @@ export function SquadPanel({ room, me }: { room: RoomView; me: MemberView | unde
   );
 }
 
-export function ManagersPanel({ room, lot, me }: { room: RoomView; lot: LotView | null; me: string }) {
+export function ManagersPanel({
+  room,
+  lot,
+  me,
+  onSelect,
+}: {
+  room: RoomView;
+  lot: LotView | null;
+  me: string;
+  /** Tap a manager to see their squad. */
+  onSelect?: (userId: string) => void;
+}) {
   return (
     <div className="glass rounded-2xl p-4">
-      <div className="label mb-3">Live managers</div>
+      <div className="mb-3 flex items-baseline justify-between">
+        <span className="label">Live managers</span>
+        {onSelect && <span className="text-[10px] text-dim">tap to see squads</span>}
+      </div>
       <ul className="space-y-2">
         {room.members.map((m) => {
           const leading = lot?.highestBidderId === m.userId;
@@ -102,9 +116,13 @@ export function ManagersPanel({ room, lot, me }: { room: RoomView; lot: LotView 
           return (
             <motion.li
               key={m.userId}
-              layout
               animate={{ scale: leading ? 1.02 : 1 }}
-              className={`flex items-center gap-3 rounded-xl border px-3 py-2 transition-colors ${
+              role={onSelect ? 'button' : undefined}
+              tabIndex={onSelect ? 0 : undefined}
+              onClick={() => onSelect?.(m.userId)}
+              onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && onSelect?.(m.userId)}
+              aria-label={onSelect ? `See ${m.username}'s squad` : undefined}
+              className={`flex items-center gap-3 rounded-xl border px-3 py-2 transition-colors ${onSelect ? 'cursor-pointer hover:bg-white/[.06]' : ''} ${
                 leading ? 'border-volt/60 bg-volt/[.09] shadow-[0_0_24px_-8px_rgba(200,255,46,.6)]' : 'border-white/5 bg-white/[.02]'
               } ${!m.connected ? 'opacity-50' : ''}`}
             >

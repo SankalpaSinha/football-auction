@@ -2,10 +2,10 @@
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
-import { GROUP_ORDER, POSITION_GROUP, verdictFor, type MatchDetailView, type PlayerCard } from '@fa/shared';
-import { PlayerAvatar } from '@/components/PlayerAvatar';
+import { verdictFor, type MatchDetailView, type PlayerCard } from '@fa/shared';
 import { Analysis, EloDelta, ManagerReport } from '@/components/Results';
 import { MobileNav, SiteHeader } from '@/components/SiteHeader';
+import { AllSquads } from '@/components/SquadViews';
 import { Avatar, Pill } from '@/components/ui';
 import { api } from '@/lib/api';
 
@@ -134,61 +134,15 @@ export default function MatchPage() {
           </div>
 
           {tab === 'squads' ? (
-            <div className="mt-3 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-              {m.rankings.map((r) => {
-                const mgr = m.managers.find((x) => x.userId === r.userId);
-                if (!mgr) return null;
-                const starters = new Set(mgr.lineup?.slots.filter(Boolean) as string[]);
-                const sorted = [...mgr.squad].sort(
-                  (a, b) =>
-                    GROUP_ORDER.indexOf(POSITION_GROUP[a.player.position]) - GROUP_ORDER.indexOf(POSITION_GROUP[b.player.position]) ||
-                    b.player.overall - a.player.overall,
-                );
-                return (
-                  <div key={r.userId} className="glass rounded-2xl p-4">
-                    <div className="mb-2 flex items-baseline justify-between">
-                      <span className="font-bold">
-                        {MEDAL[r.rank - 1] ?? `#${r.rank}`} {mgr.username}
-                      </span>
-                      <span className="text-xs text-muted">
-                        spent {r.spent} · {mgr.budgetLeft} left
-                      </span>
-                    </div>
-                    <table className="w-full table-fixed text-xs">
-                      <colgroup>
-                        <col className="w-7" />
-                        <col className="w-9" />
-                        <col />
-                        <col className="w-8" />
-                        <col className="w-9" />
-                        <col className="w-16" />
-                      </colgroup>
-                      <tbody>
-                        {sorted.map((e) => {
-                          const v = e.via === 'AUTO' ? null : verdictFor(e.price, e.estimatedValue);
-                          return (
-                            <tr key={e.player.id} className="border-b border-white/5 last:border-0">
-                              <td className="py-1 pr-2">
-                                <PlayerAvatar player={e.player} size={22} />
-                              </td>
-                              <td className="w-8 py-1 font-bold text-muted">{e.player.position}</td>
-                              <td className="truncate py-1 pr-2" title={e.player.name}>
-                                {e.player.shortName}
-                                {!starters.has(e.player.id) && <span className="ml-1 text-dim">(bench)</span>}
-                              </td>
-                              <td className="py-1 pr-2 text-right font-bold num">{e.player.overall}</td>
-                              <td className="py-1 pr-2 text-right num">{e.price}</td>
-                              <td className={`py-1 text-right text-[10px] font-bold uppercase ${v ? VERDICT_STYLE[v] : 'text-cyan'}`}>
-                                {v ?? 'auto'}
-                              </td>
-                            </tr>
-                          );
-                        })}
-                      </tbody>
-                    </table>
-                  </div>
-                );
-              })}
+            <div className="mt-3">
+              <AllSquads
+                managers={m.rankings.flatMap((r) => {
+                  const mgr = m.managers.find((x) => x.userId === r.userId);
+                  return mgr
+                    ? [{ userId: mgr.userId, username: mgr.username, squad: mgr.squad, lineup: mgr.lineup, budgetLeft: mgr.budgetLeft, rank: r.rank, total: r.total }]
+                    : [];
+                })}
+              />
             </div>
           ) : (
             <div className="glass mt-3 overflow-hidden rounded-2xl">

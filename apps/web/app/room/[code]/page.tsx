@@ -12,7 +12,8 @@ import { Button, ConnectionBanner, Logo } from '@/components/ui';
 import { api, saveSession } from '@/lib/api';
 import { emit, ensureConnected, reclaimSession } from '@/lib/socket';
 import { useGame } from '@/lib/store';
-import type { RoomView } from '@fa/shared';
+import type { ChatMessage, RoomView } from '@fa/shared';
+import { ChatPanel } from '@/components/ChatPanel';
 
 export default function RoomPage() {
   const params = useParams<{ code: string }>();
@@ -41,6 +42,8 @@ export default function RoomPage() {
     g.setActiveCode(code);
     g.setRoom(null);
     g.setRoomClosed(null);
+    g.setChat([]);
+    g.setChatOpen(false);
     return () => {
       useGame.getState().setActiveCode(null);
       useGame.getState().setRoom(null);
@@ -57,6 +60,10 @@ export default function RoomPage() {
     if (!session || connection !== 'connected' || !modeResolved) return;
     const key = `${code}:${watching}:${Date.now()}`;
     joinedFor.current = key;
+    const loadChat = () =>
+      emit<{ code: string; messages: ChatMessage[] }>('chat:history').then((h) => {
+        if (h.ok && h.data?.code === code) useGame.getState().setChat(h.data.messages);
+      });
     const onFail = (r: { code: string; error: string }) => {
       // Drop any stale view so the error is visible instead of a frozen screen.
       useGame.getState().setRoom(null);
@@ -67,6 +74,7 @@ export default function RoomPage() {
         if (joinedFor.current !== key) return;
         if (!r.ok) return onFail(r);
         setJoinError(null);
+        void loadChat();
         if (r.data?.role === 'member') setWatching(false);
       });
     } else {
@@ -74,6 +82,7 @@ export default function RoomPage() {
         if (joinedFor.current !== key) return;
         if (!r.ok) return onFail(r);
         setJoinError(null);
+        void loadChat();
       });
     }
   }, [session, connection, code, watching, modeResolved]);
@@ -195,6 +204,7 @@ export default function RoomPage() {
     <>
       {screen}
       {!isMember && room.phase !== 'SQUAD_BUILDING' && <SpectatorBadge count={room.spectators} onLeave={leave} />}
+      <ChatPanel me={session.user.id} canPost={isMember} />
       <ConnectionBanner />
     </>
   );
@@ -202,7 +212,7 @@ export default function RoomPage() {
 
 function SpectatorBadge({ count, onLeave }: { count: number; onLeave: () => void }) {
   return (
-    <div className="fixed bottom-4 right-4 z-50 flex items-center gap-3 rounded-full border border-cyan/40 bg-night/90 py-1.5 pl-4 pr-1.5 text-sm backdrop-blur-xl">
+    <div className="fixed bottom-4 left-4 z-50 flex items-center gap-3 rounded-full border border-cyan/40 bg-night/90 py-1.5 pl-4 pr-1.5 text-sm backdrop-blur-xl">
       <span className="font-semibold text-cyan">👀 Spectating</span>
       <span className="text-xs text-muted">{count} watching</span>
       <button onClick={onLeave} className="rounded-full bg-white/10 px-3 py-1 text-xs font-bold hover:bg-white/20">

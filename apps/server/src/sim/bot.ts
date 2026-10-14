@@ -119,9 +119,29 @@ export class Bot {
     }, lo + Math.random() * (hi - lo));
   }
 
+  private picking = false;
+
+  /** Free pick: take the best player we're allowed to. */
+  private maybeFreePick(v: RoomView) {
+    if (this.picking || v.auction?.freePick?.userId !== this.userId) return;
+    this.picking = true;
+    const [lo, hi] = this.opts.thinkMs ?? [20, 80];
+    setTimeout(async () => {
+      const pool = await this.emit<{ players: { id: string }[] }>('auction:pool');
+      if (pool.ok) {
+        for (const p of pool.data!.players) {
+          const r = await this.emit('auction:pick', { playerId: p.id });
+          if (r.ok) break;
+        }
+      }
+      this.picking = false;
+    }, lo + Math.random() * (hi - lo));
+  }
+
   private maybeAct() {
     const v = this.state;
     if (v?.phase === 'SQUAD_BUILDING') return this.maybeLockLineup(v);
+    if (v?.auction?.freePick) return this.maybeFreePick(v);
     const lot = v?.auction?.lot;
     const me = this.me;
     if (!v || v.phase !== 'AUCTION' || !lot || !me || this.thinking) return;

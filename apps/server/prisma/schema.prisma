@@ -279,6 +279,7 @@ enum LotOutcome {
   SOLD
   UNSOLD
   AUTO_ASSIGNED
+  PICKED
 }
 
 /// One player offered in an auction ("AuctionPlayer").
@@ -315,6 +316,7 @@ model Bid {
 
 enum Acquisition {
   AUCTION
+  PICK
   AUTO
 }
 

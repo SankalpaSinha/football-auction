@@ -40,6 +40,7 @@ beforeAll(async () => {
     clock: systemClock,
     rules: makeRules({ startCountdownMs: 50, soldRevealMs: 15, unsoldRevealMs: 10, evaluationMs: 50 }),
     corsOrigins: true,
+    registrationsPerHour: 1000,
   });
   const port = await server.listen(0);
   base = `http://localhost:${port}`;
@@ -248,6 +249,37 @@ describe('multiplayer over websockets', () => {
     expect(watch.ok).toBe(false);
     if (!watch.ok) expect(watch.code).toBe('ALREADY_IN_GAME');
     for (const bot of [a, b, c]) bot.disconnect();
+  });
+
+  it('room chat: players talk, spectators read, input is cleaned and rate-limited', async () => {
+    const [p1, p2, fan] = await Promise.all(
+      ['ChatA', 'ChatB', 'ChatFan'].map(async (n) => (await new Bot(base, n, { aggression: 0 }).login()).connect()),
+    );
+    const { code } = await p1.must<{ code: string }>('room:create', { ...roomInput, isPublic: true });
+    await p2.must('room:join', { code });
+    await fan.must('room:spectate', { code });
+
+    const heard = (bot: Bot) =>
+      new Promise<{ text: string; username: string; code: string }>((res) => bot.socket.once('room:chat', res));
+    const p2Hears = heard(p2);
+    const fanHears = heard(fan);
+    await p1.must('chat:send', { text: '  gl   hf\n everyone  ' });
+    expect(await p2Hears).toMatchObject({ text: 'gl hf everyone', username: 'ChatA', code });
+    expect((await fanHears).text).toBe('gl hf everyone');
+
+    const spectatorPost = await fan.emit('chat:send', { text: 'hi' });
+    expect(spectatorPost.ok).toBe(false);
+    if (!spectatorPost.ok) expect(spectatorPost.code).toBe('CHAT_SPECTATOR');
+    const empty = await p2.emit('chat:send', { text: '    ' });
+    expect(empty.ok).toBe(false);
+
+    const history = await p2.must<{ messages: { text: string }[] }>('chat:history');
+    expect(history.messages.map((m) => m.text)).toEqual(['gl hf everyone']);
+
+    // Spam gets cut off.
+    const results = await Promise.all(Array.from({ length: 12 }, (_, i) => p2.emit('chat:send', { text: `spam ${i}` })));
+    expect(results.some((r) => !r.ok && r.code === 'RATE_LIMITED')).toBe(true);
+    for (const b of [p1, p2, fan]) b.disconnect();
   });
 });
 

@@ -1,5 +1,6 @@
 'use client';
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { ChatButton } from '../ChatPanel';
 import { AnimatePresence, motion } from 'motion/react';
 import {
   autoPick,
@@ -23,6 +24,7 @@ import { serverNow, useGame } from '@/lib/store';
 import { PlayerAvatar } from '../PlayerAvatar';
 import { Avatar, Button, Logo, Pill, SoundToggle } from '../ui';
 import { FIT_STYLE, LINK_COLOR, linksFor, PitchSurface, SlotChip } from './Pitch';
+import { SquadSheet } from '../SquadViews';
 
 type Selection = { kind: 'bench'; id: string } | { kind: 'slot'; index: number } | null;
 
@@ -38,6 +40,8 @@ export function SquadBuilder({ room, me }: { room: RoomView; me: string }) {
   const [slots, setSlots] = useState<(string | null)[]>(mine?.slots ?? Array(11).fill(null));
   const [selected, setSelected] = useState<Selection>(null);
   const [picker, setPicker] = useState<number | null>(null);
+  const [viewing, setViewing] = useState<string | null>(null);
+  const viewed = room.members.find((m) => m.userId === viewing);
   const [busy, setBusy] = useState(false);
   const locked = !!mine?.locked;
   const formation = getFormation(formationId)!;
@@ -201,6 +205,7 @@ export function SquadBuilder({ room, me }: { room: RoomView; me: string }) {
           </Pill>
           <div className="ml-auto flex items-center gap-3">
             <Deadline endsAt={sb.endsAt} />
+            <ChatButton />
             <SoundToggle />
           </div>
         </div>
@@ -332,10 +337,18 @@ export function SquadBuilder({ room, me }: { room: RoomView; me: string }) {
           </div>
 
           <div className="glass rounded-2xl p-4">
-            <div className="label mb-2">Managers</div>
+            <div className="mb-2 flex items-baseline justify-between">
+              <span className="label">Managers</span>
+              <span className="text-[10px] text-dim">tap to see squads</span>
+            </div>
             <ul className="space-y-1.5">
               {room.members.map((m) => (
-                <li key={m.userId} className="flex items-center gap-2 text-sm">
+                <li key={m.userId}>
+                  <button
+                    onClick={() => setViewing(m.userId)}
+                    className="flex w-full items-center gap-2 rounded-lg px-1 py-0.5 text-left text-sm hover:bg-white/[.05]"
+                    aria-label={`See ${m.username}'s squad`}
+                  >
                   <Avatar name={m.username} size={24} />
                   <span className="flex-1 truncate font-semibold">
                     {m.username} {m.userId === me && <span className="text-xs text-muted">(you)</span>}
@@ -345,6 +358,7 @@ export function SquadBuilder({ room, me }: { room: RoomView; me: string }) {
                   ) : (
                     <span className="text-xs text-muted">{m.connected ? 'Picking…' : 'Offline'}</span>
                   )}
+                  </button>
                 </li>
               ))}
             </ul>
@@ -392,6 +406,10 @@ export function SquadBuilder({ room, me }: { room: RoomView; me: string }) {
           </div>
         </aside>
       </main>
+
+      <AnimatePresence>
+        {viewed && <SquadSheet member={viewed} squadSize={room.rules.squadSize} onClose={() => setViewing(null)} />}
+      </AnimatePresence>
 
       <AnimatePresence>
         {picker !== null && (

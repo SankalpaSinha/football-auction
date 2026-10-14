@@ -77,7 +77,7 @@ interface OpenLot {
   extended: boolean;
 }
 
-type Stage = 'IDLE' | 'LOT_OPEN' | 'REVEAL' | 'COMPLETE';
+type Stage = 'IDLE' | 'LOT_OPEN' | 'REVEAL' | 'FREE_PICK' | 'COMPLETE';
 
 /** Minimum time left on the clock when a paused lot resumes. */
 const RESUME_MIN_MS = 5_000;
@@ -110,6 +110,8 @@ export class Auction {
   private pausedRemainingMs: number | null = null;
   /** Fires when the only managers who still need players have been gone too long. */
   private absentTimer: TimerHandle | null = null;
+  private freePick: { userId: string; endsAt: number } | null = null;
+  private freePickTimer: TimerHandle | null = null;
 
   constructor(private readonly opts: AuctionOptions) {
     this.rules = opts.rules;
@@ -186,6 +188,7 @@ export class Auction {
 
   /** Called by the room whenever a participant connects or disconnects. */
   connectivityChanged() {
+    if (this.stage === 'FREE_PICK') return this.checkPickerPresence();
     if (this.stage !== 'LOT_OPEN') return;
     if (this.isPaused) {
       if (this.anyActiveConnected()) this.resume();
@@ -199,6 +202,121 @@ export class Auction {
     this.timer = null;
     this.absentTimer?.cancel();
     this.absentTimer = null;
+    this.freePickTimer?.cancel();
+    this.freePickTimer = null;
+  }
+
+  // ------------------------------------------------------------- free pick
+
+  get inFreePick() {
+    return this.stage === 'FREE_PICK';
+  }
+
+  /** Everyone still available (free pick shows this list). Best first. */
+  availablePlayers(): PlayerCard[] {
+    return [...this.queue, ...this.unsold, ...this.leftover].sort(
+      (a, b) => b.overall - a.overall || a.id.localeCompare(b.id),
+    );
+  }
+
+  /** Free pick: the last manager who still needs players chooses one. */
+  pick(userId: string, playerId: string) {
+    if (this.stage !== 'FREE_PICK' || !this.freePick) fail('WRONG_PHASE');
+    if (this.freePick.userId !== userId) fail('NOT_YOUR_PICK');
+    const p = this.participants.get(userId) ?? fail('NOT_PARTICIPANT');
+    const player = this.availablePlayers().find((c) => c.id === playerId) ?? fail('PLAYER_UNAVAILABLE');
+    this.assertCanAcquire(p, player);
+    this.takePick(p, player);
+  }
+
+  private startFreePick(p: Participant) {
+    this.stage = 'FREE_PICK';
+    this.lot = null;
+    this.lastResult = null;
+    this.freePick = { userId: p.userId, endsAt: this.clock.now() + this.rules.freePickMs };
+    this.scheduleFreePickTimer();
+    this.hooks.onFeed(
+      'INFO',
+      `Everyone else is full — ${p.username} now picks their last ${this.slotsLeft(p)} player${this.slotsLeft(p) === 1 ? '' : 's'}`,
+      { userId: p.userId },
+    );
+    this.checkPickerPresence();
+    this.hooks.onChange();
+  }
+
+  private scheduleFreePickTimer() {
+    this.freePickTimer?.cancel();
+    const fp = this.freePick!;
+    this.freePickTimer = this.clock.setTimeout(() => this.onFreePickTimeout(), fp.endsAt - this.clock.now());
+  }
+
+  /** Out of time: pick the best available player that fits for them and carry on. */
+  private onFreePickTimeout() {
+    this.freePickTimer = null;
+    if (this.stage !== 'FREE_PICK' || !this.freePick) return;
+    const p = this.participants.get(this.freePick.userId)!;
+    const best = this.availablePlayers().find((c) => {
+      try {
+        this.assertCanAcquire(p, c);
+        return true;
+      } catch (e) {
+        if (e instanceof GameError) return false;
+        throw e;
+      }
+    });
+    if (!best) {
+      this.autoFill();
+      return this.complete();
+    }
+    this.hooks.onFeed('AUTO', `Time’s up — ${best.shortName} picked for ${p.username}`, { userId: p.userId });
+    this.takePick(p, best);
+  }
+
+  private takePick(p: Participant, player: PlayerCard) {
+    for (const list of [this.queue, this.unsold, this.leftover]) {
+      const i = list.findIndex((c) => c.id === player.id);
+      if (i >= 0) list.splice(i, 1);
+    }
+    const price = Math.min(this.rules.openingBid, p.budget);
+    const estimatedValue = estimateValue(player, this.opts.participants[0]?.startingBudget ?? 1000, this.valuation);
+    const lotNumber = ++this.lotCounter;
+    p.budget -= price;
+    p.squad.push({ player, price, via: 'PICK', lotNumber, estimatedValue });
+    this.hooks.onFeed('SOLD', `${p.username} picked ${player.shortName} for ${price}`, { userId: p.userId, amount: price });
+    this.hooks.onEvent({ type: 'PICKED', userId: p.userId, playerId: player.id });
+    this.hooks.onLotClosed({
+      lotNumber,
+      player,
+      outcome: 'PICKED',
+      winnerId: p.userId,
+      price,
+      estimatedValue,
+      openedAt: null,
+      closedAt: this.clock.now(),
+      bids: [],
+    });
+    if (this.slotsLeft(p) <= 0) return this.complete();
+    this.freePick = { userId: p.userId, endsAt: this.clock.now() + this.rules.freePickMs };
+    this.scheduleFreePickTimer();
+    this.hooks.onChange();
+  }
+
+  /** Picker offline too long → their remaining slots are auto-completed. */
+  private checkPickerPresence() {
+    if (this.stage !== 'FREE_PICK' || !this.freePick) return;
+    if (this.opts.isConnected(this.freePick.userId)) {
+      this.absentTimer?.cancel();
+      this.absentTimer = null;
+      return;
+    }
+    if (this.absentTimer) return;
+    this.absentTimer = this.clock.setTimeout(() => {
+      this.absentTimer = null;
+      if (this.stage !== 'FREE_PICK' || !this.freePick || this.opts.isConnected(this.freePick.userId)) return;
+      this.hooks.onFeed('INFO', 'The picker is away — their squad was completed automatically');
+      this.autoFill();
+      this.complete();
+    }, this.rules.absentAutoFillMs);
   }
 
   /** Highest bid a participant may currently place (budget minus squad-completion reserve). */
@@ -237,6 +355,14 @@ export class Auction {
       paused: this.isPaused,
       lot: lotView,
       lastResult: this.stage === 'REVEAL' ? this.lastResult : null,
+      freePick:
+        this.stage === 'FREE_PICK' && this.freePick
+          ? {
+              userId: this.freePick.userId,
+              endsAt: this.freePick.endsAt,
+              picksLeft: this.slotsLeft(this.participants.get(this.freePick.userId)!),
+            }
+          : null,
     };
   }
 
@@ -437,6 +563,9 @@ export class Auction {
       this.autoFill();
       return this.complete();
     }
+    // Only one manager still needs players: nobody can bid against them — let them pick.
+    const needy = [...this.participants.values()].filter((p) => this.slotsLeft(p) > 0);
+    if (needy.length === 1 && this.participants.size > 1) return this.startFreePick(needy[0]);
     const next = this.pickNext();
     if (!next) {
       this.autoFill();
@@ -582,6 +711,9 @@ export class Auction {
     this.timer = null;
     this.absentTimer?.cancel();
     this.absentTimer = null;
+    this.freePickTimer?.cancel();
+    this.freePickTimer = null;
+    this.freePick = null;
     this.lot = null;
     this.stage = 'COMPLETE';
     this.hooks.onFeed('INFO', `Auction complete — every squad has ${this.rules.squadSize} players`);

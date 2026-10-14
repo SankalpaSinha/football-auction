@@ -143,10 +143,26 @@ export function nextLot(h: Harness) {
   if (r) h.clock.advance(r.nextAt - h.clock.now());
 }
 
+/** During free pick, the picker takes the first player they're allowed to. Returns true if it acted. */
+export function freePickStep(h: Harness): boolean {
+  const fp = h.room.view().auction?.freePick;
+  if (!fp) return false;
+  for (const p of h.room.pickPool(fp.userId)) {
+    try {
+      h.room.pick(fp.userId, p.id);
+      return true;
+    } catch {
+      /* not allowed (e.g. must be a keeper) — try the next one */
+    }
+  }
+  throw new Error('free pick: no legal player');
+}
+
 /** Run the auction to completion: managers take turns buying at the minimum price. */
 export function completeAuction(h: Harness) {
   let turn = 0;
   for (let guard = 0; guard < 3000 && (h.room.phase === 'AUCTION' || h.room.phase === 'PLAYER_SOLD'); guard++) {
+    if (freePickStep(h)) continue;
     if (h.room.phase === 'PLAYER_SOLD') {
       nextLot(h);
       continue;

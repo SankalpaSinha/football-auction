@@ -46,7 +46,7 @@ The web app connects to `<same host>:4000`, so a friend on your Wi-Fi can open `
 ### Tests
 
 ```bash
-npm test            # 92 tests: auction, lineups, scoring, ELO, accounts, matchmaking, spectators, achievements, full games over real sockets
+npm test            # 95 tests: auction, lineups, scoring, ELO, accounts, matchmaking, spectators, achievements, full games over real sockets
 npm run typecheck
 ```
 
@@ -108,6 +108,13 @@ WAITING_FOR_PLAYERS ⇄ LOBBY → STARTING → AUCTION ⇄ PLAYER_SOLD → SQUAD
 ```
 
 Every action checks the current phase. Formation choice happens inside `SQUAD_BUILDING`, so `FORMATION_SELECTION` isn't used as a separate state. The phases in brackets come with Phase 4–5.
+
+### Room features
+
+- **Live chat:** everyone in a room can chat in every phase (lobby → results), and spectators can read. Messages are plain text, at most 200 characters, rate-limited, and the last 100 are kept in memory.
+- **See any manager's squad at any time:** tap a manager in the auction or the squad builder. Lineups stay hidden until the reveal; the players they bought are public.
+- **All squads at the end:** the results screen and the match page show every manager's XI, bench and purchases.
+- **Free pick:** when only one manager still needs players, nobody can bid against them. The auction switches to free pick: they choose from everyone left at the opening price, with 60 seconds per pick (the best fitting player is picked automatically if time runs out). If they're offline for 60 seconds, their squad is auto-completed.
 
 ### Polish (Phase 7)
 

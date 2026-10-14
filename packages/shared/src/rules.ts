@@ -31,6 +31,8 @@ export interface GameRules {
    * auto-completed so the people still playing can finish the game.
    */
   absentAutoFillMs: number;
+  /** Free pick (only one manager still needs players): time allowed per pick. */
+  freePickMs: number;
   /** Time managers get to pick formation + starting XI after the auction. */
   squadBuildingMs: number;
   /** Suspense pause between lineup reveal and the results. */
@@ -64,6 +66,7 @@ export const GAME_RULES: Readonly<GameRules> = {
   unsoldRevealMs: 1_600,
   gkUrgencySlots: 2,
   absentAutoFillMs: 60_000,
+  freePickMs: 60_000,
   squadBuildingMs: 180_000,
   evaluationMs: 4_000,
   lobbyDisconnectGraceMs: 60_000,

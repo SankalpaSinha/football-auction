@@ -1,8 +1,10 @@
 'use client';
 import { useEffect, useMemo, useState } from 'react';
+import { ChatButton } from './ChatPanel';
 import Link from 'next/link';
 import { sound } from '@/lib/sound';
 import { EarnedBadges } from './Achievements';
+import { AllSquads } from './SquadViews';
 import { serverNow } from '@/lib/store';
 import { AnimatePresence, motion } from 'motion/react';
 import { SCORING_CONFIG, type MatchReport, type PlayerCard, type RankedScore, type RoomView, type ScoreComponent } from '@fa/shared';
@@ -60,7 +62,8 @@ export function Results({ room, me, onLeave }: { room: RoomView; me: string; onL
       <header className="flex h-16 items-center justify-between">
         <Logo />
         <div className="flex items-center gap-1">
-          <SoundToggle />
+          <ChatButton />
+            <SoundToggle />
           <Button variant="ghost" size="sm" onClick={onLeave}>
             Leave room
           </Button>
@@ -139,6 +142,25 @@ export function Results({ room, me, onLeave }: { room: RoomView; me: string; onL
                 })()}
               />
             </div>
+
+            <section className="mt-10">
+              <h2 className="display mb-3 text-3xl font-extrabold">All squads</h2>
+              <AllSquads
+                me={me}
+                managers={rankings.map((r) => {
+                  const m = room.members.find((x) => x.userId === r.userId);
+                  return {
+                    userId: r.userId,
+                    username: nameOf(r.userId),
+                    squad: m?.squad ?? [],
+                    lineup: room.lineups?.[r.userId] ?? null,
+                    budgetLeft: m?.budget ?? null,
+                    rank: r.rank,
+                    total: r.total,
+                  };
+                })}
+              />
+            </section>
           </motion.div>
         )}
       </AnimatePresence>

@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { GAME_RULES } from './rules';
-import type { GameEvent, RoomView } from './types';
+import type { ChatMessage, GameEvent, PlayerCard, RoomView } from './types';
 
 export const USERNAME_RE = /^[A-Za-z0-9_]{3,16}$/;
 export const ROOM_CODE_RE = /^[A-Z0-9]{6}$/;
@@ -51,6 +51,17 @@ export const bidSchema = z.object({
   amount: z.number().int().positive().max(1_000_000),
 });
 export const skipSchema = z.object({ lotNumber: z.number().int().positive() });
+export const CHAT_MAX_LENGTH = 200;
+export const chatSchema = z.object({
+  text: z
+    .string()
+    .max(CHAT_MAX_LENGTH * 2)
+    // strip control characters, collapse whitespace
+    .transform((t) => t.replace(/[\u0000-\u001f\u007f]/g, ' ').replace(/\s+/g, ' ').trim().slice(0, CHAT_MAX_LENGTH))
+    .refine((t) => t.length > 0, 'Type a message first.'),
+});
+
+export const pickSchema = z.object({ playerId: z.string().min(1).max(120) });
 export const lineupSchema = z.object({
   formationId: z.string().min(1).max(16),
   slots: z.array(z.string().min(1).max(80).nullable()).max(11),
@@ -68,10 +79,14 @@ export interface ClientToServer {
   'room:start': (input: unknown, ack: (r: Ack) => void) => void;
   'auction:bid': (input: unknown, ack: (r: Ack) => void) => void;
   'auction:skip': (input: unknown, ack: (r: Ack) => void) => void;
+  'auction:pick': (input: unknown, ack: (r: Ack) => void) => void;
+  'auction:pool': (input: unknown, ack: (r: Ack<{ players: PlayerCard[] }>) => void) => void;
   'squad:draft': (input: unknown, ack: (r: Ack) => void) => void;
   'squad:lock': (input: unknown, ack: (r: Ack) => void) => void;
   'squad:unlock': (input: unknown, ack: (r: Ack) => void) => void;
   'match:quick': (input: unknown, ack: (r: Ack<{ code: string; created: boolean }>) => void) => void;
+  'chat:send': (input: unknown, ack: (r: Ack) => void) => void;
+  'chat:history': (input: unknown, ack: (r: Ack<{ code: string; messages: ChatMessage[] }>) => void) => void;
   'time:sync': (input: unknown, ack: (r: { serverTime: number }) => void) => void;
 }
 
@@ -79,6 +94,7 @@ export interface ServerToClient {
   'room:state': (view: RoomView) => void;
   'room:event': (event: GameEvent) => void;
   'room:closed': (info: { code: string; reason: string }) => void;
+  'room:chat': (msg: ChatMessage & { code: string }) => void;
   'session:replaced': () => void;
 }
 
@@ -115,6 +131,9 @@ export const ERROR_MESSAGES = {
   RESERVE_REQUIRED: 'You must keep enough coins to complete your squad.',
   NEED_GOALKEEPER: 'Your last slot must be a goalkeeper.',
   GOALKEEPER_LIMIT: 'Other managers still need the remaining goalkeepers.',
+  NOT_YOUR_PICK: 'It isn’t your pick.',
+  CHAT_SPECTATOR: 'Spectators can read the chat but not post.',
+  PLAYER_UNAVAILABLE: 'That player is no longer available.',
   // squad building
   INVALID_FORMATION: 'Unknown formation.',
   LINEUP_INCOMPLETE: 'Fill all 11 positions first.',

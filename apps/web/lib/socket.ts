@@ -70,6 +70,12 @@ export function connectSocket(token: string): GameSocket {
     useGame.getState().pushEvent(e);
     sound.onEvent(e, useGame.getState().session?.user.id ?? '');
   });
+  s.on('room:chat', (msg) => {
+    const g = useGame.getState();
+    if (msg.code !== g.activeCode) return;
+    g.addChat(msg);
+    if (!g.chatOpen && msg.userId !== g.session?.user.id) sound.chat();
+  });
   s.on('room:closed', ({ code, reason }) => {
     if (code === useGame.getState().activeCode) useGame.getState().setRoomClosed(reason);
   });

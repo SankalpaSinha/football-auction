@@ -17,6 +17,7 @@ import {
   type LineupView,
 } from '@fa/shared';
 import type {
+  ChatMessage,
   FeedItem,
   FeedKind,
   GameEvent,
@@ -55,6 +56,7 @@ export interface RoomDeps {
   onEvent(room: Room, event: GameEvent): void;
   onClosed(room: Room, reason: string): void;
   onMemberRemoved(room: Room, userId: string): void;
+  onChat?(room: Room, msg: ChatMessage): void;
   /** Optional AI pundit; absent or disabled → written analysis only. */
   commentator?: Commentator;
   log?: (msg: string, err?: unknown) => void;
@@ -75,6 +77,7 @@ const LOBBY_PHASES: RoomPhase[] = ['WAITING_FOR_PLAYERS', 'LOBBY'];
 interface LineupState extends LineupView {}
 const FEED_LIMIT = 60;
 const MAX_SPECTATORS = 50;
+const CHAT_HISTORY = 100;
 
 /**
  * A room and its state machine:
@@ -93,6 +96,8 @@ export class Room {
 
   private members = new Map<string, Member>();
   private spectators = new Set<string>();
+  private chat: ChatMessage[] = [];
+  private chatSeq = 0;
   private feed: FeedItem[] = [];
   private feedSeq = 0;
   private version = 0;
@@ -140,6 +145,25 @@ export class Room {
 
   hasMember(userId: string) {
     return this.members.has(userId);
+  }
+
+  // ---------------------------------------------------------------- chat
+
+  /** Players in the room can chat in every phase; spectators can only read. */
+  sendChat(userId: string, text: string): ChatMessage {
+    this.assertOpen();
+    const m = this.members.get(userId);
+    if (!m) fail(this.spectators.has(userId) ? 'CHAT_SPECTATOR' : 'NOT_IN_ROOM');
+    const msg: ChatMessage = { id: ++this.chatSeq, ts: this.deps.clock.now(), userId, username: m.username, text };
+    this.chat.push(msg);
+    if (this.chat.length > CHAT_HISTORY) this.chat.splice(0, this.chat.length - CHAT_HISTORY);
+    this.deps.onChat?.(this, msg);
+    return msg;
+  }
+
+  chatHistory(userId: string): ChatMessage[] {
+    if (!this.members.has(userId) && !this.spectators.has(userId)) fail('NOT_IN_ROOM');
+    return [...this.chat];
   }
 
   /** Read-only viewers. They can never act: every action checks membership. */
@@ -403,6 +427,19 @@ export class Room {
   skip(userId: string, lotNumber: number) {
     this.assertInAuction(userId);
     this.auction!.skip(userId, lotNumber);
+  }
+
+  pick(userId: string, playerId: string) {
+    this.assertInAuction(userId);
+    this.auction!.pick(userId, playerId);
+  }
+
+  /** Players still available — only meaningful during free pick. */
+  pickPool(userId: string) {
+    this.assertOpen();
+    if (!this.members.has(userId) && !this.spectators.has(userId)) fail('NOT_IN_ROOM');
+    if (!this.auction?.inFreePick) fail('WRONG_PHASE');
+    return this.auction.availablePlayers();
   }
 
   private assertInAuction(userId: string) {

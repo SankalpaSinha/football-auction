@@ -1,6 +1,6 @@
 'use client';
 import { create } from 'zustand';
-import type { GameEvent, RoomView } from '@fa/shared';
+import type { ChatMessage, GameEvent, RoomView } from '@fa/shared';
 import type { StoredSession } from './api';
 
 export type ConnectionState = 'idle' | 'connecting' | 'connected' | 'reconnecting' | 'replaced' | 'error';
@@ -26,6 +26,10 @@ interface GameStore {
   lastEvent: (GameEvent & { at: number }) | null;
   toasts: Toast[];
   soundOn: boolean;
+  /** Chat for the room on screen. */
+  chat: ChatMessage[];
+  chatOpen: boolean;
+  chatUnread: number;
 
   setSession(s: StoredSession | null): void;
   setConnection(c: ConnectionState): void;
@@ -37,6 +41,9 @@ interface GameStore {
   toast(kind: Toast['kind'], text: string): void;
   dismiss(id: number): void;
   setSound(on: boolean): void;
+  setChat(messages: ChatMessage[]): void;
+  addChat(msg: ChatMessage): void;
+  setChatOpen(open: boolean): void;
 }
 
 let toastSeq = 0;
@@ -53,6 +60,9 @@ export const useGame = create<GameStore>((set, get) => ({
   lastEvent: null,
   toasts: [],
   soundOn: true,
+  chat: [],
+  chatOpen: false,
+  chatUnread: 0,
 
   setSession: (session) => set({ session, sessionLoaded: true }),
   setConnection: (connection) => set({ connection }),
@@ -75,6 +85,13 @@ export const useGame = create<GameStore>((set, get) => ({
     setTimeout(() => get().dismiss(id), kind === 'error' ? 3200 : 2600);
   },
   dismiss: (id) => set({ toasts: get().toasts.filter((t) => t.id !== id) }),
+  setChat: (chat) => set({ chat, chatUnread: 0 }),
+  addChat: (msg) => {
+    const cur = get().chat;
+    if (cur.some((m) => m.id === msg.id)) return;
+    set({ chat: [...cur.slice(-99), msg], chatUnread: get().chatOpen ? 0 : get().chatUnread + 1 });
+  },
+  setChatOpen: (chatOpen) => set({ chatOpen, ...(chatOpen ? { chatUnread: 0 } : {}) }),
   setSound: (soundOn) => {
     try {
       localStorage.setItem('fa.sound', soundOn ? '1' : '0');

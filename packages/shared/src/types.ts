@@ -108,7 +108,8 @@ export interface RoomSettings {
   antiSnipe: boolean;
 }
 
-export type Acquisition = 'AUCTION' | 'AUTO';
+/** AUCTION = won a lot · PICK = chosen in free pick · AUTO = auto-assigned. */
+export type Acquisition = 'AUCTION' | 'PICK' | 'AUTO';
 
 export interface SquadEntry {
   player: PlayerCard;
@@ -132,7 +133,7 @@ export interface MemberView {
   maxBid: number | null;
 }
 
-export type LotOutcome = 'SOLD' | 'UNSOLD' | 'AUTO_ASSIGNED';
+export type LotOutcome = 'SOLD' | 'UNSOLD' | 'AUTO_ASSIGNED' | 'PICKED';
 
 export interface LotView {
   lotNumber: number;
@@ -189,6 +190,11 @@ export interface FeedItem {
 }
 
 export interface AuctionView {
+  /**
+   * Set when only one manager still needs players: nobody can bid against them,
+   * so they pick freely from the remaining pool at the opening price.
+   */
+  freePick: { userId: string; endsAt: number; picksLeft: number } | null;
   poolSize: number;
   lotsOpened: number;
   remainingInQueue: number;
@@ -266,11 +272,20 @@ export type GameEvent =
   | { type: 'EXTENDED'; lotNumber: number; endsAt: number }
   | { type: 'SOLD'; lotNumber: number; userId: string; amount: number }
   | { type: 'UNSOLD'; lotNumber: number }
+  | { type: 'PICKED'; userId: string; playerId: string }
   | { type: 'AUCTION_COMPLETE' }
   | { type: 'LINEUP_LOCKED'; userId: string }
   | { type: 'LINEUPS_REVEALED' }
   | { type: 'RESULTS'; winnerId: string }
   | { type: 'GAME_STARTING'; startsAt: number };
+
+export interface ChatMessage {
+  id: number;
+  ts: number;
+  userId: string;
+  username: string;
+  text: string;
+}
 
 export interface SessionUser {
   id: string;

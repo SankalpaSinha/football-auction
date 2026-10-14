@@ -170,7 +170,8 @@ describe('disconnect / reconnect', () => {
       if (h.room.view().auction?.lot?.lotNumber === lot.lotNumber) h.room.skip('u1', lot.lotNumber);
     }
     nextLot(h);
-    expect(h.room.view().auction!.paused).toBe(true); // only the absent manager still needs players
+    // Only the absent manager still needs players → free pick, but they're not here.
+    expect(h.room.view().auction!.freePick?.userId).toBe('u2');
     h.clock.advance(testRules().absentAutoFillMs);
     expect(h.room.phase).toBe('SQUAD_BUILDING');
     expect(h.member('u2').squad).toHaveLength(15);

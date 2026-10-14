@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { GameError } from '../src/engine/errors';
 import { seededRandomOrder } from '../src/engine/ordering';
-import { createHarness, makeCard, makePool, nextLot, skipAll } from './helpers';
+import { createHarness, freePickStep, makeCard, makePool, nextLot, skipAll } from './helpers';
 
 const code = (fn: () => void) => {
   try {
@@ -181,6 +181,7 @@ describe('squads', () => {
   function playOut(h: ReturnType<typeof createHarness>, opts: { avoidGk?: string[] } = {}) {
     let turn = 0;
     for (let guard = 0; guard < 2000 && h.room.phase !== 'SQUAD_BUILDING'; guard++) {
+      if (freePickStep(h)) continue;
       if (h.room.phase === 'PLAYER_SOLD') {
         nextLot(h);
         continue;
@@ -225,7 +226,53 @@ describe('squads', () => {
       if (h.room.phase === 'AUCTION') h.room.skip('u2', lot.lotNumber);
     }
     nextLot(h);
-    expect(code(() => h.room.bid('u1', h.lot().lotNumber, 50))).toBe('SQUAD_FULL');
+    // u1 is full, so u2 is the only one left: free pick, and u1 can't take players.
+    expect(h.room.view().auction!.freePick!.userId).toBe('u2');
+    const someone = h.room.pickPool('u1')[0];
+    expect(code(() => h.room.pick('u1', someone.id))).toBe('NOT_YOUR_PICK');
+  });
+
+  it('free pick: the last manager chooses players at the opening price', () => {
+    const h = createHarness({ players: 2 });
+    while (h.member('u1').squad.length < 15) {
+      if (h.room.phase === 'PLAYER_SOLD') nextLot(h);
+      const lot = h.lot();
+      h.room.bid('u1', lot.lotNumber, lot.minNextBid);
+      if (h.room.phase === 'AUCTION') h.room.skip('u2', lot.lotNumber);
+    }
+    nextLot(h);
+    const fp = h.room.view().auction!.freePick!;
+    expect(fp).toMatchObject({ userId: 'u2', picksLeft: 15 });
+    expect(h.room.view().auction!.lot).toBeNull();
+    const pool = h.room.pickPool('u2');
+    expect(pool[0].overall).toBeGreaterThanOrEqual(pool[pool.length - 1].overall); // best first
+    const star = pool[0];
+    h.room.pick('u2', star.id);
+    const u2 = h.member('u2');
+    expect(u2.squad.map((e) => e.player.id)).toEqual([star.id]);
+    expect(u2.squad[0]).toMatchObject({ price: 10, via: 'PICK' });
+    expect(u2.budget).toBe(990);
+    expect(code(() => h.room.pick('u2', star.id))).toBe('PLAYER_UNAVAILABLE');
+    expect(code(() => h.room.pick('u2', h.member('u1').squad[0].player.id))).toBe('PLAYER_UNAVAILABLE');
+    // Finish: picks continue until 15, then the auction completes.
+    while (h.room.phase !== 'SQUAD_BUILDING') freePickStep(h);
+    expect(h.member('u2').squad).toHaveLength(15);
+    expect(h.member('u2').squad.some((e) => e.player.position === 'GK')).toBe(true);
+  });
+
+  it('free pick: running out of time picks the best fitting player for you', () => {
+    const h = createHarness({ players: 2 });
+    while (h.member('u1').squad.length < 15) {
+      if (h.room.phase === 'PLAYER_SOLD') nextLot(h);
+      const lot = h.lot();
+      h.room.bid('u1', lot.lotNumber, lot.minNextBid);
+      if (h.room.phase === 'AUCTION') h.room.skip('u2', lot.lotNumber);
+    }
+    nextLot(h);
+    const best = h.room.pickPool('u2')[0];
+    h.clock.advance(h.room.view().auction!.freePick!.endsAt - h.clock.now());
+    expect(h.member('u2').squad[0].player.id).toBe(best.id);
+    expect(h.room.view().auction!.freePick!.picksLeft).toBe(14);
   });
 
   it('forces the last open slot to be a goalkeeper', () => {

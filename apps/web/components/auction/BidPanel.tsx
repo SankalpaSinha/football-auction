@@ -11,7 +11,7 @@ import { Coin } from '../ui';
 export function bidBlocker(room: RoomView, lot: LotView, me: MemberView | undefined, remainingMs: number): string | null {
   if (!me) return 'You are spectating';
   if (!me.connected) return 'Reconnecting…';
-  if (lot.pausedRemainingMs !== null) return 'Auction paused';
+  if (lot.pausedRemainingMs !== null) return room.auction?.hold ? 'Paused — anyone can resume' : 'Auction paused';
   if (remainingMs <= 0) return 'Hammer falling…';
   if (me.squad.length >= room.rules.squadSize) return 'Your squad is complete';
   if (lot.skippedBy.includes(me.userId)) return 'You skipped this player';

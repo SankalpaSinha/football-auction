@@ -170,6 +170,8 @@ Ties are broken by quality, then position fit, then fewer coins spent. The tests
 | Goalkeepers | A manager's last open slot must be a keeper. A manager who already has a keeper can't buy another if that would leave someone else without one. Keepers are moved forward when someone needs one urgently. |
 | Unsold players | Re-offered once after the main pool runs out. If squads are still short, the server auto-assigns the lowest-rated leftovers at the opening price. |
 | Disconnects | Squad and budget stay. A disconnected manager counts as passing. The top bidder still wins if they drop at the hammer. If everyone is offline the auction pauses and resumes with at least 5 s on the clock. |
+| Pause | Any manager can ask to pause (⏸ in the top bar). It only happens if every connected manager agrees within 20 s. One "No" cancels it, and the same manager has to wait 30 s to ask again. While paused the lot clock is frozen. Any manager can resume, and it resumes by itself after 5 minutes. If agreed during a sold/unsold reveal, the next lot opens paused. |
+| Inactivity | A manager who lets 3 lots in a row run out without bidding or skipping is removed. This only counts lots the manager could afford and that someone else acted on. They're warned after 2 (banner plus 💤 2/3 next to their name), and any bid or skip resets the count. Their players go back into the pool, their coins are gone, and hosting passes on. If only one manager is left, they finish with a free pick. |
 | Host | Moves to the next manager immediately if the host leaves the lobby, or after 10 s if the host disconnects. |
 | Abuse | Zod validation on every message, per-socket token buckets (bids 6/s), room-creation limits, one live socket per user, 16 KB message cap. |
 

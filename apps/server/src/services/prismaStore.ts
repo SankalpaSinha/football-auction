@@ -140,6 +140,15 @@ export class PrismaGameStore implements GameStore {
     await this.db.game.update({ where: { id: gameId }, data: { status: 'SQUAD_BUILDING' } });
   }
 
+  async participantRemoved(gameId: string, userId: string) {
+    await this.db.$transaction(async (tx) => {
+      const squad = await tx.squad.findUnique({ where: { gameId_userId: { gameId, userId } } });
+      if (!squad) return;
+      await tx.squadPlayer.deleteMany({ where: { squadId: squad.id } });
+      await tx.squad.delete({ where: { id: squad.id } });
+    });
+  }
+
   async ratingsFor(userIds: string[], mode: GameMode) {
     const rows = await this.db.playerRating.findMany({ where: { userId: { in: userIds }, mode } });
     return Object.fromEntries(

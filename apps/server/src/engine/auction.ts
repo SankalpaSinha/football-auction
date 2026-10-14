@@ -49,6 +49,8 @@ export interface AuctionHooks {
   onFeed(kind: FeedKind, text: string, extra?: { userId?: string; amount?: number }): void;
   onLotClosed(record: LotRecord): void;
   onComplete(): void;
+  /** A manager was taken out of the auction for inactivity; their players are back in the pool. */
+  onRemoved?(userId: string): void;
 }
 
 export interface AuctionOptions {
@@ -75,6 +77,8 @@ interface OpenLot {
   skipped: Set<string>;
   bids: BidRecord[];
   extended: boolean;
+  /** Managers who could bid when the lot opened (only they can be idle on it). */
+  eligible: Set<string>;
 }
 
 type Stage = 'IDLE' | 'LOT_OPEN' | 'REVEAL' | 'FREE_PICK' | 'COMPLETE';
@@ -112,6 +116,15 @@ export class Auction {
   private absentTimer: TimerHandle | null = null;
   private freePick: { userId: string; endsAt: number } | null = null;
   private freePickTimer: TimerHandle | null = null;
+  /** A pause every manager agreed to. Freezes the open lot (or the next one, if agreed during a reveal). */
+  private hold: { by: string; until: number } | null = null;
+  private holdTimer: TimerHandle | null = null;
+  private pauseVote: { requestedBy: string; endsAt: number; yes: Set<string> } | null = null;
+  private pauseVoteTimer: TimerHandle | null = null;
+  private lastPauseRequest = new Map<string, number>();
+  /** Lots in a row each manager let run out without acting. */
+  private idleLots = new Map<string, number>();
+  private readonly startingParticipants: number;
 
   constructor(private readonly opts: AuctionOptions) {
     this.rules = opts.rules;
@@ -121,6 +134,7 @@ export class Auction {
     this.participants = new Map(opts.participants.map((p) => [p.userId, p]));
     this.queue = opts.order.slice();
     this.poolSize = opts.order.length;
+    this.startingParticipants = opts.participants.length;
   }
 
   // ------------------------------------------------------------------ public
@@ -189,7 +203,11 @@ export class Auction {
   /** Called by the room whenever a participant connects or disconnects. */
   connectivityChanged() {
     if (this.stage === 'FREE_PICK') return this.checkPickerPresence();
+    // Whoever left can't hold up a pause vote.
+    if (this.checkPauseVote()) return;
     if (this.stage !== 'LOT_OPEN') return;
+    // An agreed pause only ends when someone resumes it (or it times out).
+    if (this.hold) return;
     if (this.isPaused) {
       if (this.anyActiveConnected()) this.resume();
       return;
@@ -200,10 +218,106 @@ export class Auction {
   dispose() {
     this.timer?.cancel();
     this.timer = null;
+    this.holdTimer?.cancel();
+    this.holdTimer = null;
+    this.pauseVoteTimer?.cancel();
+    this.pauseVoteTimer = null;
     this.absentTimer?.cancel();
     this.absentTimer = null;
     this.freePickTimer?.cancel();
     this.freePickTimer = null;
+  }
+
+  // ---------------------------------------------------------------- pause
+
+  /** Ask to pause. It only happens if every connected manager agrees. */
+  requestPause(userId: string) {
+    const p = this.participants.get(userId) ?? fail('NOT_PARTICIPANT');
+    if (this.stage !== 'LOT_OPEN' && this.stage !== 'REVEAL') fail('WRONG_PHASE');
+    if (this.hold || this.isPaused) fail('AUCTION_PAUSED');
+    if (this.pauseVote) fail('PAUSE_VOTE_OPEN');
+    const now = this.clock.now();
+    const last = this.lastPauseRequest.get(userId);
+    if (last !== undefined && now - last < this.rules.pauseRequestCooldownMs) fail('PAUSE_COOLDOWN');
+    this.lastPauseRequest.set(userId, now);
+    this.pauseVote = { requestedBy: userId, endsAt: now + this.rules.pauseVoteMs, yes: new Set([userId]) };
+    this.pauseVoteTimer = this.clock.setTimeout(() => {
+      this.pauseVoteTimer = null;
+      this.endPauseVote(false, 'not everyone answered');
+    }, this.rules.pauseVoteMs);
+    this.hooks.onFeed('INFO', `${p.username} asked to pause — everyone has to agree`, { userId });
+    this.hooks.onEvent({ type: 'PAUSE_VOTE', userId });
+    if (!this.checkPauseVote()) this.hooks.onChange();
+  }
+
+  votePause(userId: string, agree: boolean) {
+    const p = this.participants.get(userId) ?? fail('NOT_PARTICIPANT');
+    const vote = this.pauseVote ?? fail('NO_PAUSE_VOTE');
+    if (!agree) return this.endPauseVote(false, `${p.username} said no`);
+    vote.yes.add(userId);
+    if (!this.checkPauseVote()) this.hooks.onChange();
+  }
+
+  /** Any manager can end an agreed pause. */
+  resumeHold(userId: string) {
+    const p = this.participants.get(userId) ?? fail('NOT_PARTICIPANT');
+    if (!this.hold) fail('NOT_PAUSED');
+    this.endHold(`${p.username} resumed the auction`);
+  }
+
+  /** Everyone who has to agree: every connected manager. */
+  private pauseVoters() {
+    return [...this.participants.values()].filter((p) => this.opts.isConnected(p.userId)).map((p) => p.userId);
+  }
+
+  /** Passes the vote once every connected manager has said yes. */
+  private checkPauseVote(): boolean {
+    const vote = this.pauseVote;
+    if (!vote) return false;
+    const voters = this.pauseVoters();
+    if (voters.length === 0 || voters.some((id) => !vote.yes.has(id))) return false;
+    this.endPauseVote(true);
+    return true;
+  }
+
+  private endPauseVote(passed: boolean, reason?: string) {
+    const vote = this.pauseVote;
+    if (!vote) return;
+    this.pauseVote = null;
+    this.pauseVoteTimer?.cancel();
+    this.pauseVoteTimer = null;
+    if (!passed || (this.stage !== 'LOT_OPEN' && this.stage !== 'REVEAL')) {
+      this.hooks.onFeed('INFO', `No pause — ${reason ?? 'the auction moved on'}`);
+      return this.hooks.onChange();
+    }
+    this.hold = { by: vote.requestedBy, until: this.clock.now() + this.rules.maxPauseMs };
+    this.holdTimer = this.clock.setTimeout(() => {
+      this.holdTimer = null;
+      this.endHold('Pause time is up — auction resumed');
+    }, this.rules.maxPauseMs);
+    // During a reveal the next lot opens frozen instead.
+    if (this.stage === 'LOT_OPEN' && !this.isPaused) this.freezeLot();
+    this.hooks.onFeed('INFO', `Auction paused — everyone agreed (max ${Math.round(this.rules.maxPauseMs / 60_000)} min)`);
+    this.hooks.onEvent({ type: 'PAUSED' });
+    this.hooks.onChange();
+  }
+
+  private endHold(text: string) {
+    if (!this.hold) return;
+    this.clearHold();
+    this.hooks.onEvent({ type: 'RESUMED' });
+    if (this.stage === 'LOT_OPEN' && this.isPaused) return this.resume(text);
+    this.hooks.onFeed('INFO', text);
+    this.hooks.onChange();
+  }
+
+  private clearHold() {
+    this.hold = null;
+    this.holdTimer?.cancel();
+    this.holdTimer = null;
+    this.pauseVote = null;
+    this.pauseVoteTimer?.cancel();
+    this.pauseVoteTimer = null;
   }
 
   // ------------------------------------------------------------- free pick
@@ -230,6 +344,7 @@ export class Auction {
   }
 
   private startFreePick(p: Participant) {
+    this.clearHold();
     this.stage = 'FREE_PICK';
     this.lot = null;
     this.lastResult = null;
@@ -353,6 +468,14 @@ export class Auction {
       unsoldWaiting: this.unsold.length,
       reofferRound: this.reofferRound,
       paused: this.isPaused,
+      hold: this.hold && { ...this.hold },
+      pauseVote: this.pauseVote && {
+        requestedBy: this.pauseVote.requestedBy,
+        endsAt: this.pauseVote.endsAt,
+        yes: [...this.pauseVote.yes],
+        waitingOn: this.pauseVoters().filter((id) => !this.pauseVote!.yes.has(id)),
+      },
+      idleLots: Object.fromEntries(this.idleLots),
       lot: lotView,
       lastResult: this.stage === 'REVEAL' ? this.lastResult : null,
       freePick:
@@ -410,6 +533,11 @@ export class Auction {
   private canBidNow(p: Participant, lot: OpenLot) {
     if (!this.opts.isConnected(p.userId)) return false;
     if (lot.skipped.has(p.userId) || lot.highestBidderId === p.userId) return false;
+    return this.canAfford(p, lot);
+  }
+
+  /** Squad rules and budget allow this manager to raise the bid (ignores connection). */
+  private canAfford(p: Participant, lot: OpenLot) {
     try {
       this.assertCanAcquire(p, lot.player);
     } catch (e) {
@@ -473,11 +601,16 @@ export class Auction {
     return true;
   }
 
-  private pause() {
+  /** Stop the lot clock where it is. */
+  private freezeLot() {
     const lot = this.lot!;
     this.pausedRemainingMs = Math.max(0, lot.endsAt - this.clock.now());
     this.timer?.cancel();
     this.timer = null;
+  }
+
+  private pause() {
+    this.freezeLot();
     this.hooks.onFeed('INFO', 'Auction paused — waiting for managers to reconnect');
     this.absentTimer?.cancel();
     this.absentTimer = this.clock.setTimeout(() => this.onAbsentTimeout(), this.rules.absentAutoFillMs);
@@ -498,14 +631,14 @@ export class Auction {
     this.complete();
   }
 
-  private resume() {
+  private resume(text = 'Auction resumed') {
     this.absentTimer?.cancel();
     this.absentTimer = null;
     const lot = this.lot!;
     lot.endsAt = this.clock.now() + Math.max(this.pausedRemainingMs ?? 0, RESUME_MIN_MS);
     this.pausedRemainingMs = null;
     this.scheduleLotTimer();
-    this.hooks.onFeed('INFO', 'Auction resumed');
+    this.hooks.onFeed('INFO', text);
     if (!this.closeIfNobodyCanBid()) this.hooks.onChange();
   }
 
@@ -520,7 +653,7 @@ export class Auction {
     const lot = this.lot;
     if (this.stage !== 'LOT_OPEN' || !lot || lot.lotNumber !== lotNumber || this.isPaused) return;
     if (this.clock.now() < lot.endsAt) return this.scheduleLotTimer();
-    this.closeLot();
+    this.closeLot(true);
   }
 
   private pickNext(): { player: PlayerCard; reoffer: boolean } | null {
@@ -565,7 +698,7 @@ export class Auction {
     }
     // Only one manager still needs players: nobody can bid against them — let them pick.
     const needy = [...this.participants.values()].filter((p) => this.slotsLeft(p) > 0);
-    if (needy.length === 1 && this.participants.size > 1) return this.startFreePick(needy[0]);
+    if (needy.length === 1 && this.startingParticipants > 1) return this.startFreePick(needy[0]);
     const next = this.pickNext();
     if (!next) {
       this.autoFill();
@@ -583,15 +716,23 @@ export class Auction {
       skipped: new Set(),
       bids: [],
       extended: false,
+      eligible: new Set(),
     };
+    for (const p of this.participants.values()) if (this.canAfford(p, this.lot)) this.lot.eligible.add(p.userId);
     this.stage = 'LOT_OPEN';
     this.lastResult = null;
     this.scheduleLotTimer();
     this.hooks.onEvent({ type: 'LOT_OPEN', lotNumber: this.lot.lotNumber });
+    if (this.hold) {
+      // Agreed pause during the reveal: the new lot waits, full clock intact.
+      this.freezeLot();
+      return this.hooks.onChange();
+    }
     if (!this.closeIfNobodyCanBid()) this.hooks.onChange();
   }
 
-  private closeLot() {
+  /** `timedOut`: the clock ran out (rather than everyone skipping or being unable to bid). */
+  private closeLot(timedOut = false) {
     const lot = this.lot!;
     this.timer?.cancel();
     this.timer = null;
@@ -650,6 +791,46 @@ export class Auction {
     });
     this.hooks.onChange();
     this.timer = this.clock.setTimeout(() => this.openNextLot(), revealMs);
+    if (timedOut) this.trackIdle(lot);
+  }
+
+  /**
+   * A lot that ran out its clock while others played, without a bid or skip from
+   * a manager who could have bid, counts as idle for them. Acting resets it.
+   * Too many idle lots in a row → removed from the game.
+   */
+  private trackIdle(lot: OpenLot) {
+    const acted = new Set([...lot.bids.map((b) => b.userId), ...lot.skipped]);
+    // A lot nobody touched is a quiet moment for everyone, not one person's fault.
+    if (acted.size === 0) return;
+    const limit = this.rules.inactiveLotsToRemove;
+    const out: Participant[] = [];
+    for (const p of this.participants.values()) {
+      if (acted.has(p.userId)) {
+        this.idleLots.delete(p.userId);
+        continue;
+      }
+      if (!lot.eligible.has(p.userId) || this.slotsLeft(p) <= 0) continue;
+      const n = (this.idleLots.get(p.userId) ?? 0) + 1;
+      this.idleLots.set(p.userId, n);
+      if (n >= limit) out.push(p);
+      else if (n === limit - 1) {
+        this.hooks.onFeed('INFO', `${p.username} has sat out ${n} lots — one more and they're removed`, { userId: p.userId });
+      }
+    }
+    if (out.length === 0) return;
+    for (const p of out) this.removeParticipant(p);
+    this.hooks.onChange();
+  }
+
+  /** Out of the game: their players go back up for auction, their coins are gone. */
+  private removeParticipant(p: Participant) {
+    this.participants.delete(p.userId);
+    this.idleLots.delete(p.userId);
+    this.queue.push(...p.squad.map((e) => e.player));
+    this.hooks.onEvent({ type: 'REMOVED', userId: p.userId });
+    this.hooks.onRemoved?.(p.userId);
+    this.checkPauseVote();
   }
 
   /**
@@ -707,6 +888,7 @@ export class Auction {
   }
 
   private complete() {
+    this.clearHold();
     this.timer?.cancel();
     this.timer = null;
     this.absentTimer?.cancel();

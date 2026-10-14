@@ -133,6 +133,14 @@ export function ManagersPanel({
                   <span className="truncate text-sm font-bold">{m.username}</span>
                   {m.isHost && <span className="text-xs" title="Host">👑</span>}
                   {m.userId === me && <span className="text-[10px] text-muted">YOU</span>}
+                  {(room.auction?.idleLots[m.userId] ?? 0) > 0 && (
+                    <span
+                      className="text-[10px] font-bold text-amber-200 num"
+                      title={`Sat out ${room.auction!.idleLots[m.userId]} of ${room.rules.inactiveLotsToRemove} lots in a row`}
+                    >
+                      💤 {room.auction!.idleLots[m.userId]}/{room.rules.inactiveLotsToRemove}
+                    </span>
+                  )}
                 </div>
                 <div className="mt-0.5 flex items-center gap-1 text-xs text-muted num">
                   <Coin className="h-3 w-3" />

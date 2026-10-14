@@ -79,6 +79,9 @@ export function connectSocket(token: string): GameSocket {
   s.on('room:closed', ({ code, reason }) => {
     if (code === useGame.getState().activeCode) useGame.getState().setRoomClosed(reason);
   });
+  s.on('room:removed', ({ code, reason }) => {
+    if (code === useGame.getState().activeCode) useGame.getState().setRemoved(reason);
+  });
   s.on('session:replaced', () => {
     useGame.getState().setConnection('replaced');
     s.io.opts.reconnection = false;

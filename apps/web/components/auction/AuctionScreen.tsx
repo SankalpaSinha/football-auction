@@ -15,6 +15,7 @@ import { Timer } from './Timer';
 import { useCountdown } from './useCountdown';
 import { FreePickPanel } from './FreePick';
 import { SquadSheet } from '../SquadViews';
+import { PauseBanners, PauseButton } from './PauseControls';
 
 type Tab = 'squad' | 'managers' | 'feed';
 
@@ -49,6 +50,7 @@ export function AuctionScreen({ room, me }: { room: RoomView; me: string }) {
             {auction.reofferRound && <Pill color="#ffb020">Re-offer round</Pill>}
             {room.spectators > 0 && <span title="Spectators">👀 {room.spectators}</span>}
             <span className="hidden font-mono text-ink/70 lg:inline">{room.code}</span>
+            <PauseButton room={room} me={me} />
             <ChatButton />
             <SoundToggle />
           </div>
@@ -74,17 +76,19 @@ export function AuctionScreen({ room, me }: { room: RoomView; me: string }) {
         </aside>
 
         {/* centre — the lot */}
-        <section className="flex min-w-0 flex-col gap-4">
+        {/* @container: the lot layout adapts to this column's width, not the window's */}
+        <section className="@container flex min-w-0 flex-col gap-4">
+          <PauseBanners room={room} me={me} />
           {auction.freePick ? (
             <FreePickPanel room={room} me={me} />
           ) : (
-          <div className="glass relative flex flex-col gap-4 overflow-hidden rounded-3xl p-3 sm:p-6 md:flex-row md:items-start md:justify-center md:gap-6">
+          <div className="glass relative flex flex-col gap-4 overflow-hidden rounded-3xl p-3 sm:p-6 @3xl:flex-row @3xl:items-start @3xl:justify-center @3xl:gap-6">
             <div
               className="pointer-events-none absolute -left-24 top-0 h-96 w-96 rounded-full opacity-40 blur-3xl"
               style={{ background: lot ? lot.player.club.colors[0] : 'transparent' }}
             />
             {/* card (+ timer beside it on phones so bid controls stay above the fold) */}
-            <div className="relative flex items-center gap-4 md:block">
+            <div className="relative flex items-center gap-4 @3xl:block">
               <div className="relative shrink-0" style={{ perspective: 1200 }}>
                 <AnimatePresence mode="wait">
                   {lot ? (
@@ -95,15 +99,16 @@ export function AuctionScreen({ room, me }: { room: RoomView; me: string }) {
                       exit={{ y: -30, opacity: 0, scale: 0.9, transition: { duration: 0.2 } }}
                       transition={{ type: 'spring', stiffness: 90, damping: 14 }}
                     >
-                      <div className="hidden md:block">
+                      <div className="hidden @3xl:block">
                         <TiltCard>
                           <PlayerCard player={lot.player} size="lg" />
                         </TiltCard>
                       </div>
-                      <PlayerCard player={lot.player} size="sm" className="md:hidden" />
+                      <PlayerCard player={lot.player} size="md" className="hidden @lg:block @3xl:hidden" />
+                      <PlayerCard player={lot.player} size="sm" className="@lg:hidden" />
                     </motion.div>
                   ) : (
-                    <div className="grid h-[255px] w-[178px] place-items-center text-sm text-dim md:h-[450px] md:w-[300px]">Next player…</div>
+                    <div className="grid h-[255px] w-[178px] place-items-center text-sm text-dim @3xl:h-[450px] @3xl:w-[300px]">Next player…</div>
                   )}
                 </AnimatePresence>
                 {lot?.reoffer && (
@@ -112,22 +117,22 @@ export function AuctionScreen({ room, me }: { room: RoomView; me: string }) {
                   </div>
                 )}
                 {lot?.player.imageCredit && (
-                  <div className="mt-2 max-w-[178px] truncate text-center text-[10px] text-dim md:max-w-[300px]" title={lot.player.imageCredit}>
+                  <div className="mt-2 max-w-[178px] truncate text-center text-[10px] text-dim @3xl:max-w-[300px]" title={lot.player.imageCredit}>
                     📷 {lot.player.imageCredit}
                   </div>
                 )}
               </div>
               {lot && (
-                <div className="min-w-0 flex-1 md:hidden">
+                <div className="min-w-0 flex-1 @3xl:hidden">
                   <LotInfo room={room} remaining={remaining} totalMs={totalMs} compact />
                 </div>
               )}
             </div>
 
-            <div className="relative flex w-full flex-col gap-4 md:max-w-sm">
+            <div className="relative flex w-full flex-col gap-4 @3xl:max-w-sm">
               {lot && (
                 <>
-                  <div className="hidden md:block">
+                  <div className="hidden @3xl:block">
                     <LotInfo room={room} remaining={remaining} totalMs={totalMs} />
                   </div>
                   <motion.div

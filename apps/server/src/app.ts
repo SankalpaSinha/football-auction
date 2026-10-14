@@ -13,6 +13,7 @@ import {
   chatSchema,
   readySchema,
   skipSchema,
+  pauseVoteSchema,
   credentialsSchema,
   type Ack,
   type ClientToServer,
@@ -445,6 +446,9 @@ export function createApp(deps: AppDeps) {
     });
 
     const inRoom = () => manager.roomOf(user.id) ?? (() => { throw new GameError('NOT_IN_ROOM'); })();
+    on('auction:pause', null, () => inRoom().requestPause(user.id));
+    on('auction:pause-vote', pauseVoteSchema, ({ agree }) => inRoom().votePause(user.id, agree));
+    on('auction:resume', null, () => inRoom().resumePause(user.id));
     on('squad:draft', lineupSchema, (l) => inRoom().saveLineupDraft(user.id, l));
     on('squad:lock', lineupSchema, (l) => inRoom().lockLineup(user.id, l));
     on('squad:unlock', null, () => inRoom().unlockLineup(user.id));

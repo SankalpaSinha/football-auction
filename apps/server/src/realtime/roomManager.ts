@@ -113,6 +113,7 @@ export class RoomManager {
       },
       onClosed: (r, reason) => this.onClosed(r, reason),
       onChat: (r, msg) => this.io.to(roomChannel(r.code)).emit('room:chat', { ...msg, code: r.code }),
+      onKicked: (r, userId, reason) => this.io.in(userChannel(userId)).emit('room:removed', { code: r.code, reason }),
       onMemberRemoved: (r, userId) => {
         if (this.userRoom.get(userId) === r.code) this.userRoom.delete(userId);
         this.io.in(userChannel(userId)).socketsLeave(roomChannel(r.code));

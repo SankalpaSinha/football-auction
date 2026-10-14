@@ -201,6 +201,12 @@ export interface AuctionView {
   unsoldWaiting: number;
   reofferRound: boolean;
   paused: boolean;
+  /** A pause every manager agreed to. Any manager can resume; it ends by itself at `until`. */
+  hold: { by: string; until: number } | null;
+  /** Someone asked to pause; it happens only if every connected manager agrees. */
+  pauseVote: { requestedBy: string; endsAt: number; yes: string[]; waitingOn: string[] } | null;
+  /** Lots in a row each manager has sat out (only managers with at least one). */
+  idleLots: Record<string, number>;
   lot: LotView | null;
   lastResult: LotResultView | null;
 }
@@ -233,7 +239,14 @@ export interface RoomView {
   hostId: string;
   settings: RoomSettings;
   competition: { id: string; name: string; shortName: string; accent: string; seasonLabel: string };
-  rules: { squadSize: number; openingBid: number; minIncrement: number; bidIncrements: number[]; minPlayers: number };
+  rules: {
+    squadSize: number;
+    openingBid: number;
+    minIncrement: number;
+    bidIncrements: number[];
+    minPlayers: number;
+    inactiveLotsToRemove: number;
+  };
   members: MemberView[];
   /** People watching read-only. */
   spectators: number;
@@ -273,6 +286,10 @@ export type GameEvent =
   | { type: 'SOLD'; lotNumber: number; userId: string; amount: number }
   | { type: 'UNSOLD'; lotNumber: number }
   | { type: 'PICKED'; userId: string; playerId: string }
+  | { type: 'PAUSE_VOTE'; userId: string }
+  | { type: 'PAUSED' }
+  | { type: 'RESUMED' }
+  | { type: 'REMOVED'; userId: string }
   | { type: 'AUCTION_COMPLETE' }
   | { type: 'LINEUP_LOCKED'; userId: string }
   | { type: 'LINEUPS_REVEALED' }

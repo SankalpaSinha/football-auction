@@ -56,6 +56,8 @@ export interface RoomDeps {
   onEvent(room: Room, event: GameEvent): void;
   onClosed(room: Room, reason: string): void;
   onMemberRemoved(room: Room, userId: string): void;
+  /** A manager was taken out of a running game — tell them why. */
+  onKicked?(room: Room, userId: string, reason: string): void;
   onChat?(room: Room, msg: ChatMessage): void;
   /** Optional AI pundit; absent or disabled → written analysis only. */
   commentator?: Commentator;
@@ -406,6 +408,16 @@ export class Room {
           const snapshot = this.participants.map((p) => ({ ...p, squad: [...p.squad] }));
           this.persist(() => this.deps.store.lotClosed(gameId, lot, snapshot));
         },
+        onRemoved: (userId) => {
+          const i = this.participants.findIndex((p) => p.userId === userId);
+          if (i >= 0) this.participants.splice(i, 1);
+          this.persist(() => this.deps.store.participantRemoved(gameId, userId));
+          const m = this.members.get(userId);
+          if (!m) return;
+          const limit = rules.inactiveLotsToRemove;
+          this.deps.onKicked?.(this, userId, `you sat out ${limit} lots in a row without bidding or skipping`);
+          this.removeMember(m, `${m.username} was removed for inactivity`);
+        },
         onComplete: () => {
           const snapshot = this.participants.map((p) => ({ ...p, squad: [...p.squad] }));
           this.persist(() => this.deps.store.auctionCompleted(gameId, snapshot));
@@ -432,6 +444,21 @@ export class Room {
   pick(userId: string, playerId: string) {
     this.assertInAuction(userId);
     this.auction!.pick(userId, playerId);
+  }
+
+  requestPause(userId: string) {
+    this.assertInAuction(userId);
+    this.auction!.requestPause(userId);
+  }
+
+  votePause(userId: string, agree: boolean) {
+    this.assertInAuction(userId);
+    this.auction!.votePause(userId, agree);
+  }
+
+  resumePause(userId: string) {
+    this.assertInAuction(userId);
+    this.auction!.resumeHold(userId);
   }
 
   /** Players still available — only meaningful during free pick. */
@@ -744,6 +771,7 @@ export class Room {
         minIncrement: rules.minIncrement,
         bidIncrements: rules.bidIncrements,
         minPlayers: rules.minPlayers,
+        inactiveLotsToRemove: rules.inactiveLotsToRemove,
       },
       members,
       spectators: this.spectators.size,

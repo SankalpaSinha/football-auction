@@ -33,6 +33,17 @@ export interface GameRules {
   absentAutoFillMs: number;
   /** Free pick (only one manager still needs players): time allowed per pick. */
   freePickMs: number;
+  /** Pause votes: how long everyone has to agree to a pause. */
+  pauseVoteMs: number;
+  /** An agreed pause ends by itself after this long. */
+  maxPauseMs: number;
+  /** A manager must wait this long between pause requests. */
+  pauseRequestCooldownMs: number;
+  /**
+   * Lots in a row a manager may let run out without bidding or skipping (while
+   * others are playing) before they are removed. They are warned one lot earlier.
+   */
+  inactiveLotsToRemove: number;
   /** Time managers get to pick formation + starting XI after the auction. */
   squadBuildingMs: number;
   /** Suspense pause between lineup reveal and the results. */
@@ -67,6 +78,10 @@ export const GAME_RULES: Readonly<GameRules> = {
   gkUrgencySlots: 2,
   absentAutoFillMs: 60_000,
   freePickMs: 60_000,
+  pauseVoteMs: 20_000,
+  maxPauseMs: 5 * 60_000,
+  pauseRequestCooldownMs: 30_000,
+  inactiveLotsToRemove: 3,
   squadBuildingMs: 180_000,
   evaluationMs: 4_000,
   lobbyDisconnectGraceMs: 60_000,

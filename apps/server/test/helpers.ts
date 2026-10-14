@@ -60,6 +60,8 @@ export interface Harness {
   events: GameEvent[];
   users: { id: string; username: string }[];
   closed: string[];
+  /** userId + reason for everyone removed from a running game. */
+  kicked: { userId: string; reason: string }[];
   lot(): NonNullable<NonNullable<ReturnType<Room['view']>['auction']>['lot']>;
   member(userId: string): ReturnType<Room['view']>['members'][number];
 }
@@ -76,6 +78,7 @@ export function createHarness(opts: {
   const clock = new ManualClock();
   const events: GameEvent[] = [];
   const closed: string[] = [];
+  const kicked: Harness['kicked'] = [];
   const n = opts.players ?? 2;
   const users = Array.from({ length: n }, (_, i) => ({ id: `u${i + 1}`, username: `user${i + 1}` }));
   const room = new Room(
@@ -95,6 +98,7 @@ export function createHarness(opts: {
       onEvent: (_r, e) => events.push(e),
       onClosed: (_r, reason) => closed.push(reason),
       onMemberRemoved: () => {},
+      onKicked: (_r, userId, reason) => kicked.push({ userId, reason }),
     },
   );
   for (const u of users.slice(1)) room.join(u);
@@ -105,6 +109,7 @@ export function createHarness(opts: {
     events,
     users,
     closed,
+    kicked,
     lot() {
       const lot = room.view().auction?.lot;
       if (!lot) throw new Error(`no open lot (phase ${room.phase})`);

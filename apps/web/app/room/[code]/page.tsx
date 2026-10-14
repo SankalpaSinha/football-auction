@@ -24,6 +24,7 @@ export default function RoomPage() {
   const connection = useGame((s) => s.connection);
   const room = useGame((s) => s.room);
   const roomClosed = useGame((s) => s.roomClosed);
+  const removedReason = useGame((s) => s.removedReason);
   const [joinError, setJoinError] = useState<{ code: string; error: string } | null>(null);
   const [watching, setWatching] = useState(false);
   // Don't join until we know whether this visit is to play or to watch (`?watch=1`).
@@ -42,6 +43,7 @@ export default function RoomPage() {
     g.setActiveCode(code);
     g.setRoom(null);
     g.setRoomClosed(null);
+    g.setRemoved(null);
     g.setChat([]);
     g.setChatOpen(false);
     return () => {
@@ -116,6 +118,19 @@ export default function RoomPage() {
     return (
       <Centered title="Opened in another tab" body="This game is active in another tab or device. You can only play from one place at a time.">
         <Button onClick={() => reclaimSession()}>Play here instead</Button>
+      </Centered>
+    );
+  }
+
+  if (removedReason) {
+    return (
+      <Centered
+        title="You were removed from the game"
+        body={`The other managers carried on without you because ${removedReason}. Your players went back into the auction.`}
+      >
+        <Link href="/">
+          <Button>Back to home</Button>
+        </Link>
       </Centered>
     );
   }

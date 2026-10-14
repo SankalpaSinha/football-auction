@@ -61,6 +61,7 @@ export const chatSchema = z.object({
     .refine((t) => t.length > 0, 'Type a message first.'),
 });
 
+export const pauseVoteSchema = z.object({ agree: z.boolean() });
 export const pickSchema = z.object({ playerId: z.string().min(1).max(120) });
 export const lineupSchema = z.object({
   formationId: z.string().min(1).max(16),
@@ -80,6 +81,9 @@ export interface ClientToServer {
   'auction:bid': (input: unknown, ack: (r: Ack) => void) => void;
   'auction:skip': (input: unknown, ack: (r: Ack) => void) => void;
   'auction:pick': (input: unknown, ack: (r: Ack) => void) => void;
+  'auction:pause': (input: unknown, ack: (r: Ack) => void) => void;
+  'auction:pause-vote': (input: unknown, ack: (r: Ack) => void) => void;
+  'auction:resume': (input: unknown, ack: (r: Ack) => void) => void;
   'auction:pool': (input: unknown, ack: (r: Ack<{ players: PlayerCard[] }>) => void) => void;
   'squad:draft': (input: unknown, ack: (r: Ack) => void) => void;
   'squad:lock': (input: unknown, ack: (r: Ack) => void) => void;
@@ -94,6 +98,8 @@ export interface ServerToClient {
   'room:state': (view: RoomView) => void;
   'room:event': (event: GameEvent) => void;
   'room:closed': (info: { code: string; reason: string }) => void;
+  /** You were taken out of a game (e.g. for inactivity). */
+  'room:removed': (info: { code: string; reason: string }) => void;
   'room:chat': (msg: ChatMessage & { code: string }) => void;
   'session:replaced': () => void;
 }
@@ -134,6 +140,10 @@ export const ERROR_MESSAGES = {
   NOT_YOUR_PICK: 'It isn’t your pick.',
   CHAT_SPECTATOR: 'Spectators can read the chat but not post.',
   PLAYER_UNAVAILABLE: 'That player is no longer available.',
+  PAUSE_VOTE_OPEN: 'A pause vote is already running.',
+  PAUSE_COOLDOWN: 'Wait a little before asking to pause again.',
+  NO_PAUSE_VOTE: 'There is no pause vote right now.',
+  NOT_PAUSED: 'The auction is not paused.',
   // squad building
   INVALID_FORMATION: 'Unknown formation.',
   LINEUP_INCOMPLETE: 'Fill all 11 positions first.',

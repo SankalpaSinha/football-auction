@@ -34,3 +34,14 @@ export function useCountdown(lot: LotView | null): number {
 
   return remaining;
 }
+
+/** Ms until a server timestamp, re-rendered a few times a second. */
+export function useCountdownTo(endsAt: number) {
+  const [left, setLeft] = useState(() => Math.max(0, endsAt - serverNow()));
+  useEffect(() => {
+    setLeft(Math.max(0, endsAt - serverNow()));
+    const t = setInterval(() => setLeft(Math.max(0, endsAt - serverNow())), 250);
+    return () => clearInterval(t);
+  }, [endsAt]);
+  return left;
+}

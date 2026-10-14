@@ -3,8 +3,9 @@ import { useEffect, useMemo, useState } from 'react';
 import { motion } from 'motion/react';
 import { POSITION_GROUP, type PlayerCard, type PositionGroup, type RoomView } from '@fa/shared';
 import { emit } from '@/lib/socket';
-import { serverNow, useGame } from '@/lib/store';
+import { useGame } from '@/lib/store';
 import { PlayerAvatar } from '../PlayerAvatar';
+import { useCountdownTo } from './useCountdown';
 import { Avatar, Pill } from '../ui';
 
 const GROUPS: (PositionGroup | 'ALL')[] = ['ALL', 'GK', 'DEF', 'MID', 'ATT'];
@@ -146,13 +147,4 @@ export function FreePickPanel({ room, me }: { room: RoomView; me: string }) {
       )}
     </div>
   );
-}
-
-function useCountdownTo(endsAt: number) {
-  const [left, setLeft] = useState(() => Math.max(0, endsAt - serverNow()));
-  useEffect(() => {
-    const t = setInterval(() => setLeft(Math.max(0, endsAt - serverNow())), 250);
-    return () => clearInterval(t);
-  }, [endsAt]);
-  return left;
 }

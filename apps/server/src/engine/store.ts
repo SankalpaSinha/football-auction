@@ -29,6 +29,8 @@ export interface GameStore {
   }): Promise<void>;
   lotClosed(gameId: string, lot: LotRecord, participants: Participant[]): Promise<void>;
   auctionCompleted(gameId: string, participants: Participant[]): Promise<void>;
+  /** A manager was removed mid-auction: drop their squad (its players are back in the pool). */
+  participantRemoved(gameId: string, userId: string): Promise<void>;
   lineupsFinalized(gameId: string, lineups: { userId: string; formationId: string; slots: string[] }[]): Promise<void>;
   gameFinished(
     gameId: string,
@@ -49,6 +51,7 @@ export class NoopGameStore implements GameStore {
   async gameStarted() {}
   async lotClosed() {}
   async auctionCompleted() {}
+  async participantRemoved() {}
   async lineupsFinalized() {}
   async gameFinished() {}
   async ratingsFor(userIds: string[]) {

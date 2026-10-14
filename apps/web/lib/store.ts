@@ -19,6 +19,8 @@ interface GameStore {
   /** Room code of the room page currently on screen; updates for other rooms are ignored. */
   activeCode: string | null;
   roomClosed: string | null;
+  /** Why the server took us out of the game on screen (e.g. inactivity). */
+  removedReason: string | null;
   /** True once the clock offset has been measured (or seeded from a snapshot). */
   clockSynced: boolean;
   /** serverTime - Date.now() */
@@ -36,6 +38,7 @@ interface GameStore {
   setRoom(r: RoomView | null): void;
   setActiveCode(code: string | null): void;
   setRoomClosed(reason: string | null): void;
+  setRemoved(reason: string | null): void;
   setClockOffset(o: number): void;
   pushEvent(e: GameEvent): void;
   toast(kind: Toast['kind'], text: string): void;
@@ -55,6 +58,7 @@ export const useGame = create<GameStore>((set, get) => ({
   room: null,
   activeCode: null,
   roomClosed: null,
+  removedReason: null,
   clockSynced: false,
   clockOffset: 0,
   lastEvent: null,
@@ -77,6 +81,7 @@ export const useGame = create<GameStore>((set, get) => ({
     set({ room });
   },
   setRoomClosed: (roomClosed) => set({ roomClosed }),
+  setRemoved: (removedReason) => set({ removedReason }),
   setClockOffset: (clockOffset) => set({ clockOffset, clockSynced: true }),
   pushEvent: (e) => set({ lastEvent: { ...e, at: Date.now() } }),
   toast: (kind, text) => {

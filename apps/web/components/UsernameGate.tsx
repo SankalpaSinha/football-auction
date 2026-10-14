@@ -103,7 +103,7 @@ export function UsernameGate({ onDone, autoFocus = true }: { onDone?: () => void
       <p className={`mt-2 text-sm ${error ? 'text-rose-300' : 'text-dim'}`}>
         {error ??
           (mode === 'login'
-            ? 'Had a name before passwords existed? Sign in with it and pick a password to keep it.'
+            ? 'New here? Tap “Create account” — it takes ten seconds.'
             : '3–16 characters · letters, numbers, underscore · unique')}
       </p>
     </form>

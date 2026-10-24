@@ -9,7 +9,7 @@ import { TiltCard } from '../TiltCard';
 import { Logo, Pill, SoundToggle } from '../ui';
 import { BidPanel } from './BidPanel';
 import { Feed } from './Feed';
-import { ManagersPanel, SquadPanel } from './Panels';
+import { ManagersPanel, ObjectivesNote, SquadPanel } from './Panels';
 import { SoldOverlay } from './SoldOverlay';
 import { Timer } from './Timer';
 import { useCountdown } from './useCountdown';
@@ -156,6 +156,7 @@ export function AuctionScreen({ room, me }: { room: RoomView; me: string }) {
 
           {/* mobile tabs */}
           <div className="lg:hidden">
+            <ObjectivesNote room={room} className="mb-3" />
             <div className="mb-3 grid grid-cols-3 gap-1 rounded-xl bg-white/[.04] p-1">
               {(['squad', 'managers', 'feed'] as Tab[]).map((t) => (
                 <button

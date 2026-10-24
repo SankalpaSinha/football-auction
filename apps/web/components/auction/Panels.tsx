@@ -73,16 +73,8 @@ export function SquadPanel({ room, me }: { room: RoomView; me: MemberView | unde
           );
         })}
       </div>
-      {room.myObjectives && room.myObjectives.length > 0 && (
-        <div className="mt-3 rounded-lg border border-white/10 bg-white/[.03] px-3 py-2 text-xs" title="Only you can see these. Worth +3 points each.">
-          <div className="mb-0.5 font-bold">🕵️ Secret objectives <span className="font-normal text-dim">· +3 each</span></div>
-          {room.myObjectives.map((id) => (
-            <div key={id} className="text-muted">
-              • {OBJECTIVES[id].text}
-            </div>
-          ))}
-        </div>
-      )}
+      {/* Phones show these above the tabs instead (see AuctionScreen). */}
+      <ObjectivesNote room={room} className="mt-3 hidden lg:block" />
       {!hasGk && (
         <div className="mt-3 rounded-lg border border-amber/40 bg-amber/10 px-3 py-1.5 text-xs font-semibold text-amber-100">
           ⚠ You still need a goalkeeper
@@ -153,6 +145,23 @@ export function SquadPanel({ room, me }: { room: RoomView; me: MemberView | unde
           ) : null,
         )}
       </div>
+    </div>
+  );
+}
+
+/** Your secret objectives (only you can see them). */
+export function ObjectivesNote({ room, className = '' }: { room: RoomView; className?: string }) {
+  if (!room.myObjectives?.length) return null;
+  return (
+    <div className={`rounded-lg border border-white/10 bg-white/[.03] px-3 py-2 text-xs ${className}`} title="Only you can see these. Worth +3 points each.">
+      <div className="mb-0.5 font-bold">
+        🕵️ Secret objectives <span className="font-normal text-dim">· +3 each · only you can see these</span>
+      </div>
+      {room.myObjectives.map((id) => (
+        <div key={id} className="text-muted">
+          • {OBJECTIVES[id].text}
+        </div>
+      ))}
     </div>
   );
 }

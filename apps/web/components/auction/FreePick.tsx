@@ -1,7 +1,7 @@
 'use client';
 import { useEffect, useMemo, useState } from 'react';
 import { motion } from 'motion/react';
-import { PLAYSTYLES, playstyleOf, POSITION_GROUP, type PlayerCard, type PositionGroup, type RoomView } from '@fa/shared';
+import { isStarPlayer, PLAYSTYLES, playstyleOf, POSITION_GROUP, type PlayerCard, type PositionGroup, type RoomView } from '@fa/shared';
 import { emit } from '@/lib/socket';
 import { useGame } from '@/lib/store';
 import { PlayerAvatar } from '../PlayerAvatar';
@@ -21,7 +21,7 @@ export function FreePickPanel({ room, me }: { room: RoomView; me: string }) {
   const isPicker = fp.userId === me;
   const needsGk = !!picker && !picker.squad.some((e) => e.player.position === 'GK');
   const cap = room.rules.starCap;
-  const starCapped = !!picker && picker.squad.filter((e) => e.player.overall >= cap.minOverall).length >= cap.max;
+  const starCapped = !!picker && picker.squad.filter((e) => isStarPlayer(e.player)).length >= cap.max;
   const [pool, setPool] = useState<PlayerCard[] | null>(null);
   const [group, setGroup] = useState<PositionGroup | 'ALL'>(needsGk && fp.picksLeft === 1 ? 'GK' : 'ALL');
   const [query, setQuery] = useState('');
@@ -107,13 +107,13 @@ export function FreePickPanel({ room, me }: { room: RoomView; me: string }) {
             {!pool && <li className="h-16 animate-pulse rounded-xl bg-white/5" />}
             {pool && shown.length === 0 && <li className="py-6 text-center text-sm text-dim">No players match.</li>}
             {shown.map((p) => {
-              const blocked = starCapped && p.overall >= cap.minOverall;
+              const blocked = starCapped && isStarPlayer(p);
               return (
               <motion.li key={p.id} layout>
                 <button
                   onClick={() => pick(p)}
                   disabled={!!busy || blocked}
-                  title={blocked ? `Star limit reached (${cap.max} players rated ${cap.minOverall}+)` : undefined}
+                  title={blocked ? `Star limit reached (${cap.max} star players)` : undefined}
                   className="flex w-full items-center gap-3 rounded-xl bg-white/[.04] px-2.5 py-2 text-left transition hover:bg-white/[.08] active:scale-[0.99] disabled:opacity-50"
                 >
                   <PlayerAvatar player={p} size={38} />

@@ -2,7 +2,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { ChatButton } from '../ChatPanel';
 import { AnimatePresence, motion } from 'motion/react';
-import { PLAYSTYLES, playstyleOf, type RoomView } from '@fa/shared';
+import { isStarPlayer, PLAYSTYLES, playstyleOf, type RoomView } from '@fa/shared';
 import { useGame } from '@/lib/store';
 import { PlayerCard } from '../PlayerCard';
 import { TiltCard } from '../TiltCard';
@@ -246,7 +246,7 @@ function LotInfo({ room, remaining, totalMs, compact = false }: { room: RoomView
           <span className="font-bold text-cyan">{PLAYSTYLES[playstyleOf(p)].label}</span>
           {!compact && <span className="text-dim"> · {PLAYSTYLES[playstyleOf(p)].blurb}</span>}
         </div>
-        {p.overall >= room.rules.starCap.minOverall && (
+        {isStarPlayer(p) && (
           <div className="mt-1 text-xs font-bold text-gold">
             ⭐ Star player · max {room.rules.starCap.max} per squad
           </div>

@@ -14,7 +14,7 @@ export const OBJECTIVES = {
   VETERANS: { label: 'Old heads', text: 'Start 3+ players aged 31 or over' },
   FRUGAL: { label: 'Budget hawk', text: 'Finish with at least 25% of your budget unspent' },
   BARGAINS: { label: 'Bargain hunter', text: 'Finish with 3+ players you won at auction for under half their value' },
-  NO_SUPERSTARS: { label: 'No superstars', text: 'No starter rated 86 or higher' },
+  NO_SUPERSTARS: { label: 'No superstars', text: 'No star players (Mbappé, Yamal, Kane…) in your starting XI' },
   ALL_IN_POSITION: { label: 'Square pegs', text: 'Every starter in a natural or secondary position' },
   COMBOS: { label: 'System builder', text: 'Trigger 3+ synergy combos' },
   TACTIC_FIT: { label: 'Tactician', text: 'Reach 85+ tactic fit' },

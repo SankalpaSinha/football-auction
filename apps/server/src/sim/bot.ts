@@ -1,5 +1,5 @@
 import { io, type Socket } from 'socket.io-client';
-import { autoPick, FORMATIONS, scoreSquad, TACTIC_IDS, type Ack, type ClientToServer, type RoomView, type ServerToClient } from '@fa/shared';
+import { autoPick, FORMATIONS, isStarPlayer, scoreSquad, TACTIC_IDS, type Ack, type ClientToServer, type RoomView, type ServerToClient } from '@fa/shared';
 
 export interface BotOptions {
   /** 0..1 — how keen the bot is to bid at all. */
@@ -172,7 +172,7 @@ export class Bot {
       const aggression = this.opts.aggression ?? 0.5;
       const cap = v.rules.starCap;
       const starCapped =
-        cur.player.overall >= cap.minOverall && (this.me?.squad ?? []).filter((e) => e.player.overall >= cap.minOverall).length >= cap.max;
+        isStarPlayer(cur.player) && (this.me?.squad ?? []).filter((e) => isStarPlayer(e.player)).length >= cap.max;
       const keen = !starCapped && Math.random() < aggression * (cur.player.overall / 85) * Math.pow(0.55, times);
       const amount = cur.minNextBid + (Math.random() < 0.3 ? v.rules.minIncrement : 0);
       this.actedOn.set(lot.lotNumber, times + 1);

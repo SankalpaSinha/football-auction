@@ -31,5 +31,5 @@ ENV NODE_ENV=production \
 EXPOSE 8080
 WORKDIR /app/apps/server
 
-# On every start: apply migrations, seed player data on the very first boot, run the server.
-CMD ["sh", "-c", "npx prisma migrate deploy && node dist/import.js --if-empty && exec node dist/index.js"]
+# On every start: apply migrations, (re)import player data if the data files changed, run the server.
+CMD ["sh", "-c", "npx prisma migrate deploy && node dist/import.js --if-changed && exec node dist/index.js"]

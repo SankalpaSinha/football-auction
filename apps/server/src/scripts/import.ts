@@ -5,12 +5,15 @@
  *   npm run db:import -- --season 2026-27              # one season
  *   npm run db:import -- --season 2026-27 --file my-players.json   # custom CSV/JSON file
  *   npm run db:import -- --if-empty                    # only when the database has no players (first deploy)
+ *   npm run db:import -- --if-changed                  # only when the data files changed since the last import (deploys)
  *
  * Idempotent: re-running updates existing rows. Players that disappear from a
  * season's dataset are marked INACTIVE (kept for match history).
  */
 import 'dotenv/config';
-import { basename, resolve } from 'node:path';
+import { createHash } from 'node:crypto';
+import { readdirSync, readFileSync, statSync } from 'node:fs';
+import { basename, join, resolve } from 'node:path';
 import { createDb } from '../lib/db';
 import {
   loadCompetitionConfig,
@@ -30,12 +33,38 @@ const dataDir = resolve(process.cwd(), process.env.DATA_DIR ?? '../../data');
 const onlySeason = arg('season');
 const file = arg('file') ? resolve(process.cwd(), arg('file')!) : undefined;
 
+/** Fingerprint of every data file, so deploys re-import only when the data actually changed. */
+function datasetHash(dir: string): string {
+  const h = createHash('sha256');
+  const walk = (d: string) => {
+    for (const name of readdirSync(d).sort()) {
+      const full = join(d, name);
+      if (statSync(full).isDirectory()) walk(full);
+      else h.update(full.slice(dir.length)).update(readFileSync(full));
+    }
+  };
+  walk(dir);
+  return h.digest('hex');
+}
+
+const HASH_KEY = 'dataset-hash';
+
 async function main() {
   const db = createDb();
   if (args.includes('--if-empty') && (await db.playerStats.count()) > 0) {
     console.log('Player data already present — skipping import.');
     await db.$disconnect();
     return;
+  }
+  const hash = datasetHash(dataDir);
+  if (args.includes('--if-changed') && !file) {
+    const stored = await db.appMeta.findUnique({ where: { key: HASH_KEY } });
+    if (stored?.value === hash && (await db.playerStats.count()) > 0) {
+      console.log('Player data unchanged since the last import — skipping.');
+      await db.$disconnect();
+      return;
+    }
+    console.log(stored ? 'Player data changed — re-importing.' : 'No import fingerprint yet — importing.');
   }
   const seasons = loadSeasons(dataDir).filter(
     (s) => seasonIdsOnDisk(dataDir).includes(s.id) && (!onlySeason || s.id === onlySeason),
@@ -178,6 +207,10 @@ async function main() {
       });
     }
     console.log(`  ✓ imported`);
+  }
+  // Remember what was imported (only for full imports of the files on disk).
+  if (!file && !onlySeason) {
+    await db.appMeta.upsert({ where: { key: HASH_KEY }, create: { key: HASH_KEY, value: hash }, update: { value: hash } });
   }
   await db.$disconnect();
 }

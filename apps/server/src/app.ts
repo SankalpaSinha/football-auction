@@ -14,6 +14,7 @@ import {
   readySchema,
   skipSchema,
   pauseVoteSchema,
+  presenceSchema,
   releaseSchema,
   tradeProposeSchema,
   tradeRespondSchema,
@@ -451,6 +452,7 @@ export function createApp(deps: AppDeps) {
 
     const inRoom = () => manager.roomOf(user.id) ?? (() => { throw new GameError('NOT_IN_ROOM'); })();
     on('auction:pause', null, () => inRoom().requestPause(user.id));
+    on('presence', presenceSchema, ({ away }) => manager.roomOf(user.id)?.setAway(user.id, away));
     on('auction:pause-vote', pauseVoteSchema, ({ agree }) => inRoom().votePause(user.id, agree));
     on('auction:resume', null, () => inRoom().resumePause(user.id));
     on('squad:release', releaseSchema, ({ playerId }) => inRoom().release(user.id, playerId));

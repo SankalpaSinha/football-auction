@@ -255,3 +255,32 @@ describe('inactivity edge cases', () => {
     expect(h.room.view().results!.rankings.map((r) => r.userId)).not.toContain('u3');
   });
 });
+
+describe('away (screen locked / app in the background)', () => {
+  it('away managers are never counted as idle, and show as away', () => {
+    const h = createHarness({ players: 3 });
+    h.room.setAway('u3', true);
+    expect(h.member('u3').away).toBe(true);
+    for (let i = 0; i < 4; i++) {
+      const n = h.lot().lotNumber;
+      h.room.bid('u1', n, h.lot().minNextBid);
+      h.room.bid('u2', n, h.lot().minNextBid);
+      h.clock.advance(h.lot().endsAt - h.clock.now());
+      nextLot(h);
+    }
+    expect(h.room.memberIds()).toContain('u3');
+    expect(auction(h).idleLots.u3).toBeUndefined();
+  });
+
+  it('coming back resets away; a reconnect starts present', () => {
+    const h = createHarness({ players: 2 });
+    h.room.setAway('u2', true);
+    h.room.setAway('u2', false);
+    expect(h.member('u2').away).toBe(false);
+    h.room.setAway('u2', true);
+    h.room.setConnected('u2', false);
+    expect(h.member('u2').away).toBe(false);
+    h.room.setConnected('u2', true);
+    expect(h.member('u2').away).toBe(false);
+  });
+});

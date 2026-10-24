@@ -13,3 +13,4 @@ export * from './stats';
 export * from './achievements';
 export * from './playstyles';
 export * from './objectives';
+export * from './stars';

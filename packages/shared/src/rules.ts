@@ -44,8 +44,8 @@ export interface GameRules {
    * others are playing) before they are removed. They are warned one lot earlier.
    */
   inactiveLotsToRemove: number;
-  /** At most `max` players rated `minOverall`+ per squad, so nobody can hoard every star. */
-  starCap: { minOverall: number; max: number };
+  /** At most `max` real-world superstars (see stars.ts) per squad, so nobody can hoard them. */
+  starCap: { max: number };
   /** Trade offers lapse after this long. */
   tradeOfferMs: number;
   /** Most players each side can put into one trade. */
@@ -88,7 +88,7 @@ export const GAME_RULES: Readonly<GameRules> = {
   maxPauseMs: 5 * 60_000,
   pauseRequestCooldownMs: 30_000,
   inactiveLotsToRemove: 3,
-  starCap: { minOverall: 85, max: 3 },
+  starCap: { max: 6 },
   tradeOfferMs: 90_000,
   maxTradePlayers: 3,
   squadBuildingMs: 600_000,

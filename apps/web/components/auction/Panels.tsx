@@ -1,7 +1,7 @@
 'use client';
 import { useState } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
-import { GROUP_ORDER, OBJECTIVES, PLAYSTYLES, playstyleOf, POSITION_GROUP, type LotView, type MemberView, type RoomView } from '@fa/shared';
+import { GROUP_ORDER, isStarPlayer, OBJECTIVES, PLAYSTYLES, playstyleOf, POSITION_GROUP, type LotView, type MemberView, type RoomView } from '@fa/shared';
 import { coins, GROUP_LABEL, groupSquad } from '@/lib/format';
 import { emit } from '@/lib/socket';
 import { useGame } from '@/lib/store';
@@ -44,10 +44,10 @@ export function SquadPanel({ room, me }: { room: RoomView; me: MemberView | unde
           <div className="mt-1 text-xs text-muted">
             spent {coins(spent)} · max bid <span className="font-bold text-ink">{coins(me.maxBid)}</span>
           </div>
-          <div className="mt-0.5 text-xs text-muted" title={`At most ${room.rules.starCap.max} players rated ${room.rules.starCap.minOverall}+`}>
+          <div className="mt-0.5 text-xs text-muted" title={`At most ${room.rules.starCap.max} star players (household names like Mbappé, Yamal or Kane)`}>
             ⭐ stars{' '}
             <span className="font-bold text-ink num">
-              {me.squad.filter((e) => e.player.overall >= room.rules.starCap.minOverall).length}/{room.rules.starCap.max}
+              {me.squad.filter((e) => isStarPlayer(e.player)).length}/{room.rules.starCap.max}
             </span>
           </div>
         </div>
@@ -228,6 +228,10 @@ export function ManagersPanel({
                   <span className="display text-xl font-extrabold text-volt num">{lot?.currentBid}</span>
                 ) : !m.connected ? (
                   <span className="text-[10px] font-bold uppercase tracking-wider text-amber-200">Offline</span>
+                ) : m.away ? (
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-amber-200" title="Their screen is locked or the app is in the background">
+                    Away
+                  </span>
                 ) : full ? (
                   <span className="text-[10px] font-bold uppercase tracking-wider text-cyan">Full</span>
                 ) : skipped ? (

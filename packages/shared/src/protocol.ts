@@ -72,6 +72,7 @@ export const tradeProposeSchema = z.object({
 });
 export const tradeRespondSchema = z.object({ tradeId: z.string().min(1).max(64), accept: z.boolean() });
 export const tradeCancelSchema = z.object({ tradeId: z.string().min(1).max(64) });
+export const presenceSchema = z.object({ away: z.boolean() });
 export const pauseVoteSchema = z.object({ agree: z.boolean() });
 export const pickSchema = z.object({ playerId: z.string().min(1).max(120) });
 export const lineupSchema = z.object({
@@ -93,6 +94,7 @@ export interface ClientToServer {
   'auction:bid': (input: unknown, ack: (r: Ack) => void) => void;
   'auction:skip': (input: unknown, ack: (r: Ack) => void) => void;
   'auction:pick': (input: unknown, ack: (r: Ack) => void) => void;
+  'presence': (input: unknown, ack: (r: Ack) => void) => void;
   'auction:pause': (input: unknown, ack: (r: Ack) => void) => void;
   'auction:pause-vote': (input: unknown, ack: (r: Ack) => void) => void;
   'auction:resume': (input: unknown, ack: (r: Ack) => void) => void;

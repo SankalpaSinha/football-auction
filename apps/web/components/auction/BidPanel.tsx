@@ -1,7 +1,7 @@
 'use client';
 import { useEffect, useState } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
-import type { LotView, MemberView, RoomView } from '@fa/shared';
+import { isStarPlayer, type LotView, type MemberView, type RoomView } from '@fa/shared';
 import { coins } from '@/lib/format';
 import { emit } from '@/lib/socket';
 import { useGame } from '@/lib/store';
@@ -21,8 +21,8 @@ export function bidBlocker(room: RoomView, lot: LotView, me: MemberView | undefi
     return 'Your last slot must be a goalkeeper';
   }
   const cap = room.rules.starCap;
-  if (lot.player.overall >= cap.minOverall && me.squad.filter((s) => s.player.overall >= cap.minOverall).length >= cap.max) {
-    return `Star limit reached (${cap.max} players rated ${cap.minOverall}+)`;
+  if (isStarPlayer(lot.player) && me.squad.filter((s) => isStarPlayer(s.player)).length >= cap.max) {
+    return `Star limit reached (${cap.max} star players)`;
   }
   if ((me.maxBid ?? 0) < lot.minNextBid) return `Your max bid is ${me.maxBid} — can’t match`;
   return null;

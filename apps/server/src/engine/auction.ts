@@ -1,6 +1,7 @@
 import {
   DEFAULT_VALUATION,
   estimateValue,
+  isStarPlayer,
   verdictFor,
   type AuctionView,
   type FeedKind,
@@ -76,6 +77,8 @@ export interface AuctionOptions {
   antiSnipe: boolean;
   clock: Clock;
   isConnected(userId: string): boolean;
+  /** Connected and actually looking at the game (not backgrounded). Defaults to isConnected. */
+  isPresent?(userId: string): boolean;
   hooks: AuctionHooks;
   valuation?: ValuationConfig;
 }
@@ -474,7 +477,7 @@ export class Auction {
     for (const p of [fromAfter, toAfter]) {
       if (p.squad.length > this.rules.squadSize) fail('TRADE_INVALID', `${p.username} would have more than ${this.rules.squadSize} players.`);
       const cap = this.rules.starCap;
-      if (this.starCount(p) > cap.max) fail('TRADE_INVALID', `${p.username} would have more than ${cap.max} players rated ${cap.minOverall}+.`);
+      if (this.starCount(p) > cap.max) fail('TRADE_INVALID', `${p.username} would have more than ${cap.max} star players.`);
       if (p.budget < this.slotsLeft(p) * this.rules.reservePerSlot) {
         fail('TRADE_INVALID', `${p.username} wouldn’t have enough coins left to complete their squad.`);
       }
@@ -519,7 +522,7 @@ export class Auction {
     if (this.stage === 'LOT_OPEN' && lot?.highestBidderId && lot.currentBid !== null) {
       const top = changed.find((c) => c.userId === lot.highestBidderId);
       if (top) {
-        const starBlocked = lot.player.overall >= this.rules.starCap.minOverall && this.starCount(top) >= this.rules.starCap.max;
+        const starBlocked = isStarPlayer(lot.player) && this.starCount(top) >= this.rules.starCap.max;
         const fits =
           this.slotsLeft(top) > 0 && !starBlocked && !(lot.player.position !== 'GK' && this.gkShortfall(top) >= this.slotsLeft(top));
         if (!fits || this.maxBid(top) < lot.currentBid) {
@@ -757,7 +760,7 @@ export class Auction {
   }
 
   private starCount(p: Participant) {
-    return p.squad.filter((s) => s.player.overall >= this.rules.starCap.minOverall).length;
+    return p.squad.filter((s) => isStarPlayer(s.player)).length;
   }
 
   private gkCount(p: Participant) {
@@ -777,8 +780,8 @@ export class Auction {
     const slots = this.slotsLeft(p);
     if (slots <= 0) fail('SQUAD_FULL');
     const cap = this.rules.starCap;
-    if (player.overall >= cap.minOverall && this.starCount(p) >= cap.max) {
-      fail('STAR_LIMIT', `You already have ${cap.max} players rated ${cap.minOverall}+ — that’s the limit.`);
+    if (isStarPlayer(player) && this.starCount(p) >= cap.max) {
+      fail('STAR_LIMIT', `You already have ${cap.max} star players — that’s the limit.`);
     }
     const shortfall = this.gkShortfall(p);
     const isGk = player.position === 'GK';
@@ -803,10 +806,10 @@ export class Auction {
    * those managers' squads; `excludeId` is taken out of the pool, `extra` added.
    */
   private completable(changed: Participant[], excludeId?: string, extra?: PlayerCard): 'OK' | 'GOALKEEPER_LIMIT' | 'POOL_RESERVED' {
-    const { minOverall, max } = this.rules.starCap;
+    const { max } = this.rules.starCap;
     const pool = { total: 0, nonStar: 0, gk: 0, nonStarGk: 0 };
     const add = (c: PlayerCard) => {
-      const star = c.overall >= minOverall;
+      const star = isStarPlayer(c);
       pool.total++;
       if (!star) pool.nonStar++;
       if (c.position === 'GK') {
@@ -1122,7 +1125,9 @@ export class Auction {
         continue;
       }
       // Offline managers keep their squad and can come back; only connected ones can be idle.
-      if (!lot.eligible.has(p.userId) || this.slotsLeft(p) <= 0 || !this.opts.isConnected(p.userId)) continue;
+      // Away (screen locked / app in the background) counts as offline here too.
+      const present = this.opts.isPresent ? this.opts.isPresent(p.userId) : this.opts.isConnected(p.userId);
+      if (!lot.eligible.has(p.userId) || this.slotsLeft(p) <= 0 || !present) continue;
       const n = (this.idleLots.get(p.userId) ?? 0) + 1;
       this.idleLots.set(p.userId, n);
       if (n >= limit) out.push(p);
@@ -1170,7 +1175,7 @@ export class Auction {
 
     const take = (wantGk: boolean, p: Participant) => {
       const capped = this.starCount(p) >= this.rules.starCap.max;
-      const allowed = (c: PlayerCard) => !capped || c.overall < this.rules.starCap.minOverall;
+      const allowed = (c: PlayerCard) => !capped || !isStarPlayer(c);
       let idx = remaining.findIndex((c) => (c.position === 'GK') === wantGk && allowed(c));
       if (idx < 0) idx = remaining.findIndex((c) => (c.position === 'GK') === wantGk);
       if (idx < 0) idx = remaining.findIndex(allowed);

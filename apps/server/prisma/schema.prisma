@@ -398,3 +398,10 @@ model PlayerRating {
   @@unique([userId, mode])
   @@index([mode, elo])
 }
+
+/// Small key/value store for app bookkeeping (e.g. the fingerprint of the last imported dataset).
+model AppMeta {
+  key       String   @id
+  value     String
+  updatedAt DateTime @updatedAt
+}

@@ -1,5 +1,6 @@
 import { positionFit, type FitLevel } from './fit';
 import { isObjectiveId, OBJECTIVES, type ObjectiveId } from './objectives';
+import { isStarPlayer } from './stars';
 import { COMBOS, DEFAULT_TACTIC, isTacticId, playstyleOf, TACTICS, type ComboId, type PlaystyleId, type Tactic, type TacticId } from './playstyles';
 import { getFormation, FORMATIONS, type Formation } from './formations';
 import type { LineupInput } from './lineup';
@@ -458,7 +459,7 @@ function objectiveDone(
     case 'BARGAINS':
       return d.squad.filter((e) => e.via === 'AUCTION' && e.price < 0.5 * e.estimatedValue).length >= 3;
     case 'NO_SUPERSTARS':
-      return xi.length === 11 && xi.every((p) => p.overall < 86);
+      return xi.length === 11 && xi.every((p) => !isStarPlayer(p));
     case 'ALL_IN_POSITION':
       return d.fits.length === 11 && d.fits.every((x) => x.level === 'NATURAL' || x.level === 'SECONDARY');
     case 'COMBOS':

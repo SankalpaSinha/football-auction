@@ -490,5 +490,29 @@
       "#20325F"
     ],
     "ucl": true
+  },
+  {
+    "id": "al-nassr",
+    "name": "Al-Nassr",
+    "shortName": "NAS",
+    "league": "saudi-pro-league",
+    "country": "KSA",
+    "colors": [
+      "#FFDD00",
+      "#1B3F8B"
+    ],
+    "ucl": false
+  },
+  {
+    "id": "inter-miami",
+    "name": "Inter Miami",
+    "shortName": "MIA",
+    "league": "mls",
+    "country": "USA",
+    "colors": [
+      "#F7B5CD",
+      "#231F20"
+    ],
+    "ucl": false
   }
 ]

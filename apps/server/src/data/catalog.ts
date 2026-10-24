@@ -6,7 +6,7 @@ import {
   type PlayerCard,
   type Position,
 } from '@fa/shared';
-import { GAME_RULES } from '@fa/shared';
+import { GAME_RULES, isStarPlayer } from '@fa/shared';
 
 /**
  * Source-agnostic player catalog. Loaders (seed files, PostgreSQL, a licensed
@@ -164,7 +164,7 @@ export class InMemoryCatalog implements PlayerCatalog {
 export function maxPlayersForPool(pool: readonly PlayerCard[]): number {
   const r = GAME_RULES;
   const goalkeepers = pool.filter((p) => p.position === 'GK').length;
-  const nonStars = pool.filter((p) => p.overall < r.starCap.minOverall).length;
+  const nonStars = pool.filter((p) => !isStarPlayer(p)).length;
   return Math.min(
     r.maxPlayers,
     Math.floor(pool.length / r.squadSize),

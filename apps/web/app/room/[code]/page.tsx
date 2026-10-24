@@ -128,9 +128,15 @@ export default function RoomPage() {
         title="You were removed from the game"
         body={`The other managers carried on without you because ${removedReason}. Your players went back into the auction.`}
       >
-        <Link href="/">
-          <Button>Back to home</Button>
-        </Link>
+        <div className="flex flex-wrap justify-center gap-2">
+          {/* Full reload so the page starts fresh in watch mode. */}
+          <a href={`/room/${code}?watch=1`}>
+            <Button>👀 Watch the rest</Button>
+          </a>
+          <Link href="/">
+            <Button variant="secondary">Back to home</Button>
+          </Link>
+        </div>
       </Centered>
     );
   }

@@ -16,6 +16,7 @@ import {
   type LineupInput,
   type LineupView,
   DEFAULT_TACTIC,
+  isStarPlayer,
   drawObjectives,
   type ObjectiveId,
 } from '@fa/shared';
@@ -75,6 +76,7 @@ interface Member {
   connected: boolean;
   disconnectedAt: number | null;
   removalTimer: TimerHandle | null;
+  away: boolean;
 }
 
 const LOBBY_PHASES: RoomPhase[] = ['WAITING_FOR_PLAYERS', 'LOBBY'];
@@ -239,6 +241,7 @@ export class Room {
       connected: true,
       disconnectedAt: null,
       removalTimer: null,
+      away: false,
     });
     if (!this.members.has(this.hostId)) this.hostId = user.id;
     this.pushFeed('JOIN', `${user.username} joined`, user.id);
@@ -263,6 +266,7 @@ export class Room {
     if (!m || m.connected === connected) return;
     const now = this.deps.clock.now();
     m.connected = connected;
+    m.away = false;
     m.disconnectedAt = connected ? null : now;
     m.removalTimer?.cancel();
     m.removalTimer = null;
@@ -313,6 +317,14 @@ export class Room {
     this.changed();
   }
 
+  /** The player's app went to the background (screen locked, switched app) or came back. */
+  setAway(userId: string, away: boolean) {
+    const m = this.members.get(userId);
+    if (!m || !m.connected || m.away === away) return;
+    m.away = away;
+    this.changed();
+  }
+
   setReady(userId: string, ready: boolean) {
     const m = this.members.get(userId) ?? fail('NOT_IN_ROOM');
     if (!this.isLobby) fail('WRONG_PHASE');
@@ -344,7 +356,7 @@ export class Room {
     const n = this.members.size;
     const gks = this.pool.filter((p) => p.position === 'GK').length;
     const rules = this.deps.rules;
-    const nonStars = this.pool.filter((p) => p.overall < rules.starCap.minOverall).length;
+    const nonStars = this.pool.filter((p) => !isStarPlayer(p)).length;
     if (
       this.pool.length < n * rules.squadSize ||
       gks < n * rules.minGoalkeepers ||
@@ -423,6 +435,10 @@ export class Room {
       antiSnipe: this.settings.antiSnipe,
       clock: this.deps.clock,
       isConnected: (id) => this.members.get(id)?.connected ?? false,
+      isPresent: (id) => {
+        const m = this.members.get(id);
+        return !!m && m.connected && !m.away;
+      },
       hooks: {
         onChange: () => {
           if (this.auction && !this.auction.isComplete) {
@@ -826,6 +842,7 @@ export class Room {
           isHost: m.userId === this.hostId,
           ready: m.userId === this.hostId || m.ready,
           connected: m.connected,
+          away: m.connected && m.away,
           budget: p ? p.budget : null,
           squad: p ? p.squad : [],
           maxBid: p && this.auction ? this.auction.maxBid(p) : null,

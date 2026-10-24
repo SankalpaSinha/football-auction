@@ -66,6 +66,8 @@ export interface PlayerCard {
   imageUrl: string | null;
   /** Attribution for the photo (author · licence), required for CC-licensed images. */
   imageCredit: string | null;
+  /** Real-world superstar (counts towards the star limit). Set by the server's catalog. */
+  star?: boolean;
 }
 
 export type CompetitionType = 'LEAGUE' | 'CLUB_CUP' | 'INTERNATIONAL' | 'GLOBAL';
@@ -128,6 +130,8 @@ export interface MemberView {
   isHost: boolean;
   ready: boolean;
   connected: boolean;
+  /** Connected, but the app is in the background / screen locked. */
+  away: boolean;
   /** Present once the auction has started. */
   budget: number | null;
   squad: SquadEntry[];
@@ -250,7 +254,7 @@ export interface RoomView {
     bidIncrements: number[];
     minPlayers: number;
     inactiveLotsToRemove: number;
-    starCap: { minOverall: number; max: number };
+    starCap: { max: number };
   };
   /** Your own secret objectives (hidden from everyone else until the results). */
   myObjectives: ObjectiveId[] | null;

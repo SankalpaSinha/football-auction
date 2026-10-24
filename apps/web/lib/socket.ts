@@ -51,6 +51,7 @@ export function connectSocket(token: string): GameSocket {
   s.on('connect', () => {
     useGame.getState().setConnection('connected');
     void syncClock(s);
+    sendPresence();
   });
   s.on('disconnect', (reason) => {
     if (useGame.getState().connection === 'replaced') return;
@@ -90,6 +91,18 @@ export function connectSocket(token: string): GameSocket {
   if (syncTimer) clearInterval(syncTimer);
   syncTimer = setInterval(() => s.connected && void syncClock(s), 30_000);
   return s;
+}
+
+/** Tell the server whether this player is looking at the game (screen locked / app switched = away). */
+function sendPresence() {
+  if (typeof document === 'undefined' || !socket?.connected) return;
+  socket.timeout(4000).emit('presence', { away: document.visibilityState === 'hidden' }, () => {});
+}
+if (typeof document !== 'undefined') {
+  document.addEventListener('visibilitychange', sendPresence);
+  window.addEventListener('pagehide', () => {
+    if (socket?.connected) socket.emit('presence', { away: true }, () => {});
+  });
 }
 
 export function getSocket() {

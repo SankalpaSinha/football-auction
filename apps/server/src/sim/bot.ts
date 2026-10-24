@@ -1,5 +1,5 @@
 import { io, type Socket } from 'socket.io-client';
-import { autoPick, FORMATIONS, type Ack, type ClientToServer, type RoomView, type ServerToClient } from '@fa/shared';
+import { autoPick, FORMATIONS, scoreSquad, TACTIC_IDS, type Ack, type ClientToServer, type RoomView, type ServerToClient } from '@fa/shared';
 
 export interface BotOptions {
   /** 0..1 — how keen the bot is to bid at all. */
@@ -104,16 +104,20 @@ export class Bot {
     });
   }
 
-  /** Squad builder: pick a random formation, auto-pick the best XI, lock in. */
+  /** Squad builder: pick a random formation, auto-pick the best XI, then the tactic that suits it best. */
   private maybeLockLineup(v: RoomView) {
     const mine = v.squadBuilding?.mine;
     if (!mine || mine.locked || this.lockingLineup || !this.me) return;
     this.lockingLineup = true;
     const formation = FORMATIONS[Math.floor(Math.random() * FORMATIONS.length)].id;
     const slots = autoPick(this.me.squad.map((e) => e.player), formation);
+    const squad = this.me.squad;
+    const tactic = [...TACTIC_IDS].sort(
+      (a, b) => scoreSquad(squad, { formationId: formation, slots, tactic: b }).total - scoreSquad(squad, { formationId: formation, slots, tactic: a }).total,
+    )[0];
     const [lo, hi] = this.opts.thinkMs ?? [20, 80];
     setTimeout(async () => {
-      const r = await this.emit('squad:lock', { formationId: formation, slots });
+      const r = await this.emit('squad:lock', { formationId: formation, slots, tactic });
       if (!r.ok) this.errors.push(r.code);
       this.lockingLineup = false;
     }, lo + Math.random() * (hi - lo));
@@ -166,12 +170,17 @@ export class Bot {
       }
       const max = this.me?.maxBid ?? 0;
       const aggression = this.opts.aggression ?? 0.5;
-      const keen = Math.random() < aggression * (cur.player.overall / 85) * Math.pow(0.55, times);
+      const cap = v.rules.starCap;
+      const starCapped =
+        cur.player.overall >= cap.minOverall && (this.me?.squad ?? []).filter((e) => e.player.overall >= cap.minOverall).length >= cap.max;
+      const keen = !starCapped && Math.random() < aggression * (cur.player.overall / 85) * Math.pow(0.55, times);
       const amount = cur.minNextBid + (Math.random() < 0.3 ? v.rules.minIncrement : 0);
       this.actedOn.set(lot.lotNumber, times + 1);
       let r: Ack = keen && amount <= max ? await this.emit('auction:bid', { lotNumber: lot.lotNumber, amount }) : { ok: false, code: 'PASS', error: '' };
       if (!r.ok) {
-        if (r.code !== 'PASS' && r.code !== 'STALE_LOT' && r.code !== 'NO_ACTIVE_LOT' && r.code !== 'LOT_CLOSED' && r.code !== 'BID_TOO_LOW') {
+        // Squad-composition rules (keepers, star cap, pool reservations) aren't predicted by the bot.
+        const expected = ['PASS', 'STALE_LOT', 'NO_ACTIVE_LOT', 'LOT_CLOSED', 'BID_TOO_LOW', 'GOALKEEPER_LIMIT', 'POOL_RESERVED', 'STAR_LIMIT', 'NEED_GOALKEEPER'];
+        if (!expected.includes(r.code)) {
           this.errors.push(r.code);
         }
         r = await this.emit('auction:skip', { lotNumber: lot.lotNumber });

@@ -29,7 +29,10 @@ export const ACHIEVEMENTS: AchievementDef[] = [
   { key: 'galacticos', emoji: '✨', title: 'Galácticos', description: 'Field a starting XI averaging 86+ overall.', tier: 'gold' },
   { key: 'perfect_fit', emoji: '🧩', title: 'Perfect Fit', description: 'Every starter in a natural or secondary position.', tier: 'silver' },
   { key: 'chemistry_lab', emoji: '🔗', title: 'Chemistry Lab', description: 'Reach 80+ chemistry.', tier: 'silver' },
-  { key: 'tactician', emoji: '🧠', title: 'Master Tactician', description: 'Score 97+ for tactics.', tier: 'silver' },
+  { key: 'tactician', emoji: '🧠', title: 'Master Tactician', description: 'Score 95+ for tactical fit.', tier: 'silver' },
+  { key: 'system_builder', emoji: '⚙️', title: 'System Builder', description: 'Trigger 5+ synergy combos in one XI.', tier: 'silver' },
+  { key: 'mastermind', emoji: '🕵️', title: 'Mastermind', description: 'Complete both secret objectives.', tier: 'gold' },
+  { key: 'moneyball', emoji: '📉', title: 'Moneyball', description: 'Win without a single starter rated 85+.', tier: 'gold' },
   { key: 'hat_trick', emoji: '⚽', title: 'Hat-trick', description: 'Win 3 games.', tier: 'silver', career: true },
   { key: 'veteran', emoji: '🎖️', title: 'Veteran', description: 'Play 10 games.', tier: 'silver', career: true },
   { key: 'elite', emoji: '👑', title: 'Elite Manager', description: 'Reach 1400 ranked ELO.', tier: 'gold', career: true },
@@ -83,12 +86,16 @@ export function gameAchievements(input: GameAchievementInput): Record<string, st
     if (starters.every(Boolean)) {
       const xiAvg = starters.reduce((a, p) => a + p!.overall, 0) / starters.length;
       if (xiAvg >= 86) keys.push('galacticos');
+      if (won && starters.every((p) => p!.overall < 85)) keys.push('moneyball');
       if (f && starters.every((p, i) => ['NATURAL', 'SECONDARY'].includes(positionFit(p!, f.slots[i].role).level))) {
         keys.push('perfect_fit');
       }
     }
     if (m.score.breakdown.chemistry >= 80) keys.push('chemistry_lab');
-    if (m.score.breakdown.tactics >= 97) keys.push('tactician');
+    if (m.score.breakdown.tactics >= 95) keys.push('tactician');
+    if ((m.score.synergies?.length ?? 0) >= 5) keys.push('system_builder');
+    const objs = m.score.objectives ?? [];
+    if (objs.length >= 2 && objs.every((o) => o.done)) keys.push('mastermind');
     out[m.userId] = keys;
   }
   return out;

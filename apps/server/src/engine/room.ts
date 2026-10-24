@@ -15,6 +15,9 @@ import {
   validateLineup,
   type LineupInput,
   type LineupView,
+  DEFAULT_TACTIC,
+  drawObjectives,
+  type ObjectiveId,
 } from '@fa/shared';
 import type {
   ChatMessage,
@@ -33,7 +36,7 @@ import { Auction, type Participant } from './auction';
 import type { Clock, TimerHandle } from './clock';
 import { fail } from './errors';
 import { seededRandomOrder, type AuctionOrderStrategy } from './ordering';
-import { newSeed } from './rng';
+import { createRng, newSeed } from './rng';
 import type { GameStore } from './store';
 import type { Commentator } from '../services/commentary';
 
@@ -125,6 +128,8 @@ export class Room {
     text: null,
   };
   private persistChain: Promise<void> = Promise.resolve();
+  /** Each manager's secret objectives (drawn from the game seed when the auction starts). */
+  private objectives = new Map<string, ObjectiveId[]>();
   /** Managers removed mid-game → why (shown if they try to come back). */
   private kicked = new Map<string, string>();
 
@@ -290,9 +295,17 @@ export class Room {
       if ([...this.members.values()].every((x) => !x.connected)) {
         this.abandonTimer?.cancel();
         this.abandonTimer = this.deps.clock.setTimeout(() => {
-          if ([...this.members.values()].every((x) => !x.connected)) {
-            this.close(this.isLive ? 'ABANDONED' : this.isLobby ? 'CLOSED' : 'FINISHED', 'everyone left');
+          this.abandonTimer = null;
+          if (![...this.members.values()].every((x) => !x.connected)) return;
+          if (this.phase === 'SQUAD_BUILDING') {
+            // The squads are complete: score the game (auto-completing lineups) instead of discarding it.
+            this.finalizeLineups();
+            this.abandonTimer = this.deps.clock.setTimeout(() => {
+              if ([...this.members.values()].every((x) => !x.connected)) this.close('FINISHED', 'everyone left');
+            }, this.deps.rules.evaluationMs + 1_000);
+            return;
           }
+          this.close(this.isLive ? 'ABANDONED' : this.isLobby ? 'CLOSED' : 'FINISHED', 'everyone left');
         }, this.deps.rules.abandonAfterMs);
       }
     }
@@ -330,7 +343,13 @@ export class Room {
 
     const n = this.members.size;
     const gks = this.pool.filter((p) => p.position === 'GK').length;
-    if (this.pool.length < n * this.deps.rules.squadSize || gks < n * this.deps.rules.minGoalkeepers) {
+    const rules = this.deps.rules;
+    const nonStars = this.pool.filter((p) => p.overall < rules.starCap.minOverall).length;
+    if (
+      this.pool.length < n * rules.squadSize ||
+      gks < n * rules.minGoalkeepers ||
+      nonStars < n * (rules.squadSize - rules.starCap.max)
+    ) {
       fail('POOL_TOO_SMALL');
     }
 
@@ -371,6 +390,7 @@ export class Room {
       }));
 
     const gameId = this.gameId;
+    for (const p of this.participants) this.objectives.set(p.userId, drawObjectives(createRng(`${seed}:objectives:${p.userId}`)));
     if (this.settings.mode === 'RANKED') {
       this.deps.store
         .ratingsFor(this.participants.map((p) => p.userId), 'RANKED')
@@ -520,6 +540,7 @@ export class Room {
     for (const p of this.participants) {
       this.lineups.set(p.userId, {
         formationId: DEFAULT_FORMATION,
+        tactic: DEFAULT_TACTIC,
         slots: getFormation(DEFAULT_FORMATION)!.slots.map(() => null),
         locked: false,
         auto: false,
@@ -550,6 +571,7 @@ export class Room {
     if (err) fail(err);
     state.formationId = input.formationId;
     state.slots = [...input.slots];
+    if (input.tactic) state.tactic = input.tactic;
     this.changed();
   }
 
@@ -560,6 +582,7 @@ export class Room {
     if (err) fail(err);
     state.formationId = input.formationId;
     state.slots = [...input.slots];
+    if (input.tactic) state.tactic = input.tactic;
     state.locked = true;
     const name = this.members.get(userId)!.username;
     // Don't reveal the formation before everyone has locked in.
@@ -604,7 +627,18 @@ export class Room {
   private evaluate() {
     const scores = this.participants.map((p) => {
       const l = this.lineups.get(p.userId)!;
-      return { userId: p.userId, score: scoreSquad(p.squad, { formationId: l.formationId, slots: l.slots }) };
+      return {
+        userId: p.userId,
+        score: scoreSquad(
+          p.squad,
+          { formationId: l.formationId, slots: l.slots, tactic: l.tactic },
+          {
+            objectives: this.objectives.get(p.userId) ?? [],
+            startingBudget: this.settings.startingBudget,
+            budgetLeft: p.budget,
+          },
+        ),
+      };
     });
     this.rankings = rankScores(scores);
     if (this.settings.mode === 'RANKED' && !this.ratings) {
@@ -632,7 +666,7 @@ export class Room {
           userId: p.userId,
           score: this.rankings!.find((r) => r.userId === p.userId)!,
           squad: p.squad,
-          lineup: { formationId: l.formationId, slots: l.slots },
+          lineup: { formationId: l.formationId, slots: l.slots, tactic: l.tactic },
           eloBefore: this.ratingChanges?.find((c) => c.userId === p.userId)?.before,
         };
       }),
@@ -813,7 +847,9 @@ export class Room {
         bidIncrements: rules.bidIncrements,
         minPlayers: rules.minPlayers,
         inactiveLotsToRemove: rules.inactiveLotsToRemove,
+        starCap: { ...rules.starCap },
       },
+      myObjectives: viewerId && this.objectives.has(viewerId) ? [...this.objectives.get(viewerId)!] : null,
       members,
       spectators: this.spectators.size,
       startsAt: this.startsAt,

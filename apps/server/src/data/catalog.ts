@@ -120,7 +120,7 @@ export class InMemoryCatalog implements PlayerCatalog {
               label: this.data.seasons.find((s) => s.id === seasonId)?.label ?? seasonId,
               poolSize: pool.length,
               goalkeepers,
-              maxPlayers: maxPlayersForPool(pool.length, goalkeepers),
+              maxPlayers: maxPlayersForPool(pool),
             };
           })
           .filter((s) => s.maxPlayers >= GAME_RULES.minPlayers),
@@ -160,11 +160,16 @@ export class InMemoryCatalog implements PlayerCatalog {
 }
 
 /** How many managers a pool can support: everyone needs a full squad and a keeper. */
-export function maxPlayersForPool(poolSize: number, goalkeepers: number): number {
+/** How many managers a pool supports: enough players, keepers, and non-stars (star cap) for everyone. */
+export function maxPlayersForPool(pool: readonly PlayerCard[]): number {
+  const r = GAME_RULES;
+  const goalkeepers = pool.filter((p) => p.position === 'GK').length;
+  const nonStars = pool.filter((p) => p.overall < r.starCap.minOverall).length;
   return Math.min(
-    GAME_RULES.maxPlayers,
-    Math.floor(poolSize / GAME_RULES.squadSize),
-    Math.floor(goalkeepers / GAME_RULES.minGoalkeepers),
+    r.maxPlayers,
+    Math.floor(pool.length / r.squadSize),
+    Math.floor(goalkeepers / r.minGoalkeepers),
+    Math.floor(nonStars / (r.squadSize - r.starCap.max)),
   );
 }
 

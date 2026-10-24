@@ -15,8 +15,16 @@ import {
   summarizeLineup,
   validateLineup,
   ERROR_MESSAGES,
+  DEFAULT_TACTIC,
+  OBJECTIVES,
+  PLAYSTYLES,
+  playstyleOf,
+  TACTIC_IDS,
+  TACTICS,
   type PlayerCard,
   type RoomView,
+  type ScoreContext,
+  type TacticId,
 } from '@fa/shared';
 import { GROUP_LABEL } from '@/lib/format';
 import { emit } from '@/lib/socket';
@@ -37,6 +45,7 @@ export function SquadBuilder({ room, me }: { room: RoomView; me: string }) {
   const byId = useMemo(() => new Map(squad.map((p) => [p.id, p])), [squad]);
 
   const [formationId, setFormationId] = useState(mine?.formationId ?? '4-3-3');
+  const [tactic, setTactic] = useState<TacticId>(mine?.tactic ?? DEFAULT_TACTIC);
   const [slots, setSlots] = useState<(string | null)[]>(mine?.slots ?? Array(11).fill(null));
   const [selected, setSelected] = useState<Selection>(null);
   const [picker, setPicker] = useState<number | null>(null);
@@ -53,6 +62,7 @@ export function SquadBuilder({ room, me }: { room: RoomView; me: string }) {
     if (lockedRef.current === null || lockedRef.current !== mine.locked) {
       setFormationId(mine.formationId);
       setSlots(mine.slots);
+      setTactic(mine.tactic ?? DEFAULT_TACTIC);
     }
     lockedRef.current = mine.locked;
   }, [mine]);
@@ -61,7 +71,7 @@ export function SquadBuilder({ room, me }: { room: RoomView; me: string }) {
   // Unsaved changes are retried after a reconnect and flushed if you navigate away.
   const connection = useGame((s) => s.connection);
   const [unsaved, setUnsaved] = useState(false);
-  const pending = useRef<{ formationId: string; slots: (string | null)[] } | null>(null);
+  const pending = useRef<{ formationId: string; slots: (string | null)[]; tactic: TacticId } | null>(null);
   const save = useRef(async () => {
     const draft = pending.current;
     if (!draft) return;
@@ -80,10 +90,10 @@ export function SquadBuilder({ room, me }: { room: RoomView; me: string }) {
       return;
     }
     if (locked) return;
-    pending.current = { formationId, slots };
+    pending.current = { formationId, slots, tactic };
     const t = setTimeout(() => void save.current(), 400);
     return () => clearTimeout(t);
-  }, [formationId, slots, locked]);
+  }, [formationId, slots, tactic, locked]);
   useEffect(() => {
     if (connection === 'connected' && pending.current) void save.current();
   }, [connection]);
@@ -95,10 +105,21 @@ export function SquadBuilder({ room, me }: { room: RoomView; me: string }) {
   const complete = validateLineup({ formationId, slots }, squad, true);
   const partial = summary.filled > 0 && summary.filled < 11;
   // Live preview with the same engine the server uses (the server's score is the one that counts).
-  const projected = useMemo(
-    () => (!complete && self ? scoreSquad(self.squad, { formationId, slots }) : null),
-    [complete, self, formationId, slots],
+  const ctx: ScoreContext = useMemo(
+    () => ({ objectives: room.myObjectives ?? [], startingBudget: room.settings.startingBudget, budgetLeft: self?.budget ?? undefined }),
+    [room.myObjectives, room.settings.startingBudget, self?.budget],
   );
+  const projected = useMemo(
+    () => (!complete && self ? scoreSquad(self.squad, { formationId, slots, tactic }, ctx) : null),
+    [complete, self, formationId, slots, tactic, ctx],
+  );
+  /** What each tactic would score with this XI (complete lineups only). */
+  const byTactic = useMemo(() => {
+    if (complete || !self) return null;
+    return Object.fromEntries(TACTIC_IDS.map((t) => [t, scoreSquad(self.squad, { formationId, slots, tactic: t }, ctx).total])) as Record<TacticId, number>;
+  }, [complete, self, formationId, slots, ctx]);
+  // Partial lineups still get live objective/synergy feedback.
+  const preview = useMemo(() => (self ? scoreSquad(self.squad, { formationId, slots, tactic }, ctx) : null), [self, formationId, slots, tactic, ctx]);
   const pitchLinks = useMemo(() => linksFor(formationId, slots, byId), [formationId, slots, byId]);
 
   // ------------------------------------------------------------ editing
@@ -180,7 +201,7 @@ export function SquadBuilder({ room, me }: { room: RoomView; me: string }) {
   async function lock() {
     if (complete) return toast('error', ERROR_MESSAGES[complete]);
     setBusy(true);
-    const r = await emit('squad:lock', { formationId, slots });
+    const r = await emit('squad:lock', { formationId, slots, tactic });
     setBusy(false);
     if (!r.ok) toast('error', r.error);
   }
@@ -229,6 +250,8 @@ export function SquadBuilder({ room, me }: { room: RoomView; me: string }) {
             ))}
           </div>
 
+          <TacticPicker tactic={tactic} onChange={setTactic} locked={locked} totals={byTactic} />
+
           <PitchSurface className="w-full" links={pitchLinks} style={{ maxWidth: 'min(640px, calc((100dvh - 15rem) * 0.68))', minWidth: 'min(100%, 300px)' }}>
             {formation.slots.map((s, i) => {
               const id = slots[i];
@@ -273,11 +296,12 @@ export function SquadBuilder({ room, me }: { room: RoomView; me: string }) {
             </AnimatePresence>
           </PitchSurface>
 
-          <div className="grid w-full max-w-[640px] grid-cols-4 gap-2 text-center">
+          <div className="grid w-full max-w-[640px] grid-cols-3 gap-2 text-center sm:grid-cols-5">
             <Stat label="Projected score" value={projected ? projected.total.toFixed(1) : '–'} hint="Preview — final scores are calculated by the server" accent />
-            <Stat label="Avg OVR" value={summary.averageOverall ? summary.averageOverall.toFixed(1) : '–'} />
+            <Stat label="Tactic fit" value={projected ? projected.breakdown.tactics.toFixed(0) : '–'} />
+            <Stat label="Synergy" value={projected ? projected.breakdown.synergy.toFixed(0) : '–'} />
             <Stat label="Chemistry" value={projected ? projected.breakdown.chemistry.toFixed(0) : '–'} />
-            <Stat label="In position" value={`${summary.fit.NATURAL + summary.fit.SECONDARY}/${summary.filled || 11}`} />
+            <Stat label="Avg OVR" value={summary.averageOverall ? summary.averageOverall.toFixed(1) : '–'} />
           </div>
           <div className="flex w-full max-w-[640px] flex-wrap justify-center gap-x-4 gap-y-1 text-xs text-muted">
             {(['STRONG', 'MEDIUM', 'WEAK'] as const).map((k) => (
@@ -336,6 +360,8 @@ export function SquadBuilder({ room, me }: { room: RoomView; me: string }) {
             </p>
           </div>
 
+          {preview && <PlanPanel score={preview} byId={byId} />}
+
           <div className="glass rounded-2xl p-4">
             <div className="mb-2 flex items-baseline justify-between">
               <span className="label">Managers</span>
@@ -372,7 +398,7 @@ export function SquadBuilder({ room, me }: { room: RoomView; me: string }) {
             <div className="mb-2 flex items-baseline justify-between">
               <span className="label">Bench & squad</span>
               <span className="text-xs text-muted">
-                {bench.length} not in XI {bench.length === 4 && '· your 4 subs'}
+                {bench.length} not in XI {bench.length === room.rules.squadSize - 11 && `· your ${bench.length} subs`}
               </span>
             </div>
             <div className="space-y-3">
@@ -390,6 +416,7 @@ export function SquadBuilder({ room, me }: { room: RoomView; me: string }) {
                           slotIndex={slots.indexOf(p.id)}
                           formationRole={slots.indexOf(p.id) >= 0 ? formation.slots[slots.indexOf(p.id)].role : null}
                           selected={selected?.kind === 'bench' && selected.id === p.id}
+                          liked={(TACTICS[tactic].likes as readonly string[]).includes(playstyleOf(p))}
                           locked={locked}
                           onClick={() => {
                             const idx = slots.indexOf(p.id);
@@ -455,6 +482,7 @@ function SquadRow({
   slotIndex,
   formationRole,
   selected,
+  liked,
   locked,
   onClick,
 }: {
@@ -462,6 +490,8 @@ function SquadRow({
   slotIndex: number;
   formationRole: PlayerCard['position'] | null;
   selected: boolean;
+  /** Their playstyle suits the chosen tactic. */
+  liked: boolean;
   locked: boolean;
   onClick: () => void;
 }) {
@@ -479,7 +509,13 @@ function SquadRow({
       >
         <PlayerAvatar player={player} size={30} />
         <span className="w-9 text-[11px] font-bold text-muted">{player.position}</span>
-        <span className="min-w-0 flex-1 truncate font-medium">{player.shortName}</span>
+        <span className="min-w-0 flex-1">
+          <span className="block truncate font-medium">{player.shortName}</span>
+          <span className={`block truncate text-[10px] ${liked ? 'font-bold text-volt' : 'text-dim'}`} title={PLAYSTYLES[playstyleOf(player)].blurb}>
+            {liked && '★ '}
+            {PLAYSTYLES[playstyleOf(player)].label}
+          </span>
+        </span>
         <span className="display w-6 text-right font-bold">{player.overall}</span>
         <span className="w-[74px] text-right">
           {fit ? (
@@ -593,7 +629,7 @@ function SlotPicker({
                     <span className="block truncate font-semibold">{p.shortName}</span>
                     <span className="text-xs text-muted">
                       {p.position}
-                      {p.secondaryPositions.length ? ` · ${p.secondaryPositions.join('/')}` : ''} ·{' '}
+                      {p.secondaryPositions.length ? ` · ${p.secondaryPositions.join('/')}` : ''} · {PLAYSTYLES[playstyleOf(p)].label} ·{' '}
                       {at >= 0 ? (isCurrent ? 'here now' : `in XI at ${formationRoles[at]}`) : 'bench'}
                     </span>
                   </span>
@@ -618,3 +654,99 @@ function SlotPicker({
   );
 }
 
+/** Team tactic: changes which playstyles and attributes the XI is judged on. */
+function TacticPicker({
+  tactic,
+  onChange,
+  locked,
+  totals,
+}: {
+  tactic: TacticId;
+  onChange: (t: TacticId) => void;
+  locked: boolean;
+  totals: Record<TacticId, number> | null;
+}) {
+  const t = TACTICS[tactic];
+  const best = totals ? (Object.entries(totals).sort((a, b) => b[1] - a[1])[0][0] as TacticId) : null;
+  return (
+    <div className="glass w-full max-w-[640px] rounded-2xl p-3">
+      <div className="mb-2 flex items-baseline justify-between">
+        <span className="label">Team tactic</span>
+        {totals && best && best !== tactic && !locked && (
+          <button onClick={() => onChange(best)} className="text-[11px] font-semibold text-cyan hover:underline">
+            Best for this XI: {TACTICS[best].label} ({totals[best].toFixed(1)})
+          </button>
+        )}
+      </div>
+      <div className="scrollbar-thin flex gap-1.5 overflow-x-auto pb-1 sm:flex-wrap sm:overflow-visible">
+        {TACTIC_IDS.map((id) => (
+          <button
+            key={id}
+            disabled={locked}
+            onClick={() => onChange(id)}
+            aria-pressed={id === tactic}
+            className={`shrink-0 rounded-lg border px-2.5 py-1.5 text-left text-xs font-bold transition disabled:opacity-50 ${
+              id === tactic ? 'border-volt bg-volt/15 text-volt' : 'border-white/10 bg-white/[.03] hover:bg-white/[.07]'
+            }`}
+          >
+            {TACTICS[id].label}
+            {totals && <span className="ml-1.5 font-normal text-muted num">{totals[id].toFixed(1)}</span>}
+          </button>
+        ))}
+      </div>
+      <p className="mt-2 text-xs text-muted">
+        {t.blurb}
+        {t.likes.length > 0 && (
+          <>
+            {' '}
+            Built around: <span className="text-ink">{t.likes.map((l) => PLAYSTYLES[l].label).join(', ')}</span>.
+          </>
+        )}
+      </p>
+    </div>
+  );
+}
+
+/** Live synergy combos and secret-objective progress for the current XI. */
+function PlanPanel({ score, byId }: { score: ReturnType<typeof scoreSquad>; byId: Map<string, PlayerCard> }) {
+  const name = (id: string) => byId.get(id)?.shortName ?? '?';
+  return (
+    <div className="glass rounded-2xl p-4">
+      {score.objectives.length > 0 && (
+        <>
+          <div className="mb-1.5 flex items-baseline justify-between">
+            <span className="label">🕵️ Secret objectives</span>
+            <span className="text-[10px] text-dim">+3 each · only you can see these</span>
+          </div>
+          <ul className="mb-3 space-y-1 text-xs">
+            {score.objectives.map((o) => (
+              <li key={o.id} className={o.done ? 'text-emerald-200' : 'text-muted'}>
+                {o.done ? '✓' : '○'} <b className={o.done ? '' : 'text-ink'}>{OBJECTIVES[o.id].label}</b> · {OBJECTIVES[o.id].text}
+              </li>
+            ))}
+          </ul>
+        </>
+      )}
+      <div className="mb-1.5 flex items-baseline justify-between">
+        <span className="label">⚙️ Synergy combos</span>
+        <span className="text-[10px] text-dim">playstyles that click</span>
+      </div>
+      {score.synergies.length === 0 ? (
+        <p className="text-xs text-dim">
+          None yet. Pair playstyles that work together, like a Wide Crosser with a Target Man, or a Ball Winner next to a playmaker.
+        </p>
+      ) : (
+        <ul className="space-y-1 text-xs">
+          {score.synergies.map((h) => (
+            <li key={h.key} className="flex items-baseline justify-between gap-2">
+              <span>
+                <b>{h.label}</b> <span className="text-muted">{name(h.players[0])} + {name(h.players[1])}</span>
+              </span>
+              <span className="text-volt num">+{h.points}</span>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}

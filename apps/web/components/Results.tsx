@@ -7,7 +7,16 @@ import { EarnedBadges } from './Achievements';
 import { AllSquads } from './SquadViews';
 import { serverNow } from '@/lib/store';
 import { AnimatePresence, motion } from 'motion/react';
-import { SCORING_CONFIG, type MatchReport, type PlayerCard, type RankedScore, type RoomView, type ScoreComponent } from '@fa/shared';
+import {
+  OBJECTIVES,
+  SCORING_CONFIG,
+  TACTICS,
+  type MatchReport,
+  type PlayerCard,
+  type RankedScore,
+  type RoomView,
+  type ScoreComponent,
+} from '@fa/shared';
 import { PlayerAvatar } from './PlayerAvatar';
 import { MiniPitch } from './squad/Pitch';
 import { Avatar, Button, Coin, Logo, Pill, SoundToggle } from './ui';
@@ -15,7 +24,8 @@ import { Avatar, Button, Coin, Logo, Pill, SoundToggle } from './ui';
 const COMPONENT_LABEL: Record<ScoreComponent, string> = {
   quality: 'Player quality',
   positionFit: 'Position fit',
-  tactics: 'Tactics',
+  tactics: 'Tactical fit',
+  synergy: 'Synergy',
   chemistry: 'Chemistry',
   balance: 'Squad balance',
   depth: 'Depth',
@@ -385,6 +395,8 @@ export function ManagerReport({
           <ul className="space-y-2.5">
             {(Object.keys(SCORING_CONFIG.weights) as ScoreComponent[]).map((k, i) => {
               const v = score.breakdown[k];
+              // Games played before a component existed have no value for it.
+              if (v === undefined) return null;
               const color = v >= 85 ? '#c8ff2e' : v >= 65 ? '#2ee6ff' : '#ff4d5e';
               return (
                 <li key={k}>
@@ -407,6 +419,21 @@ export function ManagerReport({
               );
             })}
           </ul>
+          {(score.objectives?.length ?? 0) > 0 && (
+            <div className="mt-4 rounded-xl border border-white/10 bg-white/[.03] p-3">
+              <div className="flex items-baseline justify-between text-sm">
+                <span className="font-semibold">🕵️ Secret objectives</span>
+                <span className="display text-lg font-bold text-volt num">+{score.objectiveBonus}</span>
+              </div>
+              <ul className="mt-1.5 space-y-1 text-xs">
+                {score.objectives.map((o) => (
+                  <li key={o.id} className={o.done ? 'text-emerald-200' : 'text-dim'}>
+                    {o.done ? '✓' : '✗'} <b>{OBJECTIVES[o.id]?.label ?? o.id}</b> · {OBJECTIVES[o.id]?.text}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
           <div className="mt-4 flex items-baseline justify-between border-t border-white/10 pt-3">
             <span className="display text-lg font-bold">Final score</span>
             <span className="display text-3xl font-extrabold text-volt num">{score.total.toFixed(1)}</span>
@@ -414,15 +441,40 @@ export function ManagerReport({
 
           {score.tactics.length > 0 && (
             <div className="mt-5">
-              <div className="label mb-2">Tactical profile</div>
+              <div className="label mb-2">
+                Tactic · {TACTICS[score.tacticId]?.label ?? 'Balanced'}
+                {score.tacticId && score.tacticId !== 'BALANCED' && score.styleMatch && (
+                  <span className="ml-1 normal-case tracking-normal text-dim">
+                    ({score.styleMatch.liked}/{score.styleMatch.of} starters suit it)
+                  </span>
+                )}
+              </div>
               <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
                 {score.tactics.map((t) => (
                   <div key={t.key} className="rounded-lg bg-white/[.04] px-3 py-2" title={`${t.value} vs ${t.target} target`}>
                     <div className="text-[11px] text-muted">{t.label}</div>
-                    <div className={`display text-xl font-bold num ${t.score >= 90 ? 'text-volt' : t.score < 70 ? 'text-rose-300' : ''}`}>{t.value}</div>
+                    <div className={`display text-xl font-bold num ${t.score >= 90 ? 'text-volt' : t.score < 70 ? 'text-rose-300' : ''}`}>
+                      {t.value || '—'}
+                    </div>
                   </div>
                 ))}
               </div>
+            </div>
+          )}
+
+          {(score.synergies?.length ?? 0) > 0 && (
+            <div className="mt-5">
+              <div className="label mb-2">Synergy combos</div>
+              <ul className="flex flex-wrap gap-1.5">
+                {score.synergies.map((h) => (
+                  <li key={h.key} className="rounded-full bg-white/[.05] px-2.5 py-1 text-xs" title={`+${h.points} combo points`}>
+                    ⚙️ <b>{h.label}</b>{' '}
+                    <span className="text-muted">
+                      {players.get(h.players[0])?.shortName ?? '?'} + {players.get(h.players[1])?.shortName ?? '?'}
+                    </span>
+                  </li>
+                ))}
+              </ul>
             </div>
           )}
         </div>
@@ -431,7 +483,7 @@ export function ManagerReport({
           {lineup && (
             <div>
               <div className="label mb-2">
-                {lineup.formationId} · chemistry {score.breakdown.chemistry.toFixed(0)}
+                {lineup.formationId} · chemistry {(score.breakdown.chemistry ?? 0).toFixed(0)}
               </div>
               <MiniPitch formationId={lineup.formationId} slots={lineup.slots} players={players} />
             </div>
@@ -524,7 +576,7 @@ export function EvaluatingBanner({ until }: { until: number | null }) {
     <div className="mx-auto mt-6 flex max-w-2xl items-center gap-3 rounded-2xl border border-gold/40 bg-gold/[.08] px-5 py-4 text-sm">
       <span className="h-3 w-3 animate-ping rounded-full bg-gold" />
       <span>
-        <span className="font-bold text-gold">Evaluating squads…</span> quality, position fit, tactics, chemistry, balance and depth.
+        <span className="font-bold text-gold">Evaluating squads…</span> quality, position fit, tactics, synergy, chemistry, balance, depth and secret objectives.
         {until ? ' Results in a moment.' : ''}
       </span>
       <Pill color="#f5c542" className="ml-auto">

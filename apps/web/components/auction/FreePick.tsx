@@ -1,7 +1,7 @@
 'use client';
 import { useEffect, useMemo, useState } from 'react';
 import { motion } from 'motion/react';
-import { POSITION_GROUP, type PlayerCard, type PositionGroup, type RoomView } from '@fa/shared';
+import { PLAYSTYLES, playstyleOf, POSITION_GROUP, type PlayerCard, type PositionGroup, type RoomView } from '@fa/shared';
 import { emit } from '@/lib/socket';
 import { useGame } from '@/lib/store';
 import { PlayerAvatar } from '../PlayerAvatar';
@@ -20,6 +20,8 @@ export function FreePickPanel({ room, me }: { room: RoomView; me: string }) {
   const picker = room.members.find((m) => m.userId === fp.userId);
   const isPicker = fp.userId === me;
   const needsGk = !!picker && !picker.squad.some((e) => e.player.position === 'GK');
+  const cap = room.rules.starCap;
+  const starCapped = !!picker && picker.squad.filter((e) => e.player.overall >= cap.minOverall).length >= cap.max;
   const [pool, setPool] = useState<PlayerCard[] | null>(null);
   const [group, setGroup] = useState<PositionGroup | 'ALL'>(needsGk && fp.picksLeft === 1 ? 'GK' : 'ALL');
   const [query, setQuery] = useState('');
@@ -104,25 +106,31 @@ export function FreePickPanel({ room, me }: { room: RoomView; me: string }) {
           <ul className="scrollbar-thin grid max-h-[55dvh] gap-1.5 overflow-y-auto sm:grid-cols-2">
             {!pool && <li className="h-16 animate-pulse rounded-xl bg-white/5" />}
             {pool && shown.length === 0 && <li className="py-6 text-center text-sm text-dim">No players match.</li>}
-            {shown.map((p) => (
+            {shown.map((p) => {
+              const blocked = starCapped && p.overall >= cap.minOverall;
+              return (
               <motion.li key={p.id} layout>
                 <button
                   onClick={() => pick(p)}
-                  disabled={!!busy}
+                  disabled={!!busy || blocked}
+                  title={blocked ? `Star limit reached (${cap.max} players rated ${cap.minOverall}+)` : undefined}
                   className="flex w-full items-center gap-3 rounded-xl bg-white/[.04] px-2.5 py-2 text-left transition hover:bg-white/[.08] active:scale-[0.99] disabled:opacity-50"
                 >
                   <PlayerAvatar player={p} size={38} />
                   <span className="min-w-0 flex-1">
                     <span className="block truncate font-semibold">{p.name}</span>
                     <span className="block truncate text-xs text-muted">
-                      {p.position} · {p.nation.flag} {p.club.name}
+                      {p.position} · {PLAYSTYLES[playstyleOf(p)].label} · {p.nation.flag} {p.club.name}
                     </span>
                   </span>
                   <span className="display text-xl font-extrabold num">{p.overall}</span>
-                  <span className="rounded-lg bg-volt px-2.5 py-1 text-xs font-bold uppercase text-night">{busy === p.id ? '…' : 'Pick'}</span>
+                  <span className="rounded-lg bg-volt px-2.5 py-1 text-xs font-bold uppercase text-night">
+                    {blocked ? '⭐ cap' : busy === p.id ? '…' : 'Pick'}
+                  </span>
                 </button>
               </motion.li>
-            ))}
+              );
+            })}
           </ul>
           <p className="text-xs text-dim">If the timer runs out, the best player that fits is picked for you.</p>
         </>

@@ -20,6 +20,10 @@ export function bidBlocker(room: RoomView, lot: LotView, me: MemberView | undefi
   if (!hasGk && room.rules.squadSize - me.squad.length === 1 && lot.player.position !== 'GK') {
     return 'Your last slot must be a goalkeeper';
   }
+  const cap = room.rules.starCap;
+  if (lot.player.overall >= cap.minOverall && me.squad.filter((s) => s.player.overall >= cap.minOverall).length >= cap.max) {
+    return `Star limit reached (${cap.max} players rated ${cap.minOverall}+)`;
+  }
   if ((me.maxBid ?? 0) < lot.minNextBid) return `Your max bid is ${me.maxBid} — can’t match`;
   return null;
 }

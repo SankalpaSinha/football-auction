@@ -76,8 +76,7 @@ export class RoomManager {
     if (input.mode === 'RANKED') input = { ...input, isPublic: true };
     const meta = this.deps.catalog.meta(input.competitionId, input.seasonId) ?? fail('COMPETITION_UNAVAILABLE');
     const pool = this.deps.catalog.resolvePool(input.competitionId, input.seasonId) ?? fail('COMPETITION_UNAVAILABLE');
-    const gks = pool.filter((p) => p.position === 'GK').length;
-    if (input.maxPlayers > maxPlayersForPool(pool.length, gks)) fail('POOL_TOO_SMALL');
+    if (input.maxPlayers > maxPlayersForPool(pool)) fail('POOL_TOO_SMALL');
     if (this.rooms.size >= this.deps.maxRooms) fail('TOO_MANY_ROOMS', 'The server is full right now — try again soon.');
     if (!this.createLimiter.take(user.id)) fail('TOO_MANY_ROOMS');
     this.leaveCurrentRoomForSwitch(user.id, null);

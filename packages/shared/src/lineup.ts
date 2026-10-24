@@ -1,11 +1,14 @@
 import { positionFit, type FitLevel } from './fit';
 import { getFormation, type Formation } from './formations';
+import type { TacticId } from './playstyles';
 import type { PlayerCard } from './types';
 
 /** A manager's chosen formation and the player id in each slot (index matches formation.slots). */
 export interface LineupInput {
   formationId: string;
   slots: (string | null)[];
+  /** Team tactic (see playstyles.ts). Missing → Balanced. */
+  tactic?: TacticId;
 }
 
 export type LineupError =

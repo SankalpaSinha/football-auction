@@ -1,7 +1,7 @@
 'use client';
 import { useEffect, useMemo } from 'react';
 import { motion } from 'motion/react';
-import { GROUP_ORDER, POSITION_GROUP, verdictFor, type MemberView, type PlayerCard, type SquadEntry } from '@fa/shared';
+import { GROUP_ORDER, PLAYSTYLES, playstyleOf, POSITION_GROUP, verdictFor, type MemberView, type PlayerCard, type SquadEntry } from '@fa/shared';
 import { coins, GROUP_LABEL } from '@/lib/format';
 import { PlayerAvatar } from './PlayerAvatar';
 import { MiniPitch } from './squad/Pitch';
@@ -39,14 +39,15 @@ export function SquadTable({ squad, starters }: { squad: SquadEntry[]; starters?
                 <PlayerAvatar player={e.player} size={22} />
               </td>
               <td className="py-1 font-bold text-muted">{e.player.position}</td>
-              <td className="truncate py-1 pr-2" title={e.player.name}>
+              <td className="truncate py-1 pr-2" title={`${e.player.name} · ${PLAYSTYLES[playstyleOf(e.player)].label}`}>
                 {e.player.shortName}
+                <span className="ml-1 text-[10px] text-dim">{PLAYSTYLES[playstyleOf(e.player)].short}</span>
                 {starters && !starters.has(e.player.id) && <span className="ml-1 text-dim">(bench)</span>}
               </td>
               <td className="py-1 pr-2 text-right font-bold num">{e.player.overall}</td>
               <td className="py-1 pr-2 text-right num">{e.price}</td>
               <td className={`py-1 text-right text-[10px] font-bold uppercase ${v ? VERDICT_STYLE[v] : 'text-cyan'}`}>
-                {v ?? (e.via === 'PICK' ? 'picked' : 'auto')}
+                {v ?? (e.via === 'PICK' ? 'picked' : e.via === 'TRADE' ? 'traded' : 'auto')}
               </td>
             </tr>
           );

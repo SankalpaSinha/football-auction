@@ -141,21 +141,29 @@ Every action checks the current phase. Formation choice happens inside `SQUAD_BU
 
 | Component | Weight | What it measures |
 |---|---|---|
-| Player quality | 35% | Each starter's role rating, using position-specific attribute weights (ST: shooting/pace, CB: defending/physical, GK: diving/reflexes/handling …) |
-| Position fit | 20% | Average fit factor of the XI |
-| Tactics | 15% | Formation demands: defensive solidity, pace out wide, midfield control, protection in front of the defence, attacking threat, creativity |
+| Player quality | 30% | Each starter's role rating, using position-specific attribute weights (ST: shooting/pace, CB: defending/physical, GK: diving/reflexes/handling …). Ratings above 83 count half per point, so stacking superstars has diminishing returns. |
+| Position fit | 15% | Average fit factor of the XI |
+| Tactical fit | 15% | How well the XI suits the chosen team tactic: 60% from the tactic's attribute demands, 40% from how many starters play a playstyle the tactic is built around. A tactic whose key positions are missing from the formation (say, Wing Play with no wide players) is penalised. |
+| Synergy | 12% | Playstyle combos in the XI, for example Wide Crosser + Target Man, playmaker + runner, or Ball Winner + playmaker. Each combo is weighted by the pair's quality, and players out of position don't bring their playstyle. |
 | Chemistry | 10% | Links between neighbouring slots (same club +2, nation +1, league +1, max 3), plus players being in position |
-| Squad balance | 10% | Shape of the 18 (GK 1–3, DEF 5–7, MID 5–7, ATT 3–6) and the gap between the defensive, midfield and attacking lines |
+| Squad balance | 8% | Shape of the 18 (GK 1–3, DEF 5–7, MID 5–7, ATT 3–6) and the gap between the defensive, midfield and attacking lines |
 | Depth | 5% | Bench quality and positional cover |
 | Budget efficiency | 5% | Estimated value received per coin spent |
+| Secret objectives | +3 each | Each manager gets 2 hidden objectives (drawn from the game seed) and sees only their own until the results |
 
-Ties are broken by quality, then position fit, then fewer coins spent. The tests check that the same squad always scores the same, that chemistry can't lift a weak squad over an elite one, and that a balanced XI beats superstar attackers with a weak spine.
+**Playstyles** (`packages/shared/src/playstyles.ts`) come from a player's position and attributes: Sweeper Keeper, Shot Stopper, Ball-Playing CB, Stopper, Overlapping/Defensive Full-back, Ball Winner, Deep-Lying Playmaker, Box-to-Box, Advanced Playmaker, Shadow Striker, Wide Crosser, Inside Forward, Target Man, Poacher, Pacey Forward and False Nine. They show on the player card during the auction.
+
+**Tactics:** Balanced, Tiki-Taka, Counter-Attack, High Press, Wing Play and Park the Bus. The squad builder shows what each tactic would score with your XI.
+
+**Secret objectives** (`packages/shared/src/objectives.ts`), for example: 3+ starters from one club, XI average age 25 or under, 25% of the budget unspent, no starter rated 86+, 3+ synergy combos, or 8+ different playstyles.
+
+Ties are broken by quality, then position fit, then fewer coins spent. The tests check that the same squad always scores the same, that the tactic changes the score, that combos are detected, and that objectives add their bonus.
 
 ### Squad builder (Phase 3)
 
 - 16 formations in `packages/shared/src/formations.ts` (4-3-3, 4-4-2, 4-2-3-1, 3-5-2, 3-4-3, 4-1-2-1-2, 5-3-2, 4-5-1, 4-1-4-1, 4-3-2-1, 4-4-1-1, 4-2-2-2, 3-4-2-1, 3-4-1-2, 5-4-1, 5-2-3). Each has 11 slots, and slot 0 is the goalkeeper.
 - Position fit table in `packages/shared/src/fit.ts`: natural ×1.0, secondary ×0.9, compatible ×0.7, out of position ×0.3, wrong side of the GK line ×0.05. You can change these values freely.
-- You have 3 minutes to pick (`squadBuildingMs`). Drafts autosave to the server and stay hidden from opponents. Locking in is validated on the server: 11 of your own players, no duplicates, and a goalkeeper in goal. You can unlock until everyone has locked.
+- You have 10 minutes to pick a formation, a tactic and your XI (`squadBuildingMs`). Drafts autosave to the server and stay hidden from opponents. Locking in is validated on the server: 11 of your own players, no duplicates, and a goalkeeper in goal. You can unlock until everyone has locked.
 - At the deadline, unfinished lineups are completed by a deterministic best-fit picker that keeps whatever the manager had already placed. All lineups are then revealed together.
 
 ### Auction rules (server-enforced)
@@ -170,6 +178,7 @@ Ties are broken by quality, then position fit, then fewer coins spent. The tests
 | Goalkeepers | A manager's last open slot must be a keeper. A manager who already has a keeper can't buy another if that would leave someone else without one. Keepers are moved forward when someone needs one urgently. |
 | Unsold players | Re-offered once after the main pool runs out. If squads are still short, the server auto-assigns the lowest-rated leftovers at the opening price. |
 | Disconnects | Squad and budget stay. A disconnected manager counts as passing. The top bidder still wins if they drop at the hammer. If everyone is offline the auction pauses and resumes with at least 5 s on the clock. |
+| Star cap | At most 3 players rated 85+ per squad, enforced on bids, free picks and trades. Rooms only allow as many managers as the pool has non-stars for. |
 | Release | Tap ✕ next to one of your players while lots are being auctioned. The slot opens up again, but you **don't get the coins back**, and the player goes back into the auction. It's refused if you couldn't afford to fill the slot again, or if you hold the top bid and couldn't still pay it. |
 | Trades | Tap a manager and choose **Propose a trade**: up to 3 players each way, plus coins in either direction. The other manager has 90 s to accept. Coins only change hands in a trade. Each traded player's new price is what the receiving manager gave up for it, split by estimated value. A trade is refused if a squad would go over 18, someone couldn't afford to finish their squad, a keeper would become impossible to get, or the top bidder couldn't still pay. Offers are private to the two managers, and offers whose players have moved are dropped. Trades and releases stop when free pick starts. |
 | Pause | Any manager can ask to pause (⏸ in the top bar). It only happens if every connected manager agrees within 20 s. One "No" cancels it, and the same manager has to wait 30 s to ask again. While paused the lot clock is frozen. Any manager can resume, and it resumes by itself after 5 minutes. If agreed during a sold/unsold reveal, the next lot opens paused. |

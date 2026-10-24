@@ -1,4 +1,6 @@
 import {
+  isTacticId,
+  type TacticId,
   buildMatchReport,
   ELO_CONFIG,
   type GameMode,
@@ -201,18 +203,27 @@ export class StatsService {
         username: s.user.username,
         squad,
         budgetLeft: s.budgetRemaining,
-        lineup: s.formationId ? { formationId: s.formationId, slots } : null,
+        lineup: s.formationId ? { formationId: s.formationId, slots, tactic: tacticOf(result?.breakdown) } : null,
         eloBefore: result?.eloBefore ?? null,
         eloAfter: result?.eloAfter ?? null,
       };
     });
 
-    const rankings: RankedScore[] = game.results.map((r) => ({
-      ...(r.breakdown as unknown as Omit<RankedScore, 'userId' | 'rank' | 'total'>),
-      userId: r.userId,
-      rank: r.rank,
-      total: Math.round(r.score * 10) / 10,
-    }));
+    const rankings: RankedScore[] = game.results.map((r) => {
+      const saved = r.breakdown as unknown as Omit<RankedScore, 'userId' | 'rank' | 'total'>;
+      return {
+        ...saved,
+        // Games scored before tactics/synergy/objectives existed lack those fields.
+        tacticId: tacticOf(saved),
+        styleMatch: saved.styleMatch ?? { liked: 0, of: 11 },
+        synergies: saved.synergies ?? [],
+        objectives: saved.objectives ?? [],
+        objectiveBonus: saved.objectiveBonus ?? 0,
+        userId: r.userId,
+        rank: r.rank,
+        total: Math.round(r.score * 10) / 10,
+      };
+    });
     const comp = this.catalog.competitionName(game.room.competitionId);
 
     return {
@@ -241,4 +252,10 @@ export class StatsService {
       })),
     };
   }
+}
+
+/** The tactic a saved result was scored with (older games: Balanced). */
+function tacticOf(breakdown: unknown): TacticId {
+  const t = (breakdown as { tacticId?: unknown } | null)?.tacticId;
+  return isTacticId(t) ? t : 'BALANCED';
 }

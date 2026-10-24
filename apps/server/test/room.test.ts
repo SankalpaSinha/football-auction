@@ -132,12 +132,25 @@ describe('disconnect / reconnect', () => {
     expect(h.room.hasMember('u3')).toBe(false);
   });
 
-  it('closes an abandoned game after everyone is gone long enough', () => {
+  it('closes an abandoned game after everyone is gone long enough — scoring it first once squads are complete', () => {
     const h = createHarness({ players: 2 });
     h.room.setConnected('u1', false);
     h.room.setConnected('u2', false);
+    // Absent squads are auto-completed after a minute, so by the abandon deadline we're picking lineups.
     h.clock.advance(testRules().abandonAfterMs);
+    expect(h.closed).toEqual([]);
+    expect(h.room.phase).toBe('FINAL_EVALUATION');
+    h.clock.advance(testRules().evaluationMs + 1_000);
+    expect(h.room.phase).toBe('RESULTS');
     expect(h.closed).toEqual(['everyone left']);
+  });
+
+  it('an abandoned lobby or auction still just closes', () => {
+    const h = createHarness({ players: 2, start: false });
+    h.room.setConnected('u1', false);
+    h.room.setConnected('u2', false);
+    h.clock.advance(testRules().abandonAfterMs);
+    expect(h.closed.length).toBe(1);
   });
 
   it('leaving mid-game keeps the squad (member is just offline)', () => {

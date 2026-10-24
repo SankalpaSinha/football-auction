@@ -186,8 +186,9 @@ function JoinRoom() {
 function HowItWorks() {
   const steps = [
     ['Auction', 'One player at a time, 30 seconds, highest bid wins. Skip what you don’t want.'],
-    ['Budget', 'Same coins for everyone. You must finish with exactly 18 — spend wisely.'],
-    ['Squad', 'Pick a formation and starting XI. Scoring rewards balance, fit and chemistry.'],
+    ['Budget', 'Same coins for everyone. Finish with exactly 18, and no more than 3 stars rated 85+.'],
+    ['Squad', 'Pick a formation, a tactic and your XI. Playstyles that click beat a pile of big names.'],
+    ['Secrets', 'Everyone gets 2 hidden objectives worth bonus points, revealed at the end.'],
   ];
   return (
     <div className="px-1">

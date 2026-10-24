@@ -33,7 +33,7 @@ export function makeCard(id: string, position: Position, overall = 75): PlayerCa
 /** `size` players, the first `gks` of which are goalkeepers (order is shuffled by the room anyway). */
 export function makePool(size: number, gks: number): PlayerCard[] {
   return Array.from({ length: size }, (_, i) =>
-    makeCard(`p${String(i).padStart(3, '0')}`, i < gks ? 'GK' : OUTFIELD[i % OUTFIELD.length], 70 + (i % 20)),
+    makeCard(`p${String(i).padStart(3, '0')}`, i < gks ? 'GK' : OUTFIELD[i % OUTFIELD.length], 70 + (i % 15)),
   );
 }
 

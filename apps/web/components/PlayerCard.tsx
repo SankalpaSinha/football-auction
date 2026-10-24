@@ -1,6 +1,6 @@
 'use client';
 import { useState } from 'react';
-import type { ClubRef, PlayerCard as Card, Tier } from '@fa/shared';
+import { PLAYSTYLES, playstyleOf, type ClubRef, type PlayerCard as Card, type Tier } from '@fa/shared';
 import { faceStats } from '@/lib/format';
 
 const TIER_STYLE: Record<Tier, { bg: string; edge: string; glow: string; text: string; label: string }> = {
@@ -112,7 +112,7 @@ export function PlayerCard({ player, size = 'lg', className = '' }: { player: Ca
 
         <div className="absolute inset-x-0 bottom-[0.7em] flex items-center justify-center gap-[0.5em] text-[0.68em] font-bold uppercase tracking-[0.3em] opacity-70">
           <span className="h-px w-[2em] bg-current opacity-50" />
-          {t.label}
+          <span title={PLAYSTYLES[playstyleOf(player)].blurb}>{PLAYSTYLES[playstyleOf(player)].label}</span>
           <span className="h-px w-[2em] bg-current opacity-50" />
         </div>
       </div>

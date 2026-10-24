@@ -473,6 +473,8 @@ export class Auction {
     };
     for (const p of [fromAfter, toAfter]) {
       if (p.squad.length > this.rules.squadSize) fail('TRADE_INVALID', `${p.username} would have more than ${this.rules.squadSize} players.`);
+      const cap = this.rules.starCap;
+      if (this.starCount(p) > cap.max) fail('TRADE_INVALID', `${p.username} would have more than ${cap.max} players rated ${cap.minOverall}+.`);
       if (p.budget < this.slotsLeft(p) * this.rules.reservePerSlot) {
         fail('TRADE_INVALID', `${p.username} wouldn’t have enough coins left to complete their squad.`);
       }
@@ -500,10 +502,26 @@ export class Auction {
     const lotKeeper =
       this.stage === 'LOT_OPEN' && lot?.player.position === 'GK' && (!topAfter || this.gkShortfall(topAfter) > 0) ? 1 : 0;
     if (shortfall > this.availableGoalkeepers() + lotKeeper + keepersReturning) fail('TRADE_INVALID', 'Not enough goalkeepers would be left for everyone.');
+    // Every squad must stay completable within the star cap. The player on the block
+    // goes to the top bidder, or stays available if nobody has bid.
+    const open = this.stage === 'LOT_OPEN' ? lot : null;
+    const states = [...changed];
+    if (open?.highestBidderId) {
+      const top = states.find((c) => c.userId === open.highestBidderId) ?? this.participants.get(open.highestBidderId)!;
+      const withLot = { ...top, squad: [...top.squad, { player: open.player } as SquadEntry] };
+      const i = states.findIndex((c) => c.userId === top.userId);
+      if (i >= 0) states[i] = withLot;
+      else states.push(withLot);
+    }
+    if (this.completable(states, undefined, open && !open.highestBidderId ? open.player : undefined) !== 'OK') {
+      fail('TRADE_INVALID', 'That would leave a squad that can’t be completed within the rules.');
+    }
     if (this.stage === 'LOT_OPEN' && lot?.highestBidderId && lot.currentBid !== null) {
       const top = changed.find((c) => c.userId === lot.highestBidderId);
       if (top) {
-        const fits = this.slotsLeft(top) > 0 && !(lot.player.position !== 'GK' && this.gkShortfall(top) >= this.slotsLeft(top));
+        const starBlocked = lot.player.overall >= this.rules.starCap.minOverall && this.starCount(top) >= this.rules.starCap.max;
+        const fits =
+          this.slotsLeft(top) > 0 && !starBlocked && !(lot.player.position !== 'GK' && this.gkShortfall(top) >= this.slotsLeft(top));
         if (!fits || this.maxBid(top) < lot.currentBid) {
           fail('TRADE_INVALID', `${top.username} holds the top bid and couldn’t take that player afterwards.`);
         }
@@ -738,6 +756,10 @@ export class Auction {
     return this.rules.squadSize - p.squad.length;
   }
 
+  private starCount(p: Participant) {
+    return p.squad.filter((s) => s.player.overall >= this.rules.starCap.minOverall).length;
+  }
+
   private gkCount(p: Participant) {
     return p.squad.filter((s) => s.player.position === 'GK').length;
   }
@@ -754,6 +776,10 @@ export class Auction {
   private assertCanAcquire(p: Participant, player: PlayerCard) {
     const slots = this.slotsLeft(p);
     if (slots <= 0) fail('SQUAD_FULL');
+    const cap = this.rules.starCap;
+    if (player.overall >= cap.minOverall && this.starCount(p) >= cap.max) {
+      fail('STAR_LIMIT', `You already have ${cap.max} players rated ${cap.minOverall}+ — that’s the limit.`);
+    }
     const shortfall = this.gkShortfall(p);
     const isGk = player.position === 'GK';
     if (!isGk && shortfall > 0 && slots <= shortfall) fail('NEED_GOALKEEPER');
@@ -765,6 +791,47 @@ export class Auction {
       }
       if (this.availableGoalkeepers() < othersNeeding) fail('GOALKEEPER_LIMIT');
     }
+    // Taking this player must leave every squad completable within the star cap.
+    const after: Participant = { ...p, squad: [...p.squad, { player } as SquadEntry] };
+    const verdict = this.completable([after], player.id);
+    if (verdict !== 'OK') fail(verdict);
+  }
+
+  /**
+   * Count-based check that every squad that still needs players can be completed
+   * legally (star cap + keepers) from what's left in the pool. `changed` replaces
+   * those managers' squads; `excludeId` is taken out of the pool, `extra` added.
+   */
+  private completable(changed: Participant[], excludeId?: string, extra?: PlayerCard): 'OK' | 'GOALKEEPER_LIMIT' | 'POOL_RESERVED' {
+    const { minOverall, max } = this.rules.starCap;
+    const pool = { total: 0, nonStar: 0, gk: 0, nonStarGk: 0 };
+    const add = (c: PlayerCard) => {
+      const star = c.overall >= minOverall;
+      pool.total++;
+      if (!star) pool.nonStar++;
+      if (c.position === 'GK') {
+        pool.gk++;
+        if (!star) pool.nonStarGk++;
+      }
+    };
+    for (const list of [this.queue, this.unsold, this.leftover]) for (const c of list) if (c.id !== excludeId) add(c);
+    if (extra) add(extra);
+    const need = { total: 0, nonStar: 0, gk: 0, nonStarGk: 0 };
+    for (const original of this.participants.values()) {
+      const p = changed.find((c) => c.userId === original.userId) ?? original;
+      const slots = this.slotsLeft(p);
+      if (slots <= 0) continue;
+      const starRoom = Math.max(0, max - this.starCount(p));
+      const gk = Math.min(slots, this.gkShortfall(p));
+      need.total += slots;
+      need.nonStar += Math.max(0, slots - starRoom);
+      need.gk += gk;
+      // Managers at the star cap can only take a keeper rated below it.
+      if (starRoom === 0) need.nonStarGk += gk;
+    }
+    if (need.gk > pool.gk || need.nonStarGk > pool.nonStarGk) return 'GOALKEEPER_LIMIT';
+    if (need.total > pool.total || need.nonStar > pool.nonStar) return 'POOL_RESERVED';
+    return 'OK';
   }
 
   /** Goalkeepers still obtainable after the current lot. */
@@ -1101,8 +1168,12 @@ export class Auction {
     const now = this.clock.now();
     const budget = this.opts.participants[0]?.startingBudget ?? 1000;
 
-    const take = (wantGk: boolean) => {
-      let idx = remaining.findIndex((c) => (c.position === 'GK') === wantGk);
+    const take = (wantGk: boolean, p: Participant) => {
+      const capped = this.starCount(p) >= this.rules.starCap.max;
+      const allowed = (c: PlayerCard) => !capped || c.overall < this.rules.starCap.minOverall;
+      let idx = remaining.findIndex((c) => (c.position === 'GK') === wantGk && allowed(c));
+      if (idx < 0) idx = remaining.findIndex((c) => (c.position === 'GK') === wantGk);
+      if (idx < 0) idx = remaining.findIndex(allowed);
       if (idx < 0) idx = 0;
       const player = remaining.splice(idx, 1)[0];
       if (!player) throw new Error('Auction pool exhausted — pool size validation failed');
@@ -1133,10 +1204,10 @@ export class Auction {
 
     // Keepers first for everyone who lacks one, then outfielders.
     for (const p of this.participants.values()) {
-      while (this.gkShortfall(p) > 0 && this.slotsLeft(p) > 0) assign(p, take(true));
+      while (this.gkShortfall(p) > 0 && this.slotsLeft(p) > 0) assign(p, take(true, p));
     }
     for (const p of this.participants.values()) {
-      while (this.slotsLeft(p) > 0) assign(p, take(false));
+      while (this.slotsLeft(p) > 0) assign(p, take(false, p));
     }
   }
 

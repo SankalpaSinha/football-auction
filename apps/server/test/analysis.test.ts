@@ -98,7 +98,7 @@ describe('AI commentary (optional)', () => {
 describe('report wording', () => {
   it('keeps player names capitalised mid-sentence', async () => {
     const { buildMatchReport } = await import('@fa/shared');
-    const base = { breakdown: { quality: 70, positionFit: 80, tactics: 80, chemistry: 60, balance: 90, depth: 60, efficiency: 90 }, lines: { gk: 80, def: 80, mid: 80, att: 80 }, tactics: [], links: [], bestPlayerId: null, bestBuy: null, worstBuy: null, spent: 100 };
+    const base = { breakdown: { quality: 70, positionFit: 80, tactics: 80, synergy: 50, chemistry: 60, balance: 90, depth: 60, efficiency: 90 }, lines: { gk: 80, def: 80, mid: 80, att: 80 }, tactics: [], tacticId: 'BALANCED' as const, styleMatch: { liked: 0, of: 11 }, synergies: [], objectives: [], objectiveBonus: 0, links: [], bestPlayerId: null, bestBuy: null, worstBuy: null, spent: 100 };
     const report = buildMatchReport(
       [
         { ...base, userId: 'a', rank: 1, total: 80, notes: [{ kind: 'weakness', text: 'Baleba is out of position at ST' }] },

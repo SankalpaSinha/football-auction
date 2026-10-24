@@ -248,7 +248,7 @@ describe('inactivity edge cases', () => {
     expect(h.room.memberIds()).toEqual(['u1', 'u2']);
     completeAuction(h);
     expect(h.room.phase).toBe('SQUAD_BUILDING');
-    h.clock.advance(180_000 + 10_000);
+    h.clock.advance(600_000 + 10_000);
     const changes = h.room.view().results!.ratingChanges!;
     expect(changes.map((c) => c.userId).sort()).toEqual(['u1', 'u2', 'u3']);
     expect(changes.find((c) => c.userId === 'u3')!.delta).toBeLessThan(0);

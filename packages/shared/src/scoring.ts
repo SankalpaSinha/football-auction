@@ -1,4 +1,6 @@
-import { positionFit } from './fit';
+import { positionFit, type FitLevel } from './fit';
+import { isObjectiveId, OBJECTIVES, type ObjectiveId } from './objectives';
+import { COMBOS, DEFAULT_TACTIC, isTacticId, playstyleOf, TACTICS, type ComboId, type PlaystyleId, type Tactic, type TacticId } from './playstyles';
 import { getFormation, FORMATIONS, type Formation } from './formations';
 import type { LineupInput } from './lineup';
 import { POSITION_GROUP, type Position, type PositionGroup } from './positions';
@@ -13,14 +15,37 @@ type Attr = keyof OutfieldStats;
 
 export const SCORING_CONFIG = {
   weights: {
-    quality: 0.35,
-    positionFit: 0.2,
+    quality: 0.3,
+    positionFit: 0.15,
     tactics: 0.15,
+    synergy: 0.12,
     chemistry: 0.1,
-    balance: 0.1,
+    balance: 0.08,
     depth: 0.05,
     efficiency: 0.05,
   },
+  /** Ratings above `above` count only `factor` per point — stacking superstars has diminishing returns. */
+  starSoftening: { above: 83, factor: 0.5 },
+  tacticFit: {
+    /** Share from the tactic's attribute demands vs from starters whose playstyle suits it. */
+    demandShare: 0.6,
+    /** Share of the XI playing a liked playstyle that earns full marks. */
+    styleTarget: 0.55,
+    /** Style score for the Balanced tactic (it likes no playstyle in particular). */
+    balancedStyle: 70,
+    /** Demand score when the formation has nobody in the positions a tactic relies on. */
+    missingDemand: 35,
+  },
+  synergy: {
+    /** Combo points (after the quality factor) that make a perfect 100. */
+    target: 15,
+    /** A combo's pair averaging this OVR or less gets `minStrength`; `full` or more gets 100%. */
+    floor: 65,
+    full: 80,
+    minStrength: 0.3,
+  },
+  /** Bonus points per completed secret objective (added on top of the weighted total). */
+  objectivePoints: 3,
   /** Maps an average role rating to 0–100: `base` at `anchor`, `slope` points per rating point. */
   ratingScale: { anchor: 70, base: 40, slope: 3 },
   /** How much the overall rating (vs the role-specific attribute mix) counts, by fit. */
@@ -43,15 +68,6 @@ export const SCORING_CONFIG = {
     ST: { shooting: 0.45, pace: 0.2, dribbling: 0.15, physical: 0.15, passing: 0.05 },
   } as Record<Position, Partial<Record<Attr, number>>>,
   goalkeeperProfile: { diving: 0.25, handling: 0.2, reflexes: 0.25, positioning: 0.2, kicking: 0.07, speed: 0.03 },
-  /** Tactical demands: average attribute target for groups of slots. */
-  tactics: {
-    defence: { roles: ['CB', 'LB', 'RB', 'LWB', 'RWB'], attr: 'defending', target: 84, label: 'Defensive solidity' },
-    width: { roles: ['LB', 'RB', 'LWB', 'RWB', 'LM', 'RM', 'LW', 'RW'], attr: 'pace', target: 86, label: 'Pace out wide' },
-    control: { roles: ['CDM', 'CM', 'CAM'], attr: 'passing', target: 85, label: 'Midfield control' },
-    shield: { roles: ['CDM'], fallbackRoles: ['CM'], attr: 'defending', target: 80, label: 'Protection in front of the defence' },
-    threat: { roles: ['ST', 'CF', 'LW', 'RW'], attr: 'shooting', target: 85, label: 'Attacking threat' },
-    creativity: { roles: ['CAM', 'CM', 'LW', 'RW', 'LM', 'RM'], attr: 'dribbling', target: 85, label: 'Creativity' },
-  } as Record<string, { roles: Position[]; fallbackRoles?: Position[]; attr: Attr; target: number; label: string }>,
   chemistry: {
     sameClub: 2,
     sameNation: 1,
@@ -83,11 +99,35 @@ export interface ChemistryLink {
   strength: 'STRONG' | 'MEDIUM' | 'WEAK';
 }
 
+export interface ScoreContext {
+  tactic?: TacticId;
+  /** The manager's secret objectives. */
+  objectives?: ObjectiveId[];
+  startingBudget?: number;
+  /** Coins left at the end of the auction (for budget objectives). */
+  budgetLeft?: number;
+}
+
+export interface SynergyHit {
+  key: ComboId;
+  label: string;
+  players: [string, string];
+  points: number;
+}
+
 export interface SquadScore {
+  /** Weighted components + objective bonus. */
   total: number;
   breakdown: Record<ScoreComponent, number>;
   lines: { gk: number; def: number; mid: number; att: number };
+  tacticId: TacticId;
+  /** The chosen tactic's demands and how well the XI meets them. */
   tactics: { key: string; label: string; score: number; value: number; target: number }[];
+  /** Starters playing a playstyle the tactic is built around. */
+  styleMatch: { liked: number; of: number };
+  synergies: SynergyHit[];
+  objectives: { id: ObjectiveId; done: boolean }[];
+  objectiveBonus: number;
   links: ChemistryLink[];
   notes: { kind: 'strength' | 'weakness'; text: string }[];
   bestPlayerId: string | null;
@@ -109,6 +149,15 @@ function attr(p: PlayerCard, a: Attr): number {
   // Goalkeepers playing outfield have no outfield stats — treat them as very poor.
   return p.outfield ? p.outfield[a] : 20;
 }
+
+/** Above the threshold each rating point is worth less (diminishing returns on stars). */
+export function softenRating(r: number) {
+  const { above, factor } = SCORING_CONFIG.starSoftening;
+  return r <= above ? r : above + (r - above) * factor;
+}
+
+/** A starter only brings their playstyle to the team when playing somewhere they can. */
+const PLAYS_STYLE: FitLevel[] = ['NATURAL', 'SECONDARY', 'COMPATIBLE'];
 
 /** How good a player is in a specific role (0–99), before position-fit penalties. */
 export function roleRating(p: PlayerCard, role: Position): number {
@@ -183,7 +232,7 @@ export function chemistryLinks(lineup: LineupInput, byId: Map<string, PlayerCard
  * Score one manager's squad. `squad` is every acquisition (18 by default) (prices included);
  * `lineup` must be complete (11 slots).
  */
-export function scoreSquad(squad: SquadEntry[], lineup: LineupInput): SquadScore {
+export function scoreSquad(squad: SquadEntry[], lineup: LineupInput, ctx: ScoreContext = {}): SquadScore {
   const f = getFormation(lineup.formationId);
   if (!f) throw new Error(`Unknown formation ${lineup.formationId}`);
   const cfg = SCORING_CONFIG;
@@ -193,9 +242,12 @@ export function scoreSquad(squad: SquadEntry[], lineup: LineupInput): SquadScore
   const benchPlayers = squad.map((e) => e.player).filter((p) => !lineup.slots.includes(p.id));
   const notes: SquadScore['notes'] = [];
 
-  // --- quality: role-specific rating of each starter (empty slots count as 0)
+  const tacticId: TacticId = isTacticId(ctx.tactic) ? ctx.tactic : isTacticId(lineup.tactic) ? lineup.tactic : DEFAULT_TACTIC;
+  const tactic: Tactic = TACTICS[tacticId];
+
+  // --- quality: role-specific rating of each starter (empty slots count as 0), stars softened
   const ratings = starters.map((s) => (s.player ? roleRating(s.player, s.slot.role) : 0));
-  const quality = scaleRating(avg(ratings));
+  const quality = scaleRating(avg(ratings.map(softenRating)));
 
   // --- position fit
   const fits = starters.map((s) => (s.player ? positionFit(s.player, s.slot.role) : { level: 'EXTREME' as const, factor: 0 }));
@@ -206,17 +258,51 @@ export function scoreSquad(squad: SquadEntry[], lineup: LineupInput): SquadScore
     }
   });
 
-  // --- tactics: formation demands
+  // Playstyles the XI actually brings (players out of position don't play their style).
+  const styled = starters.map((s, i) =>
+    s.player && PLAYS_STYLE.includes(fits[i].level) ? { slot: s.slot, player: s.player, style: playstyleOf(s.player) } : null,
+  );
+
+  // --- tactics: the chosen tactic's attribute demands + how many starters suit it
+  const tf = cfg.tacticFit;
   const tactics: SquadScore['tactics'] = [];
-  for (const [key, t] of Object.entries(cfg.tactics)) {
-    let group = filled.filter((s) => t.roles.includes(s.slot.role));
-    if (!group.length && t.fallbackRoles) group = filled.filter((s) => t.fallbackRoles!.includes(s.slot.role));
-    if (!group.length) continue;
-    const value = avg(group.map((s) => attr(s.player, t.attr)));
-    const ratio = Math.min(1, value / t.target);
-    tactics.push({ key, label: t.label, value: round1(value), target: t.target, score: round1(100 * ratio * ratio) });
+  tactic.demands.forEach((d, i) => {
+    const group = filled.filter((s) => d.roles.includes(s.slot.role));
+    if (!group.length) {
+      // Balanced adapts to any shape; a specific tactic without its key positions doesn't work.
+      if (tacticId === 'BALANCED') return;
+      tactics.push({ key: `d${i}`, label: d.label, value: 0, target: d.target, score: tf.missingDemand });
+      notes.push({ kind: 'weakness', text: `${tactic.label} needs players for “${d.label.toLowerCase()}” — this formation has none` });
+      return;
+    }
+    const value = avg(group.map((s) => attr(s.player, d.attr)));
+    const ratio = Math.min(1, value / d.target);
+    tactics.push({ key: `d${i}`, label: d.label, value: round1(value), target: d.target, score: round1(100 * ratio * ratio) });
+  });
+  const likes = tactic.likes;
+  const liked = styled.filter((x) => x && likes.includes(x.style)).length;
+  const styleScore = tacticId === 'BALANCED' ? tf.balancedStyle : clamp((100 * liked) / f.slots.length / tf.styleTarget);
+  const tacticsScore = clamp(tf.demandShare * avg(tactics.map((t) => t.score)) + (1 - tf.demandShare) * styleScore);
+
+  // --- synergy: playstyles that work together (best pair per combo, weighted by the pair's quality)
+  const sc = cfg.synergy;
+  const synergies: SynergyHit[] = [];
+  for (const [key, combo] of Object.entries(COMBOS) as [ComboId, (typeof COMBOS)[ComboId]][]) {
+    let best: { pts: number; a: string; b: string } | null = null;
+    for (const x of styled) {
+      if (!x || !(combo.a as readonly PlaystyleId[]).includes(x.style)) continue;
+      for (const y of styled) {
+        if (!y || y === x || !(combo.b as readonly PlaystyleId[]).includes(y.style)) continue;
+        if ('sameSide' in combo && combo.sameSide && !sameFlank(x.slot.x, y.slot.x)) continue;
+        const pairOvr = (x.player.overall + y.player.overall) / 2;
+        const strength = Math.max(sc.minStrength, Math.min(1, (pairOvr - sc.floor) / (sc.full - sc.floor)));
+        const pts = combo.points * strength;
+        if (!best || pts > best.pts) best = { pts, a: x.player.id, b: y.player.id };
+      }
+    }
+    if (best) synergies.push({ key, label: combo.label, players: [best.a, best.b], points: round1(best.pts) });
   }
-  const tacticsScore = avg(tactics.map((t) => t.score));
+  const synergy = clamp((100 * synergies.reduce((t, h) => t + h.points, 0)) / sc.target);
 
   // --- chemistry
   const links = chemistryLinks(lineup, byId);
@@ -260,30 +346,48 @@ export function scoreSquad(squad: SquadEntry[], lineup: LineupInput): SquadScore
     quality: round1(quality),
     positionFit: round1(positionFitScore),
     tactics: round1(tacticsScore),
+    synergy: round1(synergy),
     chemistry: round1(chemistry),
     balance: round1(balance),
     depth: round1(depth),
     efficiency: round1(efficiency),
   };
+  // --- secret objectives (bonus points on top)
+  const objectiveIds = (ctx.objectives ?? []).filter(isObjectiveId);
+  const objectives = objectiveIds.map((id) => ({
+    id,
+    done: objectiveDone(id, { starters: filled, fits, styled, squad, synergies, tacticsScore, ctx }),
+  }));
+  const objectiveBonus = objectives.filter((o) => o.done).length * cfg.objectivePoints;
+
   const total = round1(
-    (Object.keys(cfg.weights) as ScoreComponent[]).reduce((s, k) => s + cfg.weights[k] * breakdown[k], 0),
+    (Object.keys(cfg.weights) as ScoreComponent[]).reduce((s, k) => s + cfg.weights[k] * breakdown[k], 0) + objectiveBonus,
   );
 
   for (const t of tactics) {
+    if (t.value === 0) continue;
     if (t.score < cfg.notes.weak) notes.push({ kind: 'weakness', text: `${t.label} is lacking (${t.value} vs ${t.target} needed)` });
     else if (t.value >= t.target + 3) notes.push({ kind: 'strength', text: `${t.label}: excellent (${t.value})` });
   }
+  if (tacticId !== 'BALANCED') {
+    if (liked >= 6) notes.push({ kind: 'strength', text: `${liked} starters are made for ${tactic.label}` });
+    else if (liked <= 2) notes.push({ kind: 'weakness', text: `Only ${liked} starter${liked === 1 ? '' : 's'} suit${liked === 1 ? 's' : ''} ${tactic.label}` });
+  }
+  const topCombo = [...synergies].sort((a, b) => b.points - a.points)[0];
+  if (synergies.length >= 3 && topCombo) notes.push({ kind: 'strength', text: `${synergies.length} synergy combos, led by ${topCombo.label.toLowerCase()}` });
+  else if (synergies.length === 0) notes.push({ kind: 'weakness', text: 'No synergy combos — the XI doesn’t play as a unit' });
   const labels: Record<ScoreComponent, string> = {
     quality: 'Player quality',
     positionFit: 'Everyone in position',
     tactics: 'Tactical fit',
+    synergy: 'Synergy',
     chemistry: 'Chemistry',
     balance: 'Squad balance',
     depth: 'Bench depth',
     efficiency: 'Smart spending',
   };
   for (const k of Object.keys(breakdown) as ScoreComponent[]) {
-    if (breakdown[k] >= cfg.notes.strong && !['positionFit', 'tactics', 'balance', 'efficiency'].includes(k)) notes.push({ kind: 'strength', text: `${labels[k]} (${breakdown[k]})` });
+    if (breakdown[k] >= cfg.notes.strong && !['positionFit', 'tactics', 'synergy', 'balance', 'efficiency'].includes(k)) notes.push({ kind: 'strength', text: `${labels[k]} (${breakdown[k]})` });
   }
 
   let bestPlayerId: string | null = null;
@@ -305,7 +409,12 @@ export function scoreSquad(squad: SquadEntry[], lineup: LineupInput): SquadScore
     total,
     breakdown,
     lines,
+    tacticId,
     tactics,
+    styleMatch: { liked, of: f.slots.length },
+    synergies,
+    objectives,
+    objectiveBonus,
     links,
     notes,
     bestPlayerId,
@@ -314,6 +423,58 @@ export function scoreSquad(squad: SquadEntry[], lineup: LineupInput): SquadScore
     spent,
   };
 }
+
+const sameFlank = (x1: number, x2: number) => (x1 <= 50 && x2 <= 50) || (x1 >= 50 && x2 >= 50);
+
+function objectiveDone(
+  id: ObjectiveId,
+  d: {
+    starters: { slot: { role: Position }; player: PlayerCard }[];
+    fits: { level: FitLevel }[];
+    styled: ({ style: PlaystyleId } | null)[];
+    squad: SquadEntry[];
+    synergies: SynergyHit[];
+    tacticsScore: number;
+    ctx: ScoreContext;
+  },
+): boolean {
+  const xi = d.starters.map((s) => s.player);
+  const most = (key: (p: PlayerCard) => string) => {
+    const c = new Map<string, number>();
+    for (const p of xi) c.set(key(p), (c.get(key(p)) ?? 0) + 1);
+    return Math.max(0, ...c.values());
+  };
+  switch (id) {
+    case 'CLUB_TRIO':
+      return most((p) => p.club.id) >= 3;
+    case 'NATION_FOUR':
+      return most((p) => p.nation.code) >= 4;
+    case 'YOUTH':
+      return xi.length === 11 && avg(xi.map((p) => p.age)) <= 25;
+    case 'VETERANS':
+      return xi.filter((p) => p.age >= 31).length >= 3;
+    case 'FRUGAL':
+      return d.ctx.startingBudget !== undefined && d.ctx.budgetLeft !== undefined && d.ctx.budgetLeft >= 0.25 * d.ctx.startingBudget;
+    case 'BARGAINS':
+      return d.squad.filter((e) => e.via === 'AUCTION' && e.price < 0.5 * e.estimatedValue).length >= 3;
+    case 'NO_SUPERSTARS':
+      return xi.length === 11 && xi.every((p) => p.overall < 86);
+    case 'ALL_IN_POSITION':
+      return d.fits.length === 11 && d.fits.every((x) => x.level === 'NATURAL' || x.level === 'SECONDARY');
+    case 'COMBOS':
+      return d.synergies.length >= 3;
+    case 'TACTIC_FIT':
+      // Same rounding as the displayed value.
+      return round1(d.tacticsScore) >= 85;
+    case 'LEFT_FOOTERS':
+      return xi.filter((p) => p.preferredFoot === 'Left').length >= 3;
+    case 'VARIETY':
+      return new Set(xi.map((p) => playstyleOf(p))).size >= 8;
+  }
+}
+
+/** Objective label lookup (for UIs). */
+export const objectiveText = (id: ObjectiveId) => OBJECTIVES[id].text;
 
 export interface RankedScore extends SquadScore {
   userId: string;

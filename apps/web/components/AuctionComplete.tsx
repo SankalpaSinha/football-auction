@@ -1,7 +1,7 @@
 'use client';
 import { motion } from 'motion/react';
 import { ChatButton } from './ChatPanel';
-import { summarizeLineup, type PlayerCard, type RoomView } from '@fa/shared';
+import { summarizeLineup, TACTICS, type PlayerCard, type RoomView } from '@fa/shared';
 import { coins } from '@/lib/format';
 import { PlayerAvatar } from './PlayerAvatar';
 import { EvaluatingBanner } from './Results';
@@ -66,6 +66,7 @@ export function AuctionComplete({ room, me, onLeave }: { room: RoomView; me: str
                 {lineup && (
                   <div className="text-right">
                     <div className="display text-2xl font-extrabold leading-none">{lineup.formationId}</div>
+                    <div className="text-[10px] font-semibold uppercase tracking-wider text-muted">{TACTICS[lineup.tactic]?.label ?? 'Balanced'}</div>
                     {lineup.auto && <div className="text-[10px] uppercase tracking-wider text-amber-200">auto-completed</div>}
                   </div>
                 )}

@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { TACTIC_IDS, type TacticId } from './playstyles';
 import { GAME_RULES } from './rules';
 import type { ChatMessage, GameEvent, PlayerCard, RoomView } from './types';
 
@@ -76,6 +77,7 @@ export const pickSchema = z.object({ playerId: z.string().min(1).max(120) });
 export const lineupSchema = z.object({
   formationId: z.string().min(1).max(16),
   slots: z.array(z.string().min(1).max(80).nullable()).max(11),
+  tactic: z.enum(TACTIC_IDS as [TacticId, ...TacticId[]]).optional(),
 });
 
 /** Every client→server action is acknowledged with one of these. */
@@ -163,6 +165,8 @@ export const ERROR_MESSAGES = {
   TRADE_EMPTY: 'A trade needs at least one player.',
   TRADE_PENDING: 'You already have an offer out to that manager.',
   TRADE_INVALID: 'That trade is no longer possible.',
+  POOL_RESERVED: 'Other managers still need the remaining players to complete their squads.',
+  STAR_LIMIT: 'You already have the maximum number of star players.',
   CANT_REFILL: 'You couldn’t afford to fill the empty slot again.',
   // squad building
   INVALID_FORMATION: 'Unknown formation.',

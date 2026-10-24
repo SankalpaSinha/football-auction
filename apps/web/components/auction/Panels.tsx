@@ -1,7 +1,7 @@
 'use client';
 import { useState } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
-import { GROUP_ORDER, POSITION_GROUP, type LotView, type MemberView, type RoomView } from '@fa/shared';
+import { GROUP_ORDER, OBJECTIVES, PLAYSTYLES, playstyleOf, POSITION_GROUP, type LotView, type MemberView, type RoomView } from '@fa/shared';
 import { coins, GROUP_LABEL, groupSquad } from '@/lib/format';
 import { emit } from '@/lib/socket';
 import { useGame } from '@/lib/store';
@@ -44,6 +44,12 @@ export function SquadPanel({ room, me }: { room: RoomView; me: MemberView | unde
           <div className="mt-1 text-xs text-muted">
             spent {coins(spent)} · max bid <span className="font-bold text-ink">{coins(me.maxBid)}</span>
           </div>
+          <div className="mt-0.5 text-xs text-muted" title={`At most ${room.rules.starCap.max} players rated ${room.rules.starCap.minOverall}+`}>
+            ⭐ stars{' '}
+            <span className="font-bold text-ink num">
+              {me.squad.filter((e) => e.player.overall >= room.rules.starCap.minOverall).length}/{room.rules.starCap.max}
+            </span>
+          </div>
         </div>
         <div className="text-right">
           <div className="display text-3xl font-extrabold leading-none num">
@@ -67,6 +73,16 @@ export function SquadPanel({ room, me }: { room: RoomView; me: MemberView | unde
           );
         })}
       </div>
+      {room.myObjectives && room.myObjectives.length > 0 && (
+        <div className="mt-3 rounded-lg border border-white/10 bg-white/[.03] px-3 py-2 text-xs" title="Only you can see these. Worth +3 points each.">
+          <div className="mb-0.5 font-bold">🕵️ Secret objectives <span className="font-normal text-dim">· +3 each</span></div>
+          {room.myObjectives.map((id) => (
+            <div key={id} className="text-muted">
+              • {OBJECTIVES[id].text}
+            </div>
+          ))}
+        </div>
+      )}
       {!hasGk && (
         <div className="mt-3 rounded-lg border border-amber/40 bg-amber/10 px-3 py-1.5 text-xs font-semibold text-amber-100">
           ⚠ You still need a goalkeeper
@@ -94,8 +110,9 @@ export function SquadPanel({ room, me }: { room: RoomView; me: MemberView | unde
                     >
                       <div className="flex items-center gap-2">
                         <span className="w-8 text-[11px] font-bold text-muted">{e.player.position}</span>
-                        <span className="min-w-0 flex-1 truncate font-medium">
+                        <span className="min-w-0 flex-1 truncate font-medium" title={PLAYSTYLES[playstyleOf(e.player)].label}>
                           {e.player.shortName}
+                          <span className="ml-1 text-[10px] font-semibold text-dim">{PLAYSTYLES[playstyleOf(e.player)].short}</span>
                           {e.via === 'TRADE' && <span className="ml-1 text-[10px]" title="Got in a trade">🤝</span>}
                         </span>
                         <span className="display w-6 text-right font-bold">{e.player.overall}</span>

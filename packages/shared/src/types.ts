@@ -1,3 +1,5 @@
+import type { ObjectiveId } from './objectives';
+import type { TacticId } from './playstyles';
 import type { Position } from './positions';
 import type { Tier } from './rules';
 import type { ValueVerdict } from './valuation';
@@ -213,6 +215,8 @@ export interface AuctionView {
 
 export interface LineupView {
   formationId: string;
+  /** Team tactic (TacticId). */
+  tactic: TacticId;
   /** Player (PlayerCard) id per formation slot; null = empty. */
   slots: (string | null)[];
   locked: boolean;
@@ -246,7 +250,10 @@ export interface RoomView {
     bidIncrements: number[];
     minPlayers: number;
     inactiveLotsToRemove: number;
+    starCap: { minOverall: number; max: number };
   };
+  /** Your own secret objectives (hidden from everyone else until the results). */
+  myObjectives: ObjectiveId[] | null;
   members: MemberView[];
   /** People watching read-only. */
   spectators: number;

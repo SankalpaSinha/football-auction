@@ -2,7 +2,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { ChatButton } from '../ChatPanel';
 import { AnimatePresence, motion } from 'motion/react';
-import type { RoomView } from '@fa/shared';
+import { PLAYSTYLES, playstyleOf, type RoomView } from '@fa/shared';
 import { useGame } from '@/lib/store';
 import { PlayerCard } from '../PlayerCard';
 import { TiltCard } from '../TiltCard';
@@ -241,6 +241,15 @@ function LotInfo({ room, remaining, totalMs, compact = false }: { room: RoomView
         <div className="mt-0.5 text-sm text-muted">
           {p.nation.flag} {p.nation.name} · {p.age} yrs{compact ? '' : ` · ${p.preferredFoot} foot`}
         </div>
+        <div className="mt-1 text-xs">
+          <span className="font-bold text-cyan">{PLAYSTYLES[playstyleOf(p)].label}</span>
+          {!compact && <span className="text-dim"> · {PLAYSTYLES[playstyleOf(p)].blurb}</span>}
+        </div>
+        {p.overall >= room.rules.starCap.minOverall && (
+          <div className="mt-1 text-xs font-bold text-gold">
+            ⭐ Star player · max {room.rules.starCap.max} per squad
+          </div>
+        )}
         {p.secondaryPositions.length > 0 && <div className="mt-1 text-xs text-dim">Also plays {p.secondaryPositions.join(', ')}</div>}
         {lot.extended && <div className="mt-1 text-xs font-bold text-danger">⏱ Extended — late bid!</div>}
       </div>

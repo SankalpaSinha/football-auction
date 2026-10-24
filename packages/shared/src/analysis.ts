@@ -26,11 +26,15 @@ export const COMPONENT_NAMES: Record<ScoreComponent, string> = {
   quality: 'player quality',
   positionFit: 'position fit',
   tactics: 'tactical fit',
+  synergy: 'synergy',
   chemistry: 'chemistry',
   balance: 'squad balance',
   depth: 'bench depth',
   efficiency: 'budget efficiency',
 };
+
+/** Older saved games have no value for newer components — read those as 0. */
+const comp = (r: RankedScore, k: ScoreComponent) => r.breakdown[k] ?? 0;
 
 const LINE_NAMES = { def: 'defence', mid: 'midfield', att: 'attack', gk: 'goalkeeper' } as const;
 
@@ -55,15 +59,26 @@ export function buildMatchReport(
       margin < 1 ? ` — by a whisker over ${name(second.userId)}` : margin >= 5 ? ' — a commanding victory' : ` ahead of ${name(second.userId)}`;
     // Which weighted component opened the biggest gap between 1st and 2nd?
     const deltas = (Object.keys(w) as ScoreComponent[])
-      .map((k) => ({ k, d: w[k] * (first.breakdown[k] - second.breakdown[k]) }))
+      .map((k) => ({ k, d: w[k] * (comp(first, k) - comp(second, k)) }))
       .sort((a, b) => b.d - a.d);
     const decisive = deltas[0];
     sentences.push(
       `${name(first.userId)} finished ${margin.toFixed(1)} point${margin.toFixed(1) === '1.0' ? '' : 's'} clear of ${name(second.userId)}` +
         (decisive && decisive.d > 0
-          ? `, and the real difference was ${COMPONENT_NAMES[decisive.k]} (${first.breakdown[decisive.k].toFixed(0)} vs ${second.breakdown[decisive.k].toFixed(0)}).`
+          ? `, and the real difference was ${COMPONENT_NAMES[decisive.k]} (${comp(first, decisive.k).toFixed(0)} vs ${comp(second, decisive.k).toFixed(0)}).`
           : '.'),
     );
+    const bonus = (first.objectiveBonus ?? 0) - (second.objectiveBonus ?? 0);
+    if (Math.abs(bonus) >= 3) {
+      const ahead = bonus > 0 ? first : second;
+      const done = (ahead.objectives ?? []).filter((o) => o.done).length;
+      const worth = `${done} secret objective${done === 1 ? '' : 's'} (+${ahead.objectiveBonus})`;
+      sentences.push(
+        ahead === first
+          ? `${name(first.userId)}'s ${worth} helped seal it.`
+          : `${name(second.userId)} completed ${worth}, but it wasn’t enough.`,
+      );
+    }
     const behind = deltas[deltas.length - 1];
     if (behind && behind.d < -0.5) {
       sentences.push(
@@ -127,7 +142,7 @@ export function buildMatchReport(
   if (star) {
     awards.push({ key: 'star', emoji: '⭐', title: 'Best player', userId: star.m.userId, playerId: star.p.id, detail: `${star.p.name} (${star.p.overall} OVR)` });
   }
-  const top = (k: ScoreComponent) => [...rankings].sort((a, b) => b.breakdown[k] - a.breakdown[k] || a.rank - b.rank)[0];
+  const top = (k: ScoreComponent) => [...rankings].sort((a, b) => comp(b, k) - comp(a, k) || a.rank - b.rank)[0];
   const chem = top('chemistry');
   const strongest = chem.links.filter((l) => l.strength === 'STRONG').length;
   awards.push({
@@ -135,25 +150,35 @@ export function buildMatchReport(
     emoji: '🔗',
     title: 'Best chemistry',
     userId: chem.userId,
-    detail: `${chem.breakdown.chemistry.toFixed(0)} chemistry · ${strongest} strong link${strongest === 1 ? '' : 's'}`,
+    detail: `${comp(chem, 'chemistry').toFixed(0)} chemistry · ${strongest} strong link${strongest === 1 ? '' : 's'}`,
   });
+  const sys = [...rankings].sort((a, b) => (b.synergies?.length ?? 0) - (a.synergies?.length ?? 0) || a.rank - b.rank)[0];
+  if (sys.synergies?.length) {
+    awards.push({
+      key: 'synergy',
+      emoji: '⚙️',
+      title: 'Best system',
+      userId: sys.userId,
+      detail: `${sys.synergies.length} synergy combo${sys.synergies.length === 1 ? '' : 's'}`,
+    });
+  }
   const tac = top('tactics');
-  awards.push({ key: 'tactics', emoji: '🧠', title: 'Tactical mastermind', userId: tac.userId, detail: `${tac.breakdown.tactics.toFixed(0)} tactics score` });
+  awards.push({ key: 'tactics', emoji: '🧠', title: 'Tactical mastermind', userId: tac.userId, detail: `${comp(tac, 'tactics').toFixed(0)} tactical fit` });
   const bench = top('depth');
-  awards.push({ key: 'depth', emoji: '🪑', title: 'Deepest bench', userId: bench.userId, detail: `${bench.breakdown.depth.toFixed(0)} depth score` });
+  awards.push({ key: 'depth', emoji: '🪑', title: 'Deepest bench', userId: bench.userId, detail: `${comp(bench, 'depth').toFixed(0)} depth score` });
   const thrift = [...rankings].sort((a, b) => a.spent - b.spent || a.rank - b.rank)[0];
   awards.push({ key: 'thrift', emoji: '🧾', title: 'Most frugal', userId: thrift.userId, detail: `spent only ${thrift.spent}` });
 
   // --- one-line verdict per manager
   const verdicts: Record<string, string> = {};
   for (const r of rankings) {
-    const comps = (Object.keys(w) as ScoreComponent[]).filter((k) => k !== 'efficiency');
-    const best = [...comps].sort((a, b) => r.breakdown[b] - r.breakdown[a])[0];
-    const worst = [...comps].sort((a, b) => r.breakdown[a] - r.breakdown[b])[0];
+    const comps = (Object.keys(w) as ScoreComponent[]).filter((k) => k !== 'efficiency' && r.breakdown[k] !== undefined);
+    const best = [...comps].sort((a, b) => comp(r, b) - comp(r, a))[0];
+    const worst = [...comps].sort((a, b) => comp(r, a) - comp(r, b))[0];
     const weakness = r.notes.find((n) => n.kind === 'weakness');
     verdicts[r.userId] =
-      `Best at ${COMPONENT_NAMES[best]} (${r.breakdown[best].toFixed(0)}); ` +
-      (weakness ? `weak spot: ${lowerFirst(weakness.text)}.` : `weakest area was ${COMPONENT_NAMES[worst]} (${r.breakdown[worst].toFixed(0)}).`) +
+      `Best at ${COMPONENT_NAMES[best]} (${comp(r, best).toFixed(0)}); ` +
+      (weakness ? `weak spot: ${lowerFirst(weakness.text)}.` : `weakest area was ${COMPONENT_NAMES[worst]} (${comp(r, worst).toFixed(0)}).`) +
       (r.bestPlayerId ? ` Star man: ${pname(r.bestPlayerId)}.` : '');
   }
 
@@ -161,5 +186,8 @@ export function buildMatchReport(
 }
 
 /** Lower-case a note's first letter to embed it mid-sentence — unless it starts with a name. */
-const TEMPLATE_STARTS = ['Thin', 'Lopsided', 'Unbalanced', 'Defensive', 'Pace', 'Midfield', 'Protection', 'Attacking', 'Creativity'];
+const TEMPLATE_STARTS = [
+  'Thin', 'Lopsided', 'Unbalanced', 'Defensive', 'Pace', 'Midfield', 'Protection', 'Attacking', 'Creativity',
+  'No', 'Only', 'Passing', 'Close', 'Playing', 'Solid', 'Clinical', 'Stamina', 'Pressing', 'Winning', 'Delivery', 'Presence', 'Physicality',
+];
 const lowerFirst = (s: string) => (TEMPLATE_STARTS.some((w) => s.startsWith(w + ' ')) ? s[0].toLowerCase() + s.slice(1) : s);

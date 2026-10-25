@@ -20,7 +20,7 @@ export const ACHIEVEMENTS: AchievementDef[] = [
   { key: 'first_whistle', emoji: '🎬', title: 'First Whistle', description: 'Finish your first game.', tier: 'bronze' },
   { key: 'champion', emoji: '🏆', title: 'Champion', description: 'Win a game.', tier: 'bronze' },
   { key: 'podium', emoji: '🥉', title: 'On the Podium', description: 'Finish top 3 in a room of 4 or more.', tier: 'bronze' },
-  { key: 'full_house', emoji: '🏟️', title: 'Full House', description: 'Win a 6-manager room.', tier: 'gold' },
+  { key: 'full_house', emoji: '🏟️', title: 'Full House', description: 'Win a room of 6 or more managers.', tier: 'gold' },
   { key: 'giant_killer', emoji: '🗡️', title: 'Giant Killer', description: 'Win a ranked game against someone rated 100+ ELO above you.', tier: 'gold' },
   { key: 'underdog', emoji: '🐺', title: 'Underdog', description: 'Win with the lowest-rated squad in the room.', tier: 'silver' },
   { key: 'shrewd', emoji: '🧮', title: 'Shrewd Operator', description: 'Win while spending half your budget or less.', tier: 'silver' },

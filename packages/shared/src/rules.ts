@@ -46,6 +46,11 @@ export interface GameRules {
   inactiveLotsToRemove: number;
   /** At most `max` real-world superstars (see stars.ts) per squad, so nobody can hoard them. */
   starCap: { max: number };
+  /**
+   * A manager whose app has been in the background this long is treated like a
+   * disconnected one (lots and pause votes stop waiting for them). Shorter absences change nothing.
+   */
+  awayGraceMs: number;
   /** Trade offers lapse after this long. */
   tradeOfferMs: number;
   /** Most players each side can put into one trade. */
@@ -68,7 +73,7 @@ export const GAME_RULES: Readonly<GameRules> = {
   squadSize: 18,
   minGoalkeepers: 1,
   minPlayers: 2,
-  maxPlayers: 6,
+  maxPlayers: 8,
   budgetOptions: [500, 750, 1000, 1500, 2000],
   defaultBudget: 1000,
   lotDurationOptions: [15, 20, 30, 45],
@@ -88,7 +93,8 @@ export const GAME_RULES: Readonly<GameRules> = {
   maxPauseMs: 5 * 60_000,
   pauseRequestCooldownMs: 30_000,
   inactiveLotsToRemove: 3,
-  starCap: { max: 6 },
+  starCap: { max: 5 },
+  awayGraceMs: 20_000,
   tradeOfferMs: 90_000,
   maxTradePlayers: 3,
   squadBuildingMs: 600_000,

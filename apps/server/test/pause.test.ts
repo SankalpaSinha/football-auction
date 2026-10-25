@@ -284,3 +284,32 @@ describe('away (screen locked / app in the background)', () => {
     expect(h.member('u2').away).toBe(false);
   });
 });
+
+describe('long absences', () => {
+  it('after the grace period an away manager no longer holds up lots or pause votes', () => {
+    const h = createHarness({ players: 3 });
+    h.room.setAway('u3', true);
+    // Briefly away: the lot still waits for u3.
+    let n = h.lot().lotNumber;
+    h.room.bid('u1', n, 10);
+    h.room.skip('u2', n);
+    expect(h.room.phase).toBe('AUCTION');
+    h.clock.advance(h.lot().endsAt - h.clock.now());
+    nextLot(h);
+    // Past the grace period: lots close as soon as the present managers are done.
+    h.clock.advance(20_000);
+    nextLot(h);
+    n = h.lot().lotNumber;
+    h.room.bid('u1', n, 10);
+    h.room.skip('u2', n);
+    expect(h.room.phase).toBe('PLAYER_SOLD');
+    nextLot(h);
+    // …and a pause vote doesn't need their answer.
+    h.room.requestPause('u1');
+    h.room.votePause('u2', true);
+    expect(auction(h).hold).not.toBeNull();
+    // Back: they count again (and were never removed).
+    h.room.setAway('u3', false);
+    expect(h.room.memberIds()).toContain('u3');
+  });
+});

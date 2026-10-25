@@ -29,13 +29,14 @@ const isPublic = args.includes('--public');
 const mode = (arg('mode', 'casual')!.toUpperCase() === 'RANKED' ? 'RANKED' : 'CASUAL') as 'RANKED' | 'CASUAL';
 const think: [number, number] = [Number(arg('think-min', join ? '900' : '150')), Number(arg('think-max', join ? '4000' : '600'))];
 
-const NAMES = ['BotKlopp', 'BotPep', 'BotAncelotti', 'BotSimeone', 'BotArteta', 'BotXabi'];
+const NAMES = ['BotKlopp', 'BotPep', 'BotAncelotti', 'BotSimeone', 'BotArteta', 'BotXabi', 'BotZidane', 'BotMourinho'];
 
 async function main() {
   const tag = randomBytes(2).toString('hex');
   const bots = await Promise.all(
     Array.from({ length: count }, async (_, i) => {
-      const name = fixedNames?.[i] ?? `${NAMES[i % NAMES.length]}_${tag}`.slice(0, 16);
+      // Unique even with more bots than names.
+      const name = fixedNames?.[i] ?? `${NAMES[i % NAMES.length].slice(0, 11)}${i >= NAMES.length ? i : ''}_${tag}`.slice(0, 16);
       const bot = new Bot(base, name, { aggression, thinkMs: think });
       await bot.login();
       return bot.connect();

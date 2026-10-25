@@ -1176,9 +1176,13 @@ export class Auction {
     const take = (wantGk: boolean, p: Participant) => {
       const capped = this.starCount(p) >= this.rules.starCap.max;
       const allowed = (c: PlayerCard) => !capped || !isStarPlayer(c);
-      let idx = remaining.findIndex((c) => (c.position === 'GK') === wantGk && allowed(c));
-      if (idx < 0) idx = remaining.findIndex((c) => (c.position === 'GK') === wantGk);
-      if (idx < 0) idx = remaining.findIndex(allowed);
+      const isPos = (c: PlayerCard) => (c.position === 'GK') === wantGk;
+      // A keeper is a must; for outfield slots the star cap matters more than the position.
+      const order = wantGk
+        ? [(c: PlayerCard) => isPos(c) && allowed(c), isPos, allowed]
+        : [(c: PlayerCard) => isPos(c) && allowed(c), allowed, isPos];
+      let idx = -1;
+      for (const test of order) if ((idx = remaining.findIndex(test)) >= 0) break;
       if (idx < 0) idx = 0;
       const player = remaining.splice(idx, 1)[0];
       if (!player) throw new Error('Auction pool exhausted — pool size validation failed');
@@ -1207,11 +1211,14 @@ export class Auction {
       });
     };
 
-    // Keepers first for everyone who lacks one, then outfielders.
-    for (const p of this.participants.values()) {
+    // Managers with the least star room pick first, so the players who aren't stars go to
+    // those who can't take anyone else. Keepers first for everyone who lacks one, then outfielders.
+    const starRoom = (p: Participant) => this.rules.starCap.max - this.starCount(p);
+    const order = [...this.participants.values()].sort((a, b) => starRoom(a) - starRoom(b));
+    for (const p of order) {
       while (this.gkShortfall(p) > 0 && this.slotsLeft(p) > 0) assign(p, take(true, p));
     }
-    for (const p of this.participants.values()) {
+    for (const p of order) {
       while (this.slotsLeft(p) > 0) assign(p, take(false, p));
     }
   }

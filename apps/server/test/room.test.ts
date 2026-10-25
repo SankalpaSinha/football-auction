@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { GameError } from '../src/engine/errors';
-import { createHarness, nextLot, skipAll, testRules } from './helpers';
+import { completeAuction, createHarness, makePool, nextLot, skipAll, testRules } from './helpers';
 
 const code = (fn: () => void) => {
   try {
@@ -192,3 +192,24 @@ describe('disconnect / reconnect', () => {
   });
 });
 
+
+describe('8-manager rooms', () => {
+  it('eight managers play a full auction; a ninth cannot join', () => {
+    expect(testRules().maxPlayers).toBe(8);
+    const h = createHarness({ players: 8, pool: makePool(220, 24), settings: { maxPlayers: 8 } });
+    expect(code(() => h.room.join({ id: 'u9', username: 'user9' }))).toBe('GAME_IN_PROGRESS');
+    completeAuction(h);
+    expect(h.room.phase).toBe('SQUAD_BUILDING');
+    for (const m of h.room.view().members) {
+      expect(m.squad).toHaveLength(18);
+      expect(m.squad.some((e) => e.player.position === 'GK')).toBe(true);
+    }
+    const ids = h.room.view().members.flatMap((m) => m.squad.map((e) => e.player.id));
+    expect(new Set(ids).size).toBe(ids.length);
+  });
+
+  it('a full lobby of 8 refuses a ninth', () => {
+    const h = createHarness({ players: 8, pool: makePool(220, 24), settings: { maxPlayers: 8 }, start: false });
+    expect(code(() => h.room.join({ id: 'u9', username: 'user9' }))).toBe('ROOM_FULL');
+  });
+});

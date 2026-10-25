@@ -71,7 +71,9 @@ async function main() {
     originEnv === '*' ? true : originEnv === '' ? false : originEnv.split(',').map((s) => s.trim());
   const commentator = commentatorFromEnv();
   const trustProxy = Number(env.TRUST_PROXY ?? 0) || 0;
-  const server = createApp({ catalog, users, store, clock: systemClock, rules, corsOrigins: origins, commentator, stats, webHandler, trustProxy });
+  // Optional override for local testing; production keeps the default anti-spam limit.
+  const registrationsPerHour = Number(env.REGISTRATIONS_PER_HOUR) || undefined;
+  const server = createApp({ catalog, users, store, clock: systemClock, rules, corsOrigins: origins, commentator, stats, webHandler, trustProxy, registrationsPerHour });
   const actualPort = await server.listen(port);
 
   const comps = catalog.competitions();

@@ -148,11 +148,12 @@ describe('star cap', () => {
     return makePool(120, 16).map((p, i) => (i >= 16 && i < 16 + stars ? { ...p, overall: 88, tier: tierFor(88), star: true } : p));
   }
 
-  it('a manager can own at most 6 star players', () => {
+  it('a manager can own at most `starCap.max` star players', () => {
+    const cap = GAME_RULES.starCap.max;
     const h = createHarness({ pool: starPool(10), fixedOrder: true });
     const isStar = () => !!h.lot().player.star;
     let bought = 0;
-    for (let guard = 0; guard < 60 && bought < 6; guard++) {
+    for (let guard = 0; guard < 60 && bought < cap; guard++) {
       if (h.room.phase === 'PLAYER_SOLD') {
         nextLot(h);
         continue;
@@ -168,7 +169,7 @@ describe('star cap', () => {
       for (const u of ['u1', 'u2']) if (h.room.phase === 'AUCTION') code(() => h.room.skip(u, h.lot().lotNumber));
       nextLot(h);
     }
-    expect(h.member('u1').squad.filter((e) => e.player.star)).toHaveLength(6);
+    expect(h.member('u1').squad.filter((e) => e.player.star)).toHaveLength(cap);
     expect(code(() => h.room.bid('u1', h.lot().lotNumber, 10))).toBe('STAR_LIMIT');
     expect(code(() => h.room.bid('u2', h.lot().lotNumber, 10))).toBe('OK');
     expect(h.room.view().rules.starCap).toEqual(GAME_RULES.starCap);
@@ -237,26 +238,27 @@ describe('star cap keeps every squad completable', () => {
 
   it('the last keeper under 85 is saved for a manager who can only take that kind', () => {
     const pool = [
-      ...['ST', 'CM', 'CB', 'LW', 'RW', 'CDM'].map((pos, i) => star(makeCard(`s${i}`, pos as Position))),
+      ...(['ST', 'CM', 'CB', 'LW', 'RW', 'CDM', 'CAM', 'LB'] as Position[]).slice(0, GAME_RULES.starCap.max).map((pos, i) => star(makeCard(`s${i}`, pos))),
       makeCard('gk-normal', 'GK', 80),
       star(makeCard('gk-star1', 'GK')),
       star(makeCard('gk-star2', 'GK')),
       ...makePool(60, 0).map((p, i) => ({ ...p, id: `o${i}`, playerId: `o${i}` })),
     ];
     const h = createHarness({ pool, fixedOrder: true });
-    play(h, 6); // u1 now has 6 stars and no keeper
+    play(h, GAME_RULES.starCap.max); // u1 is at the star limit and has no keeper
     expect(h.lot().player.id).toBe('gk-normal');
     expect(code(() => h.room.bid('u2', h.lot().lotNumber, 10))).toBe('GOALKEEPER_LIMIT');
     expect(code(() => h.room.bid('u1', h.lot().lotNumber, 10))).toBe('OK');
   });
 
   it('one manager cannot hoard the non-stars another needs', () => {
-    // 2 managers: 24 non-stars (2 keepers) + 12 stars — exactly enough (each needs 18 − 6 non-stars).
-    const nonStars = [makeCard('gk1', 'GK', 80), ...makePool(22, 0).map((p, i) => ({ ...p, id: `n${i}`, playerId: `n${i}` })), makeCard('gk2', 'GK', 80)];
-    const stars = Array.from({ length: 12 }, (_, i) => star(makeCard(`s${i}`, 'ST')));
+    // 2 managers: exactly enough non-stars (each needs 18 − cap of them, 2 keepers among them) + stars for the rest.
+    const each = 18 - GAME_RULES.starCap.max;
+    const nonStars = [makeCard('gk1', 'GK', 80), ...makePool(2 * each - 2, 0).map((p, i) => ({ ...p, id: `n${i}`, playerId: `n${i}` })), makeCard('gk2', 'GK', 80)];
+    const stars = Array.from({ length: 36 - 2 * each }, (_, i) => star(makeCard(`s${i}`, 'ST')));
     const h = createHarness({ pool: [...nonStars, ...stars], fixedOrder: true });
-    play(h, 12); // u1 takes a keeper + 11 outfielders who aren't stars
-    expect(h.member('u1').squad).toHaveLength(12);
+    play(h, each); // u1 takes a keeper + outfielders who aren't stars
+    expect(h.member('u1').squad).toHaveLength(each);
     expect(code(() => h.room.bid('u1', h.lot().lotNumber, 10))).toBe('POOL_RESERVED');
   });
 
@@ -268,7 +270,7 @@ describe('star cap keeps every squad completable', () => {
       expect(h.room.phase).toBe('SQUAD_BUILDING');
       for (const m of h.room.view().members) {
         expect(m.squad).toHaveLength(18);
-        expect(m.squad.filter((e) => e.player.star).length).toBeLessThanOrEqual(6);
+        expect(m.squad.filter((e) => e.player.star).length).toBeLessThanOrEqual(GAME_RULES.starCap.max);
         expect(m.squad.some((e) => e.player.position === 'GK')).toBe(true);
       }
     });
@@ -283,7 +285,38 @@ describe('star cap keeps every squad completable', () => {
     expect(h.room.phase).toBe('SQUAD_BUILDING');
     for (const m of h.room.view().members) {
       expect(m.squad).toHaveLength(18);
-      expect(m.squad.filter((e) => e.player.star).length).toBeLessThanOrEqual(6);
+      expect(m.squad.filter((e) => e.player.star).length).toBeLessThanOrEqual(GAME_RULES.starCap.max);
+    }
+  });
+});
+
+describe('auto-fill respects the star cap', () => {
+  it('a capped manager gets the non-stars even if they join first or last', () => {
+    for (const capFirst of [true, false]) {
+      const cap = GAME_RULES.starCap.max;
+      const star = (p: PlayerCard): PlayerCard => ({ ...p, overall: 88, tier: tierFor(88), star: true });
+      const stars = Array.from({ length: cap + 2 }, (_, i) => star(makeCard(`s${i}`, 'ST')));
+      const nonStars = [makeCard('gk1', 'GK', 70), makeCard('gk2', 'GK', 70), ...makePool(36 - stars.length - 2, 0).map((p, i) => ({ ...p, id: `n${i}`, playerId: `n${i}` }))];
+      const h = createHarness({ pool: [...stars, ...nonStars], fixedOrder: true });
+      const capped = capFirst ? 'u1' : 'u2';
+      const other = capFirst ? 'u2' : 'u1';
+      for (let i = 0; i < cap; i++) {
+        h.room.bid(capped, h.lot().lotNumber, 10);
+        if (h.room.phase === 'AUCTION') h.room.skip(other, h.lot().lotNumber);
+        nextLot(h);
+      }
+      // Nobody buys anything else: the rest is auto-filled.
+      for (let guard = 0; guard < 200 && h.room.phase !== 'SQUAD_BUILDING'; guard++) {
+        if (h.room.phase === 'PLAYER_SOLD') nextLot(h);
+        else if (h.room.view().auction?.lot) for (const u of ['u1', 'u2']) if (h.room.phase === 'AUCTION') code(() => h.room.skip(u, h.lot().lotNumber));
+        else h.clock.advance(1000);
+      }
+      expect(h.room.phase).toBe('SQUAD_BUILDING');
+      for (const m of h.room.view().members) {
+        expect(m.squad).toHaveLength(18);
+        expect(m.squad.filter((e) => e.player.star).length).toBeLessThanOrEqual(cap);
+        expect(m.squad.some((e) => e.player.position === 'GK')).toBe(true);
+      }
     }
   });
 });

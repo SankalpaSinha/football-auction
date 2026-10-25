@@ -514,5 +514,77 @@
       "#231F20"
     ],
     "ucl": false
+  },
+  {
+    "id": "santos",
+    "name": "Santos",
+    "shortName": "SAN",
+    "league": "brasileirao",
+    "country": "BRA",
+    "colors": [
+      "#FFFFFF",
+      "#000000"
+    ],
+    "ucl": false
+  },
+  {
+    "id": "al-hilal",
+    "name": "Al-Hilal",
+    "shortName": "HIL",
+    "league": "saudi-pro-league",
+    "country": "KSA",
+    "colors": [
+      "#1E4FA1",
+      "#FFFFFF"
+    ],
+    "ucl": false
+  },
+  {
+    "id": "al-ittihad",
+    "name": "Al-Ittihad",
+    "shortName": "ITT",
+    "league": "saudi-pro-league",
+    "country": "KSA",
+    "colors": [
+      "#FFD100",
+      "#000000"
+    ],
+    "ucl": false
+  },
+  {
+    "id": "al-ahli",
+    "name": "Al-Ahli",
+    "shortName": "AHL",
+    "league": "saudi-pro-league",
+    "country": "KSA",
+    "colors": [
+      "#00843D",
+      "#FFFFFF"
+    ],
+    "ucl": false
+  },
+  {
+    "id": "lafc",
+    "name": "Los Angeles FC",
+    "shortName": "LAFC",
+    "league": "mls",
+    "country": "USA",
+    "colors": [
+      "#000000",
+      "#C39E6D"
+    ],
+    "ucl": false
+  },
+  {
+    "id": "vancouver-whitecaps",
+    "name": "Vancouver Whitecaps",
+    "shortName": "VAN",
+    "league": "mls",
+    "country": "CAN",
+    "colors": [
+      "#002D62",
+      "#9DC2EA"
+    ],
+    "ucl": false
   }
 ]

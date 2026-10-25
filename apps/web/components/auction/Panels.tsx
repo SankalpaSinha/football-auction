@@ -155,7 +155,7 @@ export function ObjectivesNote({ room, className = '' }: { room: RoomView; class
   return (
     <div className={`rounded-lg border border-white/10 bg-white/[.03] px-3 py-2 text-xs ${className}`} title="Only you can see these. Worth +3 points each.">
       <div className="mb-0.5 font-bold">
-        🕵️ Secret objectives <span className="font-normal text-dim">· +3 each · only you can see these</span>
+        🕵️ Secret objectives <span className="font-normal text-dim">· +3 each · just yours</span>
       </div>
       {room.myObjectives.map((id) => (
         <div key={id} className="text-muted">

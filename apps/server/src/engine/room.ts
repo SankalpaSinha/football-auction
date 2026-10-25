@@ -77,6 +77,8 @@ interface Member {
   disconnectedAt: number | null;
   removalTimer: TimerHandle | null;
   away: boolean;
+  awaySince: number | null;
+  awayTimer: TimerHandle | null;
 }
 
 const LOBBY_PHASES: RoomPhase[] = ['WAITING_FOR_PLAYERS', 'LOBBY'];
@@ -242,6 +244,8 @@ export class Room {
       disconnectedAt: null,
       removalTimer: null,
       away: false,
+      awaySince: null,
+      awayTimer: null,
     });
     if (!this.members.has(this.hostId)) this.hostId = user.id;
     this.pushFeed('JOIN', `${user.username} joined`, user.id);
@@ -266,7 +270,7 @@ export class Room {
     if (!m || m.connected === connected) return;
     const now = this.deps.clock.now();
     m.connected = connected;
-    m.away = false;
+    this.clearAway(m);
     m.disconnectedAt = connected ? null : now;
     m.removalTimer?.cancel();
     m.removalTimer = null;
@@ -321,8 +325,32 @@ export class Room {
   setAway(userId: string, away: boolean) {
     const m = this.members.get(userId);
     if (!m || !m.connected || m.away === away) return;
-    m.away = away;
+    const wasLongAway = this.longAway(m);
+    if (away) {
+      m.away = true;
+      m.awaySince = this.deps.clock.now();
+      m.awayTimer = this.deps.clock.setTimeout(() => {
+        m.awayTimer = null;
+        // Still away: from now on the auction treats them as offline.
+        if (m.away && this.members.get(userId) === m) this.auction?.connectivityChanged();
+        this.changed();
+      }, this.deps.rules.awayGraceMs);
+    } else {
+      this.clearAway(m);
+      if (wasLongAway) this.auction?.connectivityChanged();
+    }
     this.changed();
+  }
+
+  private longAway(m: Member) {
+    return m.away && m.awaySince !== null && this.deps.clock.now() - m.awaySince >= this.deps.rules.awayGraceMs;
+  }
+
+  private clearAway(m: Member) {
+    m.away = false;
+    m.awaySince = null;
+    m.awayTimer?.cancel();
+    m.awayTimer = null;
   }
 
   setReady(userId: string, ready: boolean) {
@@ -434,7 +462,11 @@ export class Room {
       lotDurationMs: this.settings.lotDurationSec * 1000,
       antiSnipe: this.settings.antiSnipe,
       clock: this.deps.clock,
-      isConnected: (id) => this.members.get(id)?.connected ?? false,
+      // Away for longer than the grace period counts as offline for the auction.
+      isConnected: (id) => {
+        const m = this.members.get(id);
+        return !!m && m.connected && !this.longAway(m);
+      },
       isPresent: (id) => {
         const m = this.members.get(id);
         return !!m && m.connected && !m.away;
@@ -756,6 +788,7 @@ export class Room {
 
   private removeMember(m: Member, text: string) {
     m.removalTimer?.cancel();
+    this.clearAway(m);
     this.members.delete(m.userId);
     this.pushFeed('LEAVE', text, m.userId);
     this.persist(() => this.deps.store.memberLeft(this.id, m.userId));
@@ -788,7 +821,10 @@ export class Room {
     this.abandonTimer?.cancel();
     this.squadTimer?.cancel();
     this.evaluationTimer?.cancel();
-    for (const m of this.members.values()) m.removalTimer?.cancel();
+    for (const m of this.members.values()) {
+      m.removalTimer?.cancel();
+      m.awayTimer?.cancel();
+    }
     this.auction?.dispose();
     const gameId = this.gameId;
     this.persist(() => this.deps.store.roomClosed(this.id, status, gameId));

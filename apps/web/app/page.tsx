@@ -81,7 +81,7 @@ function Hero() {
   return (
     <section className="grid min-h-[78dvh] items-center gap-10 lg:grid-cols-[1.15fr_1fr]">
       <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}>
-        <p className="label mb-3 text-volt">Live multiplayer · 2–6 managers</p>
+        <p className="label mb-3 text-volt">Live multiplayer · 2–8 managers</p>
         <h1 className="display text-6xl font-extrabold leading-[0.9] sm:text-7xl lg:text-8xl">
           Bid.
           <br />
@@ -186,7 +186,7 @@ function JoinRoom() {
 function HowItWorks() {
   const steps = [
     ['Auction', 'One player at a time, 30 seconds, highest bid wins. Skip what you don’t want.'],
-    ['Budget', 'Same coins for everyone. Finish with exactly 18, and no more than 3 stars rated 85+.'],
+    ['Budget', 'Same coins for everyone. Finish with exactly 18, with at most 5 star players like Messi or Mbappé.'],
     ['Squad', 'Pick a formation, a tactic and your XI. Playstyles that click beat a pile of big names.'],
     ['Secrets', 'Everyone gets 2 hidden objectives worth bonus points, revealed at the end.'],
   ];

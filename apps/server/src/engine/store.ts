@@ -1,4 +1,4 @@
-import type { EloChange, GameMode, RankedScore, RoomSettings } from '@fa/shared';
+import type { EloChange, FormationSlot, GameMode, RankedScore, RoomSettings } from '@fa/shared';
 import { ELO_CONFIG } from '@fa/shared';
 import type { LotRecord, Participant } from './auction';
 
@@ -39,7 +39,10 @@ export interface GameStore {
     moves: { playerId: string; toUserId: string; price: number }[],
     budgets: { userId: string; budget: number }[],
   ): Promise<void>;
-  lineupsFinalized(gameId: string, lineups: { userId: string; formationId: string; slots: string[] }[]): Promise<void>;
+  lineupsFinalized(
+    gameId: string,
+    lineups: { userId: string; formationId: string; custom?: FormationSlot[] | null; slots: string[] }[],
+  ): Promise<void>;
   gameFinished(
     gameId: string,
     rankings: RankedScore[],

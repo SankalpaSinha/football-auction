@@ -1,4 +1,4 @@
-import { careerAchievements, ELO_CONFIG, FORMATIONS, type EloChange, type GameMode, type RankedScore } from '@fa/shared';
+import { careerAchievements, CUSTOM_FORMATION_ID, ELO_CONFIG, FORMATIONS, type EloChange, type GameMode, type RankedScore } from '@fa/shared';
 import type { GameStore } from '../engine/store';
 import type { Db } from '../lib/db';
 
@@ -18,14 +18,20 @@ export class PrismaGameStore implements GameStore {
         update: { name: f.name, slots: f.slots as object },
       });
     }
+    // Custom formations share one row; each squad keeps its own positions in Squad.customSlots.
+    await this.db.formation.upsert({
+      where: { id: CUSTOM_FORMATION_ID },
+      create: { id: CUSTOM_FORMATION_ID, name: 'Custom', slots: [] },
+      update: { name: 'Custom' },
+    });
   }
 
-  async lineupsFinalized(gameId: string, lineups: { userId: string; formationId: string; slots: string[] }[]) {
+  async lineupsFinalized(gameId: string, lineups: Parameters<GameStore['lineupsFinalized']>[1]) {
     await this.db.$transaction(async (tx) => {
       for (const l of lineups) {
         const squad = await tx.squad.update({
           where: { gameId_userId: { gameId, userId: l.userId } },
-          data: { formationId: l.formationId },
+          data: { formationId: l.formationId, ...(l.custom ? { customSlots: l.custom as object } : {}) },
         });
         await tx.squadPlayer.updateMany({ where: { squadId: squad.id }, data: { role: 'BENCH', slotIndex: null } });
         for (const [slotIndex, playerStatsId] of l.slots.entries()) {

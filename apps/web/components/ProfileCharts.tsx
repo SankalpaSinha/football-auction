@@ -1,6 +1,6 @@
 'use client';
 import { useMemo, useRef, useState } from 'react';
-import type { ProfileView } from '@fa/shared';
+import { CUSTOM_FORMATION_ID, type ProfileView } from '@fa/shared';
 
 const W = 640;
 const H = 200;
@@ -102,7 +102,7 @@ export function FormationBars({ formations }: { formations: ProfileView['formati
     <ul className="space-y-2">
       {formations.map((f) => (
         <li key={f.id} className="grid grid-cols-[72px_1fr_28px] items-center gap-3 text-sm" title={`${f.id}: ${f.count} game${f.count === 1 ? '' : 's'}`}>
-          <span className="display font-bold">{f.id}</span>
+          <span className="display font-bold">{f.id === CUSTOM_FORMATION_ID ? 'Custom' : f.id}</span>
           <span className="h-3 rounded-[4px] bg-white/[.05]">
             <span className="block h-full rounded-[4px] bg-cyan" style={{ width: `${(f.count / max) * 100}%` }} />
           </span>

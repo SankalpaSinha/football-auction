@@ -2,7 +2,7 @@ import { positionFit, type FitLevel } from './fit';
 import { isObjectiveId, OBJECTIVES, type ObjectiveId } from './objectives';
 import { isStarPlayer } from './stars';
 import { COMBOS, DEFAULT_TACTIC, isTacticId, playstyleOf, TACTICS, type ComboId, type PlaystyleId, type Tactic, type TacticId } from './playstyles';
-import { getFormation, FORMATIONS, type Formation } from './formations';
+import { FORMATIONS, resolveFormation, type Formation } from './formations';
 import type { LineupInput } from './lineup';
 import { POSITION_GROUP, type Position, type PositionGroup } from './positions';
 import type { OutfieldStats, PlayerCard, SquadEntry } from './types';
@@ -204,6 +204,8 @@ export function formationLinks(f: Formation): [number, number][] {
     });
   });
   const links = [...pairs].map((k) => k.split('-').map(Number) as [number, number]).sort((a, b) => a[0] - b[0] || a[1] - b[1]);
+  // Custom formations each get their own entry; keep the cache bounded.
+  if (LINK_CACHE.size > 500) LINK_CACHE.clear();
   LINK_CACHE.set(f.id, links);
   return links;
 }
@@ -218,7 +220,7 @@ export function linkPoints(a: PlayerCard, b: PlayerCard): number {
 }
 
 export function chemistryLinks(lineup: LineupInput, byId: Map<string, PlayerCard>): ChemistryLink[] {
-  const f = getFormation(lineup.formationId);
+  const f = resolveFormation(lineup);
   if (!f) return [];
   return formationLinks(f).flatMap(([a, b]) => {
     const pa = lineup.slots[a] ? byId.get(lineup.slots[a]!) : undefined;
@@ -234,7 +236,7 @@ export function chemistryLinks(lineup: LineupInput, byId: Map<string, PlayerCard
  * `lineup` must be complete (11 slots).
  */
 export function scoreSquad(squad: SquadEntry[], lineup: LineupInput, ctx: ScoreContext = {}): SquadScore {
-  const f = getFormation(lineup.formationId);
+  const f = resolveFormation(lineup);
   if (!f) throw new Error(`Unknown formation ${lineup.formationId}`);
   const cfg = SCORING_CONFIG;
   const byId = new Map(squad.map((e) => [e.player.id, e.player]));

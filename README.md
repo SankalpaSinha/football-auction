@@ -163,6 +163,7 @@ Ties are broken by quality, then position fit, then fewer coins spent. The tests
 ### Squad builder (Phase 3)
 
 - 16 formations in `packages/shared/src/formations.ts` (4-3-3, 4-4-2, 4-2-3-1, 3-5-2, 3-4-3, 4-1-2-1-2, 5-3-2, 4-5-1, 4-1-4-1, 4-3-2-1, 4-4-1-1, 4-2-2-2, 3-4-2-1, 3-4-1-2, 5-4-1, 5-2-3). Each has 11 slots, and slot 0 is the goalkeeper.
+- **Custom formations:** choose ✏️ Custom in the squad builder to design your own, starting from the current shape. Drag a position to move it (its role follows the spot) or tap it to pick the role yourself. The server checks the layout: 11 positions with the keeper first and the only keeper, everyone on the pitch, and no two positions on top of each other. Custom layouts are scored exactly like presets (chemistry links come from the slot geometry) and are saved with the match (`Squad.customSlots`).
 - Position fit table in `packages/shared/src/fit.ts`: natural ×1.0, secondary ×0.9, compatible ×0.7, out of position ×0.3, wrong side of the GK line ×0.05. You can change these values freely.
 - You have 10 minutes to pick a formation, a tactic and your XI (`squadBuildingMs`). Drafts autosave to the server and stay hidden from opponents. Locking in is validated on the server: 11 of your own players, no duplicates, and a goalkeeper in goal. You can unlock until everyone has locked.
 - At the deadline, unfinished lineups are completed by a deterministic best-fit picker that keeps whatever the manager had already placed. All lineups are then revealed together.

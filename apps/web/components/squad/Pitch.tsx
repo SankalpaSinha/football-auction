@@ -1,6 +1,6 @@
 'use client';
 import { motion } from 'motion/react';
-import { chemistryLinks, getFormation, positionFit, type ChemistryLink, type FitLevel, type PlayerCard } from '@fa/shared';
+import { chemistryLinks, positionFit, resolveFormation, type ChemistryLink, type FitLevel, type FormationRef, type FormationSlot, type PlayerCard } from '@fa/shared';
 
 export const LINK_COLOR: Record<ChemistryLink['strength'], string> = {
   STRONG: '#34d399',
@@ -141,10 +141,10 @@ export function SlotChip({
 }
 
 /** Read-only pitch for the reveal screen. */
-export function linksFor(formationId: string, slots: (string | null)[], players: Map<string, PlayerCard>) {
-  const f = getFormation(formationId);
+export function linksFor(ref: FormationRef, slots: (string | null)[], players: Map<string, PlayerCard>) {
+  const f = resolveFormation(ref);
   if (!f) return [];
-  return chemistryLinks({ formationId, slots }, players).map((l) => ({
+  return chemistryLinks({ ...ref, slots }, players).map((l) => ({
     x1: f.slots[l.a].x,
     y1: f.slots[l.a].y,
     x2: f.slots[l.b].x,
@@ -155,19 +155,21 @@ export function linksFor(formationId: string, slots: (string | null)[], players:
 
 export function MiniPitch({
   formationId,
+  custom,
   slots,
   players,
   showLinks = true,
 }: {
   formationId: string;
+  custom?: FormationSlot[] | null;
   slots: (string | null)[];
   players: Map<string, PlayerCard>;
   showLinks?: boolean;
 }) {
-  const formation = getFormation(formationId);
+  const formation = resolveFormation({ formationId, custom });
   if (!formation) return null;
   return (
-    <PitchSurface className="w-full" links={showLinks ? linksFor(formationId, slots, players) : undefined}>
+    <PitchSurface className="w-full" links={showLinks ? linksFor({ formationId, custom }, slots, players) : undefined}>
       {formation.slots.map((s, i) => (
         <div key={i} className="absolute -translate-x-1/2 -translate-y-1/2" style={{ left: `${s.x}%`, top: `${s.y}%` }}>
           <SlotChip player={slots[i] ? (players.get(slots[i]!) ?? null) : null} role={s.role} compact />

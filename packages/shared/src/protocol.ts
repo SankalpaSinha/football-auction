@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { TACTIC_IDS, type TacticId } from './playstyles';
+import { POSITIONS } from './positions';
 import { GAME_RULES } from './rules';
 import type { ChatMessage, GameEvent, PlayerCard, RoomView } from './types';
 
@@ -79,6 +80,12 @@ export const lineupSchema = z.object({
   formationId: z.string().min(1).max(16),
   slots: z.array(z.string().min(1).max(80).nullable()).max(11),
   tactic: z.enum(TACTIC_IDS as [TacticId, ...TacticId[]]).optional(),
+  /** Custom formation (formationId 'custom'): 11 positions, keeper first. Checked again by the engine. */
+  custom: z
+    .array(z.object({ role: z.enum(POSITIONS), x: z.number().min(0).max(100), y: z.number().min(0).max(100) }))
+    .length(11)
+    .nullable()
+    .optional(),
 });
 
 /** Every client→server action is acknowledged with one of these. */

@@ -1,7 +1,7 @@
 'use client';
 import { useEffect, useMemo } from 'react';
 import { motion } from 'motion/react';
-import { GROUP_ORDER, PLAYSTYLES, playstyleOf, POSITION_GROUP, verdictFor, type MemberView, type PlayerCard, type SquadEntry } from '@fa/shared';
+import { GROUP_ORDER, PLAYSTYLES, playstyleOf, POSITION_GROUP, verdictFor, type FormationSlot, type MemberView, type PlayerCard, type SquadEntry } from '@fa/shared';
 import { coins, GROUP_LABEL } from '@/lib/format';
 import { PlayerAvatar } from './PlayerAvatar';
 import { MiniPitch } from './squad/Pitch';
@@ -133,7 +133,7 @@ export interface SquadCardData {
   userId: string;
   username: string;
   squad: SquadEntry[];
-  lineup?: { formationId: string; slots: (string | null)[] } | null;
+  lineup?: { formationId: string; slots: (string | null)[]; custom?: FormationSlot[] | null } | null;
   budgetLeft: number | null;
   rank?: number;
   total?: number;
@@ -166,7 +166,7 @@ export function AllSquads({ managers, me }: { managers: SquadCardData[]; me?: st
             {m.lineup && (
               <div className="mx-auto mb-3 max-w-[260px]">
                 <div className="label mb-1 !text-[10px]">{m.lineup.formationId}</div>
-                <MiniPitch formationId={m.lineup.formationId} slots={m.lineup.slots} players={players} />
+                <MiniPitch formationId={m.lineup.formationId} custom={m.lineup.custom} slots={m.lineup.slots} players={players} />
               </div>
             )}
             <SquadTable squad={m.squad} starters={starters} />

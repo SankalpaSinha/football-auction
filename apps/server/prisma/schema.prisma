@@ -328,6 +328,8 @@ model Squad {
   budgetStart     Int
   budgetRemaining Int
   formationId     String?
+  /// The manager's own positions when formationId is "custom".
+  customSlots     Json?
   game            Game          @relation(fields: [gameId], references: [id])
   user            User          @relation(fields: [userId], references: [id])
   formation       Formation?    @relation(fields: [formationId], references: [id])

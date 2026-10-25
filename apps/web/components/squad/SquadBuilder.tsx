@@ -25,6 +25,13 @@ import {
   type RoomView,
   type ScoreContext,
   type TacticId,
+  CUSTOM_FORMATION_ID,
+  customFormationError,
+  customShape,
+  resolveFormation,
+  roleForSpot,
+  type FormationSlot,
+  type Position,
 } from '@fa/shared';
 import { GROUP_LABEL } from '@/lib/format';
 import { emit } from '@/lib/socket';
@@ -47,6 +54,12 @@ export function SquadBuilder({ room, me }: { room: RoomView; me: string }) {
 
   const [formationId, setFormationId] = useState(mine?.formationId ?? '4-3-3');
   const [tactic, setTactic] = useState<TacticId>(mine?.tactic ?? DEFAULT_TACTIC);
+  const [custom, setCustom] = useState<FormationSlot[] | null>(mine?.custom ?? null);
+  /** Moving positions around (custom formation editor). */
+  const [editing, setEditing] = useState(false);
+  const [rolePicker, setRolePicker] = useState<number | null>(null);
+  const isCustom = formationId === CUSTOM_FORMATION_ID;
+  const fref = useMemo(() => ({ formationId, custom: isCustom ? custom : null }), [formationId, custom, isCustom]);
   const [slots, setSlots] = useState<(string | null)[]>(mine?.slots ?? Array(11).fill(null));
   const [selected, setSelected] = useState<Selection>(null);
   const [picker, setPicker] = useState<number | null>(null);
@@ -54,7 +67,7 @@ export function SquadBuilder({ room, me }: { room: RoomView; me: string }) {
   const viewed = room.members.find((m) => m.userId === viewing);
   const [busy, setBusy] = useState(false);
   const locked = !!mine?.locked;
-  const formation = getFormation(formationId)!;
+  const formation = resolveFormation(fref) ?? getFormation('4-3-3')!;
 
   // Adopt the server's copy on first load and whenever lock state changes (e.g. after refresh).
   const lockedRef = useRef<boolean | null>(null);
@@ -64,6 +77,7 @@ export function SquadBuilder({ room, me }: { room: RoomView; me: string }) {
       setFormationId(mine.formationId);
       setSlots(mine.slots);
       setTactic(mine.tactic ?? DEFAULT_TACTIC);
+      if (mine.custom) setCustom(mine.custom);
     }
     lockedRef.current = mine.locked;
   }, [mine]);
@@ -72,7 +86,7 @@ export function SquadBuilder({ room, me }: { room: RoomView; me: string }) {
   // Unsaved changes are retried after a reconnect and flushed if you navigate away.
   const connection = useGame((s) => s.connection);
   const [unsaved, setUnsaved] = useState(false);
-  const pending = useRef<{ formationId: string; slots: (string | null)[]; tactic: TacticId } | null>(null);
+  const pending = useRef<{ formationId: string; slots: (string | null)[]; tactic: TacticId; custom: FormationSlot[] | null } | null>(null);
   const save = useRef(async () => {
     const draft = pending.current;
     if (!draft) return;
@@ -91,19 +105,20 @@ export function SquadBuilder({ room, me }: { room: RoomView; me: string }) {
       return;
     }
     if (locked) return;
-    pending.current = { formationId, slots, tactic };
+    if (isCustom && customFormationError(custom)) return; // mid-edit: wait for a valid layout
+    pending.current = { formationId, slots, tactic, custom: isCustom ? custom : null };
     const t = setTimeout(() => void save.current(), 400);
     return () => clearTimeout(t);
-  }, [formationId, slots, tactic, locked]);
+  }, [formationId, slots, tactic, custom, isCustom, locked]);
   useEffect(() => {
     if (connection === 'connected' && pending.current) void save.current();
   }, [connection]);
   useEffect(() => () => void save.current(), []);
 
-  const summary = summarizeLineup({ formationId, slots }, squad);
+  const summary = summarizeLineup({ ...fref, slots }, squad);
   const starters = new Set(slots.filter(Boolean) as string[]);
   const bench = squad.filter((p) => !starters.has(p.id));
-  const complete = validateLineup({ formationId, slots }, squad, true);
+  const complete = validateLineup({ ...fref, slots }, squad, true);
   const partial = summary.filled > 0 && summary.filled < 11;
   // Live preview with the same engine the server uses (the server's score is the one that counts).
   const ctx: ScoreContext = useMemo(
@@ -111,17 +126,20 @@ export function SquadBuilder({ room, me }: { room: RoomView; me: string }) {
     [room.myObjectives, room.settings.startingBudget, self?.budget],
   );
   const projected = useMemo(
-    () => (!complete && self ? scoreSquad(self.squad, { formationId, slots, tactic }, ctx) : null),
-    [complete, self, formationId, slots, tactic, ctx],
+    () => (!complete && self ? scoreSquad(self.squad, { ...fref, slots, tactic }, ctx) : null),
+    [complete, self, fref, slots, tactic, ctx],
   );
   /** What each tactic would score with this XI (complete lineups only). */
   const byTactic = useMemo(() => {
     if (complete || !self) return null;
-    return Object.fromEntries(TACTIC_IDS.map((t) => [t, scoreSquad(self.squad, { formationId, slots, tactic: t }, ctx).total])) as Record<TacticId, number>;
-  }, [complete, self, formationId, slots, ctx]);
+    return Object.fromEntries(TACTIC_IDS.map((t) => [t, scoreSquad(self.squad, { ...fref, slots, tactic: t }, ctx).total])) as Record<TacticId, number>;
+  }, [complete, self, fref, slots, ctx]);
   // Partial lineups still get live objective/synergy feedback.
-  const preview = useMemo(() => (self ? scoreSquad(self.squad, { formationId, slots, tactic }, ctx) : null), [self, formationId, slots, tactic, ctx]);
-  const pitchLinks = useMemo(() => linksFor(formationId, slots, byId), [formationId, slots, byId]);
+  const preview = useMemo(
+    () => (self && resolveFormation(fref) ? scoreSquad(self.squad, { ...fref, slots, tactic }, ctx) : null),
+    [self, fref, slots, tactic, ctx],
+  );
+  const pitchLinks = useMemo(() => linksFor(fref, slots, byId), [fref, slots, byId]);
 
   // ------------------------------------------------------------ editing
 
@@ -151,6 +169,15 @@ export function SquadBuilder({ room, me }: { room: RoomView; me: string }) {
 
   function clickSlot(index: number) {
     if (locked) return;
+    if (editing) {
+      // Editing the shape: tap an outfield spot to choose its role (but not right after dragging it).
+      if (suppressClick.current) {
+        suppressClick.current = false;
+        return;
+      }
+      if (index > 0) setRolePicker(index);
+      return;
+    }
     if (selected?.kind === 'bench') return placeBench(selected.id, index);
     if (selected?.kind === 'slot') {
       if (selected.index === index) return setSelected(null);
@@ -197,12 +224,70 @@ export function SquadBuilder({ room, me }: { room: RoomView; me: string }) {
     setFormationId(id);
     setSlots(remapLineup(slots, id, squad));
     setSelected(null);
+    setEditing(false);
+  }
+
+  /** Switch to (or start) a custom formation, beginning from the current shape. */
+  function startCustom() {
+    if (locked) return;
+    if (!isCustom) {
+      // A fresh custom shape copies the current one, so everyone stays where they are.
+      const base = custom && !customFormationError(custom) ? custom : formation.slots.map((sl) => ({ ...sl }));
+      if (base !== custom) setCustom(base);
+      setFormationId(CUSTOM_FORMATION_ID);
+      if (base !== custom) setSlots([...slots]);
+      else setSlots(remapLineup(slots, { formationId: CUSTOM_FORMATION_ID, custom: base }, squad));
+    }
+    setSelected(null);
+    setEditing(true);
+  }
+
+  // Dragging a position in the custom editor.
+  const drag = useRef<{ index: number; before: FormationSlot[]; moved: boolean } | null>(null);
+  const suppressClick = useRef(false);
+  function onDragStart(e: React.PointerEvent, index: number) {
+    if (!editing || locked || index === 0 || !custom) return;
+    e.preventDefault();
+    (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+    drag.current = { index, before: custom.map((sl) => ({ ...sl })), moved: false };
+  }
+  function onDragMove(e: React.PointerEvent) {
+    const d = drag.current;
+    if (!d || !custom) return;
+    const pitch = (e.currentTarget as HTMLElement).parentElement?.offsetParent as HTMLElement | null;
+    if (!pitch) return;
+    const r = pitch.getBoundingClientRect();
+    const x = Math.min(96, Math.max(4, ((e.clientX - r.left) / r.width) * 100));
+    const y = Math.min(82, Math.max(8, ((e.clientY - r.top) / r.height) * 100));
+    // Ignore tiny jitters so a tap doesn't count as a move.
+    const cur = custom[d.index];
+    if (!d.moved && Math.hypot(x - cur.x, y - cur.y) < 1.5) return;
+    d.moved = true;
+    setCustom(custom.map((sl, i) => (i === d.index ? { role: roleForSpot(x, y), x, y } : sl)));
+  }
+  function onDragEnd() {
+    const d = drag.current;
+    drag.current = null;
+    if (!d || !d.moved || !custom) return;
+    suppressClick.current = true;
+    const err = customFormationError(custom);
+    if (err) {
+      setCustom(d.before);
+      toast('error', err);
+    }
+  }
+  function setRole(index: number, role: Position) {
+    if (!custom) return;
+    setCustom(custom.map((sl, i) => (i === index ? { ...sl, role } : sl)));
+    setRolePicker(null);
   }
 
   async function lock() {
     if (complete) return toast('error', ERROR_MESSAGES[complete]);
     setBusy(true);
-    const r = await emit('squad:lock', { formationId, slots, tactic });
+    if (isCustom && customFormationError(custom)) return toast('error', customFormationError(custom)!);
+    setEditing(false);
+    const r = await emit('squad:lock', { formationId, slots, tactic, custom: isCustom ? custom : null });
     setBusy(false);
     if (!r.ok) toast('error', r.error);
   }
@@ -250,7 +335,29 @@ export function SquadBuilder({ room, me }: { room: RoomView; me: string }) {
                 {f.name}
               </button>
             ))}
+            <button
+              disabled={locked}
+              onClick={startCustom}
+              className={`display h-9 shrink-0 rounded-lg border px-3 text-[15px] font-bold transition disabled:opacity-50 ${
+                isCustom ? 'border-volt bg-volt/15 text-volt' : 'border-dashed border-white/25 bg-white/[.03] hover:bg-white/[.07]'
+              }`}
+              title="Design your own formation"
+            >
+              ✏️ {isCustom && custom ? `Custom ${customShape(custom)}` : 'Custom'}
+            </button>
           </div>
+          {isCustom && !locked && (
+            <div className="flex w-full max-w-[640px] items-center justify-between gap-2 rounded-xl border border-volt/30 bg-volt/[.06] px-3 py-2 text-xs">
+              <span className="text-muted">
+                {editing
+                  ? 'Drag a position to move it — its role follows the spot. Tap one to pick the role yourself.'
+                  : 'Your own formation. Edit it any time before you lock in.'}
+              </span>
+              <button onClick={() => setEditing(!editing)} className="shrink-0 rounded-lg bg-volt px-3 py-1.5 font-extrabold text-night">
+                {editing ? 'Done' : 'Edit positions'}
+              </button>
+            </div>
+          )}
 
           <TacticPicker tactic={tactic} onChange={setTactic} locked={locked} totals={byTactic} />
 
@@ -265,12 +372,17 @@ export function SquadBuilder({ room, me }: { room: RoomView; me: string }) {
                   key={i}
                   initial={false}
                   animate={{ left: `${s.x}%`, top: `${s.y}%` }}
-                  transition={{ type: 'spring', stiffness: 220, damping: 26 }}
+                  transition={editing ? { duration: 0 } : { type: 'spring', stiffness: 220, damping: 26 }}
                   className="absolute z-10 -translate-x-1/2 -translate-y-1/2"
                   style={{ left: `${s.x}%`, top: `${s.y}%` }}
                 >
                   <button
-                    draggable={!!player && !locked}
+                    draggable={!!player && !locked && !editing}
+                    onPointerDown={(e) => onDragStart(e, i)}
+                    onPointerMove={onDragMove}
+                    onPointerUp={onDragEnd}
+                    onPointerCancel={onDragEnd}
+                    style={editing && i > 0 ? { touchAction: 'none', cursor: 'grab' } : undefined}
                     onDragStart={(e) => e.dataTransfer.setData('text/plain', `slot:${i}`)}
                     onDragOver={(e) => !locked && e.preventDefault()}
                     onDrop={(e) => onDrop(e, i)}
@@ -278,7 +390,7 @@ export function SquadBuilder({ room, me }: { room: RoomView; me: string }) {
                     className={`block ${locked ? 'cursor-default' : 'cursor-pointer'}`}
                     aria-label={player ? `${player.name} at ${s.role}` : `Empty ${s.role} slot`}
                   >
-                    <SlotChip player={player} role={s.role} selected={isSel} highlight={target && !player} />
+                    <SlotChip player={player} role={s.role} selected={isSel} highlight={(target && !player) || (editing && i > 0)} />
                   </button>
                 </motion.div>
               );
@@ -333,7 +445,7 @@ export function SquadBuilder({ room, me }: { room: RoomView; me: string }) {
                 size="sm"
                 className="flex-1"
                 disabled={locked}
-                onClick={() => update(autoPick(squad, formationId, partial ? slots : undefined))}
+                onClick={() => update(autoPick(squad, fref, partial ? slots : undefined))}
               >
                 {partial ? 'Auto-complete XI' : 'Auto-pick best XI'}
               </Button>
@@ -441,6 +553,17 @@ export function SquadBuilder({ room, me }: { room: RoomView; me: string }) {
       </AnimatePresence>
 
       <AnimatePresence>
+        {rolePicker !== null && custom && (
+          <RolePicker
+            current={custom[rolePicker].role}
+            player={slots[rolePicker] ? (byId.get(slots[rolePicker]!) ?? null) : null}
+            onPick={(r) => setRole(rolePicker, r)}
+            onClose={() => setRolePicker(null)}
+          />
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
         {picker !== null && (
           <SlotPicker
             role={formation.slots[picker].role}
@@ -466,7 +589,7 @@ export function SquadBuilder({ room, me }: { room: RoomView; me: string }) {
           </Button>
         ) : (
           <div className="flex gap-2">
-            <Button variant="secondary" className="flex-1" onClick={() => update(autoPick(squad, formationId, partial ? slots : undefined))}>
+            <Button variant="secondary" className="flex-1" onClick={() => update(autoPick(squad, fref, partial ? slots : undefined))}>
               Auto-pick
             </Button>
             <Button className="flex-[2]" disabled={busy || !!complete} onClick={lock}>
@@ -750,5 +873,82 @@ function PlanPanel({ score, byId }: { score: ReturnType<typeof scoreSquad>; byId
         </ul>
       )}
     </div>
+  );
+}
+
+const ROLE_GROUPS: { label: string; roles: Position[] }[] = [
+  { label: 'Defence', roles: ['LB', 'CB', 'RB', 'LWB', 'RWB'] },
+  { label: 'Midfield', roles: ['CDM', 'CM', 'CAM', 'LM', 'RM'] },
+  { label: 'Attack', roles: ['LW', 'ST', 'CF', 'RW'] },
+];
+
+/** Choose the role for one position of a custom formation. */
+function RolePicker({
+  current,
+  player,
+  onPick,
+  onClose,
+}: {
+  current: Position;
+  player: PlayerCard | null;
+  onPick: (r: Position) => void;
+  onClose: () => void;
+}) {
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && onClose();
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [onClose]);
+  return (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      className="fixed inset-0 z-50 flex items-end justify-center bg-night/70 backdrop-blur-sm sm:items-center"
+      onClick={onClose}
+    >
+      <motion.div
+        role="dialog"
+        aria-label="Choose a role"
+        initial={{ y: 40 }}
+        animate={{ y: 0 }}
+        exit={{ y: 40 }}
+        onClick={(e) => e.stopPropagation()}
+        className="w-full max-w-sm rounded-t-3xl border border-white/10 bg-deep p-4 pb-[max(1rem,env(safe-area-inset-bottom))] sm:rounded-3xl"
+      >
+        <h3 className="display text-2xl font-extrabold">Role for this position</h3>
+        {player && (
+          <p className="mt-1 text-xs text-muted">
+            {player.shortName} plays {player.position}
+            {player.secondaryPositions.length ? ` (also ${player.secondaryPositions.join(', ')})` : ''}
+          </p>
+        )}
+        <div className="mt-3 space-y-3">
+          {ROLE_GROUPS.map((g) => (
+            <div key={g.label}>
+              <div className="label mb-1.5 !text-[10px]">{g.label}</div>
+              <div className="flex flex-wrap gap-1.5">
+                {g.roles.map((r) => {
+                  const fit = player ? positionFit(player, r).level : null;
+                  return (
+                    <button
+                      key={r}
+                      onClick={() => onPick(r)}
+                      className={`h-9 min-w-12 rounded-lg border px-2.5 text-sm font-bold ${
+                        r === current ? 'border-volt bg-volt/15 text-volt' : 'border-white/10 bg-white/[.04] hover:bg-white/[.08]'
+                      }`}
+                      style={fit ? { boxShadow: `inset 0 -2px 0 ${FIT_STYLE[fit].color}` } : undefined}
+                      title={fit ? FIT_STYLE[fit].label : undefined}
+                    >
+                      {r}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          ))}
+        </div>
+      </motion.div>
+    </motion.div>
   );
 }

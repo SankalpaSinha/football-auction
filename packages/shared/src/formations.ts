@@ -261,3 +261,73 @@ export const DEFAULT_FORMATION = '4-3-3';
 export function getFormation(id: string): Formation | undefined {
   return FORMATIONS.find((f) => f.id === id);
 }
+
+// ---------------------------------------------------------------- custom
+
+/** A manager-designed formation travels with the lineup under this id. */
+export const CUSTOM_FORMATION_ID = 'custom';
+
+/** Where a formation comes from: a preset id, or `custom` plus its 11 slots. */
+export interface FormationRef {
+  formationId: string;
+  custom?: FormationSlot[] | null;
+}
+
+/** Bounds and spacing a custom formation must respect (pitch %, x scaled by pitch width for spacing). */
+export const CUSTOM_BOUNDS = { xMin: 4, xMax: 96, yMin: 8, yMax: 82, minGap: 7 } as const;
+export const CUSTOM_GOALKEEPER: FormationSlot = { role: 'GK', x: 50, y: 91 };
+
+const OUTFIELD_ROLES: Position[] = ['CB', 'LB', 'RB', 'LWB', 'RWB', 'CDM', 'CM', 'CAM', 'LM', 'RM', 'LW', 'RW', 'CF', 'ST'];
+
+/** Why a custom formation is invalid, or null if it's fine. */
+export function customFormationError(slots: FormationSlot[] | null | undefined): string | null {
+  if (!slots || slots.length !== 11) return 'A formation needs exactly 11 positions.';
+  const [gk, ...outfield] = slots;
+  if (gk.role !== 'GK') return 'The first position must be the goalkeeper.';
+  const b = CUSTOM_BOUNDS;
+  for (const s of outfield) {
+    if (!OUTFIELD_ROLES.includes(s.role)) return 'Only one goalkeeper is allowed.';
+    if (!Number.isFinite(s.x) || !Number.isFinite(s.y) || s.x < b.xMin || s.x > b.xMax || s.y < b.yMin || s.y > b.yMax) {
+      return 'A position is off the pitch.';
+    }
+  }
+  for (let i = 0; i < outfield.length; i++) {
+    for (let j = i + 1; j < outfield.length; j++) {
+      if (Math.hypot((outfield[i].x - outfield[j].x) * 0.68, outfield[i].y - outfield[j].y) < b.minGap) return 'Two positions are on top of each other.';
+    }
+  }
+  return null;
+}
+
+/** The formation a lineup uses — a preset, or the manager's own (if valid). */
+export function resolveFormation(ref: FormationRef): Formation | undefined {
+  if (ref.formationId !== CUSTOM_FORMATION_ID) return getFormation(ref.formationId);
+  if (customFormationError(ref.custom)) return undefined;
+  const slots = ref.custom!.map((s, i) => (i === 0 ? { ...CUSTOM_GOALKEEPER } : { role: s.role, x: Math.round(s.x * 10) / 10, y: Math.round(s.y * 10) / 10 }));
+  return { id: `custom:${slots.map((s) => `${s.role}@${s.x},${s.y}`).join('|')}`, name: customShape(slots), slots };
+}
+
+/** "3-4-3"-style name for a custom formation, by how many players sit in each line. */
+export function customShape(slots: FormationSlot[]): string {
+  const outfield = slots.filter((s) => s.role !== 'GK').map((s) => s.y);
+  const lines: number[] = [];
+  const sorted = [...outfield].sort((a, b) => b - a);
+  let last = Infinity;
+  for (const y of sorted) {
+    if (last - y > 9 || !lines.length) lines.push(1);
+    else lines[lines.length - 1]++;
+    last = y;
+  }
+  return lines.join('-');
+}
+
+/** Suggested role for a spot on the pitch (used while dragging a custom formation). */
+export function roleForSpot(x: number, y: number): Position {
+  const left = x <= 22;
+  const right = x >= 78;
+  if (y >= 64) return left ? 'LB' : right ? 'RB' : 'CB';
+  if (y >= 55) return x <= 18 ? 'LWB' : x >= 82 ? 'RWB' : 'CDM';
+  if (y >= 40) return left ? 'LM' : right ? 'RM' : 'CM';
+  if (y >= 27) return x <= 25 ? 'LW' : x >= 75 ? 'RW' : 'CAM';
+  return x <= 25 ? 'LW' : x >= 75 ? 'RW' : 'ST';
+}

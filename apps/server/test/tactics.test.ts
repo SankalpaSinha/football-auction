@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import {
   autoPick,
+  customFormationError,
+  resolveFormation,
   drawObjectives,
   getFormation,
   GAME_RULES,
@@ -318,5 +320,61 @@ describe('auto-fill respects the star cap', () => {
         expect(m.squad.some((e) => e.player.position === 'GK')).toBe(true);
       }
     }
+  });
+});
+
+describe('custom formations', () => {
+  const preset = getFormation('4-3-3')!;
+  const copy = () => preset.slots.map((s) => ({ ...s }));
+
+  it('are validated', () => {
+        expect(customFormationError(copy())).toBeNull();
+    expect(customFormationError(copy().slice(0, 10))).toMatch(/11 positions/);
+    const noKeeper = copy();
+    noKeeper[0] = { role: 'CB', x: 50, y: 80 };
+    expect(customFormationError(noKeeper)).toMatch(/goalkeeper/);
+    const twoKeepers = copy();
+    twoKeepers[5] = { ...twoKeepers[5], role: 'GK' };
+    expect(customFormationError(twoKeepers)).toMatch(/one goalkeeper/);
+    const offPitch = copy();
+    offPitch[3] = { ...offPitch[3], y: 99 };
+    expect(customFormationError(offPitch)).toMatch(/off the pitch/);
+    const stacked = copy();
+    stacked[2] = { ...stacked[3] };
+    expect(customFormationError(stacked)).toMatch(/on top of each other/);
+  });
+
+  it('score exactly like the same shape as a preset, and get a shape name', () => {
+        const pool = makePool(40, 4);
+    const squad: SquadEntry[] = pool.slice(0, 18).map((p) => entry(p));
+    const slots = autoPick(squad.map((e) => e.player), '4-3-3');
+    const a = scoreSquad(squad, { formationId: '4-3-3', slots });
+    const b = scoreSquad(squad, { formationId: 'custom', custom: copy(), slots });
+    expect(b.total).toBe(a.total);
+    expect(resolveFormation({ formationId: 'custom', custom: copy() })!.name).toBe('4-3-3');
+  });
+
+  it('a lineup in a custom formation is saved, scored and revealed', () => {
+    const h = createHarness();
+    completeAuction(h);
+    const squad = h.member('u1').squad.map((e) => e.player);
+    // A back three with wing-backs: move two of the back four.
+    const custom = copy();
+    custom[1] = { role: 'LWB', x: 10, y: 55 };
+    custom[4] = { role: 'RWB', x: 90, y: 55 };
+    const slots = autoPick(squad, { formationId: 'custom', custom });
+    expect(code(() => h.room.lockLineup('u1', { formationId: 'custom', custom: custom.slice(0, 10), slots }))).toBe('INVALID_FORMATION');
+    h.room.lockLineup('u1', { formationId: 'custom', custom, slots });
+    h.clock.advance(GAME_RULES.squadBuildingMs + 10_000);
+    const v = h.room.view();
+    expect(v.lineups!.u1.formationId).toBe('custom');
+    expect(v.lineups!.u1.custom![1]).toMatchObject({ role: 'LWB', x: 10, y: 55 });
+    expect(v.results!.rankings.find((r) => r.userId === 'u1')!.total).toBeGreaterThan(0);
+  });
+
+  it('the lineup message checks the shape of a custom formation', () => {
+    expect(lineupSchema.safeParse({ formationId: 'custom', slots: [], custom: copy() }).success).toBe(true);
+    expect(lineupSchema.safeParse({ formationId: 'custom', slots: [], custom: copy().slice(0, 9) }).success).toBe(false);
+    expect(lineupSchema.safeParse({ formationId: 'custom', slots: [], custom: [{ role: 'XX', x: 1, y: 1 }] }).success).toBe(false);
   });
 });

@@ -11,6 +11,7 @@ import {
   OBJECTIVES,
   SCORING_CONFIG,
   TACTICS,
+  type FormationSlot,
   type MatchReport,
   type PlayerCard,
   type RankedScore,
@@ -363,7 +364,7 @@ export function ManagerReport({
   score: RankedScore;
   name: string;
   verdict?: string;
-  lineup?: { formationId: string; slots: (string | null)[] } | null;
+  lineup?: { formationId: string; slots: (string | null)[]; custom?: FormationSlot[] | null } | null;
   players: Map<string, PlayerCard>;
   elo?: { before: number; after: number } | null;
 }) {
@@ -485,7 +486,7 @@ export function ManagerReport({
               <div className="label mb-2">
                 {lineup.formationId} · chemistry {(score.breakdown.chemistry ?? 0).toFixed(0)}
               </div>
-              <MiniPitch formationId={lineup.formationId} slots={lineup.slots} players={players} />
+              <MiniPitch formationId={lineup.formationId} custom={lineup.custom} slots={lineup.slots} players={players} />
             </div>
           )}
         </div>

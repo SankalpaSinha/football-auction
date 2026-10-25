@@ -1,5 +1,5 @@
 import { positionFit } from './fit';
-import { getFormation } from './formations';
+import { resolveFormation } from './formations';
 import type { LineupInput } from './lineup';
 import type { RankedScore } from './scoring';
 import type { GameMode, SquadEntry } from './types';
@@ -80,7 +80,7 @@ export function gameAchievements(input: GameAchievementInput): Record<string, st
     if (bought.some((e) => e.estimatedValue >= 3 * e.price && e.estimatedValue - e.price >= minGain)) keys.push('bargain_hunter');
     if (bought.some((e) => e.price >= 0.4 * input.startingBudget)) keys.push('big_spender');
 
-    const f = getFormation(m.lineup.formationId);
+    const f = resolveFormation(m.lineup);
     const byId = new Map(m.squad.map((e) => [e.player.id, e.player]));
     const starters = m.lineup.slots.map((id) => (id ? byId.get(id) : undefined));
     if (starters.every(Boolean)) {

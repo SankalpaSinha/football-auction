@@ -1,4 +1,5 @@
 import {
+  type FormationSlot,
   isTacticId,
   type TacticId,
   buildMatchReport,
@@ -203,7 +204,14 @@ export class StatsService {
         username: s.user.username,
         squad,
         budgetLeft: s.budgetRemaining,
-        lineup: s.formationId ? { formationId: s.formationId, slots, tactic: tacticOf(result?.breakdown) } : null,
+        lineup: s.formationId
+          ? {
+              formationId: s.formationId,
+              slots,
+              tactic: tacticOf(result?.breakdown),
+              custom: (s.customSlots as unknown as FormationSlot[] | null) ?? null,
+            }
+          : null,
         eloBefore: result?.eloBefore ?? null,
         eloAfter: result?.eloAfter ?? null,
       };

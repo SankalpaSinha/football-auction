@@ -16,6 +16,7 @@ import {
   type LineupInput,
   type LineupView,
   DEFAULT_TACTIC,
+  CUSTOM_FORMATION_ID,
   isStarPlayer,
   drawObjectives,
   type ObjectiveId,
@@ -636,6 +637,7 @@ export class Room {
     const err = validateLineup(input, this.squadOf(userId), false);
     if (err) fail(err);
     state.formationId = input.formationId;
+    state.custom = input.formationId === CUSTOM_FORMATION_ID ? input.custom!.map((s) => ({ ...s })) : null;
     state.slots = [...input.slots];
     if (input.tactic) state.tactic = input.tactic;
     this.changed();
@@ -647,6 +649,7 @@ export class Room {
     const err = validateLineup(input, this.squadOf(userId), true);
     if (err) fail(err);
     state.formationId = input.formationId;
+    state.custom = input.formationId === CUSTOM_FORMATION_ID ? input.custom!.map((s) => ({ ...s })) : null;
     state.slots = [...input.slots];
     if (input.tactic) state.tactic = input.tactic;
     state.locked = true;
@@ -673,7 +676,7 @@ export class Room {
     this.squadTimer = null;
     for (const [userId, state] of this.lineups) {
       if (state.locked) continue;
-      state.slots = autoPick(this.squadOf(userId), state.formationId, state.slots);
+      state.slots = autoPick(this.squadOf(userId), { formationId: state.formationId, custom: state.custom }, state.slots);
       state.locked = true;
       state.auto = true;
       this.pushFeed('AUTO', `${this.members.get(userId)?.username ?? 'A manager'}'s lineup was auto-completed`, userId);
@@ -681,7 +684,12 @@ export class Room {
     this.squadEndsAt = null;
     this.phase = 'FINAL_EVALUATION';
     const gameId = this.gameId!;
-    const final = [...this.lineups].map(([userId, l]) => ({ userId, formationId: l.formationId, slots: [...l.slots] as string[] }));
+    const final = [...this.lineups].map(([userId, l]) => ({
+      userId,
+      formationId: l.formationId,
+      custom: l.custom ?? null,
+      slots: [...l.slots] as string[],
+    }));
     this.persist(() => this.deps.store.lineupsFinalized(gameId, final));
     this.pushFeed('INFO', 'All lineups are in — evaluating squads…');
     this.deps.onEvent(this, { type: 'LINEUPS_REVEALED' });
@@ -697,7 +705,7 @@ export class Room {
         userId: p.userId,
         score: scoreSquad(
           p.squad,
-          { formationId: l.formationId, slots: l.slots, tactic: l.tactic },
+          { formationId: l.formationId, slots: l.slots, tactic: l.tactic, custom: l.custom },
           {
             objectives: this.objectives.get(p.userId) ?? [],
             startingBudget: this.settings.startingBudget,
@@ -732,7 +740,7 @@ export class Room {
           userId: p.userId,
           score: this.rankings!.find((r) => r.userId === p.userId)!,
           squad: p.squad,
-          lineup: { formationId: l.formationId, slots: l.slots, tactic: l.tactic },
+          lineup: { formationId: l.formationId, slots: l.slots, tactic: l.tactic, custom: l.custom },
           eloBefore: this.ratingChanges?.find((c) => c.userId === p.userId)?.before,
         };
       }),

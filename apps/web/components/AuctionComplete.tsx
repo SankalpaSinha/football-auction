@@ -74,7 +74,7 @@ export function AuctionComplete({ room, me, onLeave }: { room: RoomView; me: str
 
               {lineup && (
                 <div className="mx-auto mt-4 max-w-[300px]">
-                  <MiniPitch formationId={lineup.formationId} slots={lineup.slots} players={players} />
+                  <MiniPitch formationId={lineup.formationId} custom={lineup.custom} slots={lineup.slots} players={players} />
                 </div>
               )}
 

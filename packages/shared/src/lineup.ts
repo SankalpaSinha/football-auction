@@ -1,5 +1,5 @@
 import { positionFit, type FitLevel } from './fit';
-import { getFormation, type Formation } from './formations';
+import { resolveFormation, type Formation, type FormationRef, type FormationSlot } from './formations';
 import type { TacticId } from './playstyles';
 import type { PlayerCard } from './types';
 
@@ -9,7 +9,12 @@ export interface LineupInput {
   slots: (string | null)[];
   /** Team tactic (see playstyles.ts). Missing → Balanced. */
   tactic?: TacticId;
+  /** The manager's own 11 positions when formationId is 'custom'. */
+  custom?: FormationSlot[] | null;
 }
+
+/** A preset id or a full formation ref (custom formations need their slots). */
+const toRef = (f: string | FormationRef): FormationRef => (typeof f === 'string' ? { formationId: f } : f);
 
 export type LineupError =
   | 'INVALID_FORMATION'
@@ -23,7 +28,7 @@ export type LineupError =
  * requires all 11 slots filled and a goalkeeper in goal.
  */
 export function validateLineup(l: LineupInput, squad: PlayerCard[], complete: boolean): LineupError | null {
-  const formation = getFormation(l.formationId);
+  const formation = resolveFormation(l);
   if (!formation || l.slots.length !== formation.slots.length) return 'INVALID_FORMATION';
   const owned = new Map(squad.map((p) => [p.id, p]));
   const seen = new Set<string>();
@@ -103,9 +108,9 @@ export function bestAssignment(
 }
 
 /** Best XI from the whole squad, keeping any slots the manager already set. */
-export function autoPick(squad: PlayerCard[], formationId: string, keep?: (string | null)[]): (string | null)[] {
-  const formation = getFormation(formationId);
-  if (!formation) throw new Error(`Unknown formation ${formationId}`);
+export function autoPick(squad: PlayerCard[], formationRef: string | FormationRef, keep?: (string | null)[]): (string | null)[] {
+  const formation = resolveFormation(toRef(formationRef));
+  if (!formation) throw new Error(`Unknown formation ${toRef(formationRef).formationId}`);
   const fixed = formation.slots.map((s, i) => {
     const id = keep?.[i] ?? null;
     const p = id ? squad.find((x) => x.id === id) : undefined;
@@ -117,9 +122,9 @@ export function autoPick(squad: PlayerCard[], formationId: string, keep?: (strin
 }
 
 /** Move the same starters into a new formation, each to their best-fitting slot. */
-export function remapLineup(slots: (string | null)[], toFormationId: string, squad: PlayerCard[]): (string | null)[] {
-  const formation = getFormation(toFormationId);
-  if (!formation) throw new Error(`Unknown formation ${toFormationId}`);
+export function remapLineup(slots: (string | null)[], to: string | FormationRef, squad: PlayerCard[]): (string | null)[] {
+  const formation = resolveFormation(toRef(to));
+  if (!formation) throw new Error(`Unknown formation ${toRef(to).formationId}`);
   const starters = squad.filter((p) => slots.includes(p.id));
   return bestAssignment(starters, formation);
 }
@@ -132,7 +137,8 @@ export interface LineupSummary {
 }
 
 export function summarizeLineup(l: LineupInput, squad: PlayerCard[]): LineupSummary {
-  const formation = getFormation(l.formationId)!;
+  const formation = resolveFormation(l);
+  if (!formation) return { filled: 0, averageOverall: 0, effectiveOverall: 0, fit: { NATURAL: 0, SECONDARY: 0, COMPATIBLE: 0, OUT_OF_POSITION: 0, EXTREME: 0 } };
   const byId = new Map(squad.map((p) => [p.id, p]));
   const fit: Record<FitLevel, number> = { NATURAL: 0, SECONDARY: 0, COMPATIBLE: 0, OUT_OF_POSITION: 0, EXTREME: 0 };
   let sum = 0;

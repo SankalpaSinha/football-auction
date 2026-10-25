@@ -1,3 +1,4 @@
+import type { FormationSlot } from './formations';
 import type { ObjectiveId } from './objectives';
 import type { TacticId } from './playstyles';
 import type { Position } from './positions';
@@ -219,6 +220,8 @@ export interface AuctionView {
 
 export interface LineupView {
   formationId: string;
+  /** The manager's own 11 positions when formationId is 'custom'. */
+  custom?: FormationSlot[] | null;
   /** Team tactic (TacticId). */
   tactic: TacticId;
   /** Player (PlayerCard) id per formation slot; null = empty. */

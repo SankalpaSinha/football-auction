@@ -207,6 +207,14 @@ export class RoomManager {
     this.io.in(userChannel(userId)).socketsLeave(roomChannel(room.code));
   }
 
+  /** Exit a game for good (see Room.quit), then detach like a normal leave. */
+  quit(userId: string) {
+    const room = this.roomOf(userId) ?? fail('NOT_IN_ROOM');
+    room.quit(userId);
+    if (this.userRoom.get(userId) === room.code) this.userRoom.delete(userId);
+    this.io.in(userChannel(userId)).socketsLeave(roomChannel(room.code));
+  }
+
   /** Before entering another room: leave a lobby, refuse while an auction is live. */
   private leaveCurrentRoomForSwitch(userId: string, targetCode: string | null) {
     const current = this.roomOf(userId);

@@ -52,8 +52,8 @@ export interface AuctionHooks {
   onFeed(kind: FeedKind, text: string, extra?: { userId?: string; amount?: number }): void;
   onLotClosed(record: LotRecord): void;
   onComplete(): void;
-  /** A manager was taken out of the auction for inactivity; their players are back in the pool. */
-  onRemoved?(userId: string): void;
+  /** A manager is out of the auction (idle too long, or quit); their players are back in the pool. */
+  onRemoved?(userId: string, reason: 'inactive' | 'quit'): void;
   /** A manager let a player go (no refund); the player is back in the pool. */
   onReleased?(userId: string, playerId: string): void;
   /** Players and coins changed hands. */
@@ -145,6 +145,8 @@ export class Auction {
   private idleLots = new Map<string, number>();
   private readonly startingParticipants: number;
   private trades = new Map<string, TradeOffer & { timer: TimerHandle }>();
+  /** Quit while holding the top bid: leave as soon as that lot closes. */
+  private pendingQuits = new Set<string>();
 
   constructor(private readonly opts: AuctionOptions) {
     this.rules = opts.rules;
@@ -207,6 +209,14 @@ export class Auction {
 
     this.hooks.onFeed('BID', `${p.username} bid ${amount}`, { userId, amount });
     this.hooks.onEvent({ type: 'BID', lotNumber: lot.lotNumber, userId, amount, previousBidderId });
+    // Someone waiting to leave was outbid: they can go now.
+    if (previousBidderId && this.pendingQuits.has(previousBidderId)) {
+      const leaver = this.participants.get(previousBidderId);
+      if (leaver) {
+        this.removeParticipant(leaver, 'quit');
+        this.hooks.onFeed('LEAVE', `${leaver.username} left the game`, { userId: leaver.userId });
+      }
+    }
     if (!this.closeIfNobodyCanBid()) this.hooks.onChange();
   }
 
@@ -1106,6 +1116,10 @@ export class Auction {
     this.hooks.onChange();
     this.timer = this.clock.setTimeout(() => this.openNextLot(), revealMs);
     if (timedOut) this.trackIdle(lot);
+    if (this.pendingQuits.size) {
+      this.processPendingQuits();
+      this.hooks.onChange();
+    }
   }
 
   /**
@@ -1148,14 +1162,55 @@ export class Auction {
   }
 
   /** Out of the game: their players go back up for auction, their coins are gone. */
-  private removeParticipant(p: Participant) {
+  private removeParticipant(p: Participant, reason: 'inactive' | 'quit' = 'inactive') {
     this.participants.delete(p.userId);
     this.idleLots.delete(p.userId);
+    this.pendingQuits.delete(p.userId);
     this.pruneTrades();
     this.returnToPool(p.squad.map((e) => e.player));
     this.hooks.onEvent({ type: 'REMOVED', userId: p.userId });
-    this.hooks.onRemoved?.(p.userId);
+    this.hooks.onRemoved?.(p.userId, reason);
     this.checkPauseVote();
+  }
+
+  /**
+   * A manager leaves the auction for good: their players go back into the pool.
+   * If they hold the top bid on the open lot they leave as soon as it closes.
+   */
+  quit(userId: string) {
+    const p = this.participants.get(userId) ?? fail('NOT_PARTICIPANT');
+    if (this.stage === 'LOT_OPEN' && this.lot?.highestBidderId === userId) {
+      this.pendingQuits.add(userId);
+      this.hooks.onFeed('INFO', `${p.username} is leaving after this lot`, { userId });
+      return this.hooks.onChange();
+    }
+    this.removeParticipant(p, 'quit');
+    this.hooks.onFeed('LEAVE', `${p.username} left the game`, { userId });
+    this.afterRemoval(p.userId);
+  }
+
+  /** Someone left outside a lot close: make sure the auction keeps moving. */
+  private afterRemoval(userId: string) {
+    if (this.stage === 'FREE_PICK' && this.freePick?.userId === userId) {
+      // The picker left: everyone else is already full, so this ends the auction.
+      this.freePickTimer?.cancel();
+      this.freePickTimer = null;
+      this.absentTimer?.cancel();
+      this.absentTimer = null;
+      return this.openNextLot();
+    }
+    if (this.stage === 'LOT_OPEN' && this.closeIfNobodyCanBid()) return;
+    this.hooks.onChange();
+  }
+
+  private processPendingQuits() {
+    for (const id of [...this.pendingQuits]) {
+      const p = this.participants.get(id);
+      this.pendingQuits.delete(id);
+      if (!p) continue;
+      this.removeParticipant(p, 'quit');
+      this.hooks.onFeed('LEAVE', `${p.username} left the game`, { userId: id });
+    }
   }
 
   /**

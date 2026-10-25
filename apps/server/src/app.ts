@@ -379,6 +379,7 @@ export function createApp(deps: AppDeps) {
     });
 
     on('room:leave', null, () => manager.leave(user.id));
+    on('room:quit', null, () => manager.quit(user.id));
 
     on('room:spectate', joinRoomSchema, ({ code }) => {
       const { room: r, role } = lookup(() => manager.spectate(user, code));

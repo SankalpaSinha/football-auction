@@ -88,6 +88,7 @@ export interface ClientToServer {
   'room:create': (input: unknown, ack: (r: Ack<{ code: string }>) => void) => void;
   'room:join': (input: unknown, ack: (r: Ack<{ code: string }>) => void) => void;
   'room:leave': (input: unknown, ack: (r: Ack) => void) => void;
+  'room:quit': (input: unknown, ack: (r: Ack) => void) => void;
   'room:spectate': (input: unknown, ack: (r: Ack<{ code: string; role: 'member' | 'spectator' }>) => void) => void;
   'room:ready': (input: unknown, ack: (r: Ack) => void) => void;
   'room:start': (input: unknown, ack: (r: Ack) => void) => void;

@@ -265,6 +265,18 @@ export class Room {
     this.removeMember(m, `${m.username} left`);
   }
 
+  /**
+   * Exit for good. During the auction the manager's players go back into the pool
+   * (and in ranked games it counts as last place). Before the auction it's a normal
+   * leave; afterwards the squad is complete, so they just go offline and still get a result.
+   */
+  quit(userId: string) {
+    this.assertOpen();
+    if (!this.members.has(userId)) fail('NOT_IN_ROOM');
+    if (this.auction && (this.phase === 'AUCTION' || this.phase === 'PLAYER_SOLD')) return this.auction.quit(userId);
+    this.leave(userId);
+  }
+
   setConnected(userId: string, connected: boolean) {
     const m = this.members.get(userId);
     if (!m || m.connected === connected) return;
@@ -484,16 +496,22 @@ export class Room {
           const snapshot = this.participants.map((p) => ({ ...p, squad: [...p.squad] }));
           this.persist(() => this.deps.store.lotClosed(gameId, lot, snapshot));
         },
-        onRemoved: (userId) => {
+        onRemoved: (userId, reason) => {
           const i = this.participants.findIndex((p) => p.userId === userId);
           if (i >= 0) this.participants.splice(i, 1);
           this.persist(() => this.deps.store.participantRemoved(gameId, userId));
           const m = this.members.get(userId);
           if (!m) return;
+          if (reason === 'quit') {
+            // They chose to go: no "you were removed" notice, and they can't come back as a player.
+            this.kicked.set(userId, 'you left the game');
+            this.removeMember(m, `${m.username} left the game`, false);
+            return;
+          }
           const limit = rules.inactiveLotsToRemove;
-          const reason = `you sat out ${limit} lots in a row without bidding or skipping`;
-          this.kicked.set(userId, reason);
-          this.deps.onKicked?.(this, userId, reason);
+          const why = `you sat out ${limit} lots in a row without bidding or skipping`;
+          this.kicked.set(userId, why);
+          this.deps.onKicked?.(this, userId, why);
           this.removeMember(m, `${m.username} was removed for inactivity`);
         },
         onReleased: (userId, playerId) => this.persist(() => this.deps.store.playerReleased(gameId, userId, playerId)),
@@ -786,11 +804,11 @@ export class Room {
     this.changed();
   }
 
-  private removeMember(m: Member, text: string) {
+  private removeMember(m: Member, text: string, feed = true) {
     m.removalTimer?.cancel();
     this.clearAway(m);
     this.members.delete(m.userId);
-    this.pushFeed('LEAVE', text, m.userId);
+    if (feed) this.pushFeed('LEAVE', text, m.userId);
     this.persist(() => this.deps.store.memberLeft(this.id, m.userId));
     this.deps.onMemberRemoved(this, m.userId);
     if (this.members.size === 0) {

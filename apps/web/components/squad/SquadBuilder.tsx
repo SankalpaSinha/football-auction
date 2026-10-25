@@ -33,6 +33,7 @@ import { PlayerAvatar } from '../PlayerAvatar';
 import { Avatar, Button, Logo, Pill, SoundToggle } from '../ui';
 import { FIT_STYLE, LINK_COLOR, linksFor, PitchSurface, SlotChip } from './Pitch';
 import { SquadSheet } from '../SquadViews';
+import { ExitButton } from '../ExitButton';
 
 type Selection = { kind: 'bench'; id: string } | { kind: 'slot'; index: number } | null;
 
@@ -226,6 +227,7 @@ export function SquadBuilder({ room, me }: { room: RoomView; me: string }) {
           </Pill>
           <div className="ml-auto flex items-center gap-3">
             <Deadline endsAt={sb.endsAt} />
+            <ExitButton room={room} />
             <ChatButton />
             <SoundToggle />
           </div>

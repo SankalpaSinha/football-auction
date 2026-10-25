@@ -16,6 +16,7 @@ import { useCountdown } from './useCountdown';
 import { FreePickPanel } from './FreePick';
 import { SquadSheet } from '../SquadViews';
 import { PauseBanners, PauseButton } from './PauseControls';
+import { ExitButton } from '../ExitButton';
 import { dealsOpen, TradeComposer, TradeInbox } from './Trades';
 import { Button } from '../ui';
 
@@ -56,6 +57,7 @@ export function AuctionScreen({ room, me }: { room: RoomView; me: string }) {
             {room.spectators > 0 && <span title="Spectators">👀 {room.spectators}</span>}
             <span className="hidden font-mono text-ink/70 lg:inline">{room.code}</span>
             <PauseButton room={room} me={me} />
+            {self && <ExitButton room={room} />}
             <ChatButton />
             <SoundToggle />
           </div>

@@ -93,7 +93,7 @@ export const GAME_RULES: Readonly<GameRules> = {
   maxPauseMs: 5 * 60_000,
   pauseRequestCooldownMs: 30_000,
   inactiveLotsToRemove: 5,
-  starCap: { max: 5 },
+  starCap: { max: 3 },
   awayGraceMs: 20_000,
   tradeOfferMs: 90_000,
   maxTradePlayers: 3,

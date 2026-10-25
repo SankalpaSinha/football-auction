@@ -186,7 +186,7 @@ function JoinRoom() {
 function HowItWorks() {
   const steps = [
     ['Auction', 'One player at a time, 30 seconds, highest bid wins. Skip what you don’t want.'],
-    ['Budget', 'Same coins for everyone. Finish with exactly 18, with at most 5 star players like Messi or Mbappé.'],
+    ['Budget', 'Same coins for everyone. Finish with exactly 18, with at most 3 star players like Messi or Mbappé.'],
     ['Squad', 'Pick a formation, a tactic and your XI. Playstyles that click beat a pile of big names.'],
     ['Secrets', 'Everyone gets 2 hidden objectives worth bonus points, revealed at the end.'],
   ];

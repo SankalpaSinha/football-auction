@@ -127,7 +127,8 @@ async function attachCommons(files: Map<string, { playerId: string; qid: string 
       const license = stripHtml(meta.LicenseShortName?.value ?? 'see source');
       cache[target.playerId] = {
         url: info.thumburl ?? info.url,
-        credit: `${author.slice(0, 80)} · ${license}`,
+        // Commons sometimes repeats the author text ("Unknown authorUnknown author").
+        credit: `${author.replace(/^(.+?)\1+$/, '$1').slice(0, 80)} · ${license}`,
         license,
         source: info.descriptionurl,
         qid: target.qid,

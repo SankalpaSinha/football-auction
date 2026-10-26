@@ -313,5 +313,185 @@
     "code": "WAL",
     "name": "Wales",
     "flag": "🏴󠁧󠁢󠁷󠁬󠁳󠁿"
+  },
+  {
+    "code": "EST",
+    "name": "Estonia",
+    "flag": "🇪🇪"
+  },
+  {
+    "code": "SLE",
+    "name": "Sierra Leone",
+    "flag": "🇸🇱"
+  },
+  {
+    "code": "BEN",
+    "name": "Benin",
+    "flag": "🇧🇯"
+  },
+  {
+    "code": "COM",
+    "name": "Comoros",
+    "flag": "🇰🇲"
+  },
+  {
+    "code": "ZAM",
+    "name": "Zambia",
+    "flag": "🇿🇲"
+  },
+  {
+    "code": "SUR",
+    "name": "Suriname",
+    "flag": "🇸🇷"
+  },
+  {
+    "code": "PER",
+    "name": "Peru",
+    "flag": "🇵🇪"
+  },
+  {
+    "code": "IDN",
+    "name": "Indonesia",
+    "flag": "🇮🇩"
+  },
+  {
+    "code": "PHI",
+    "name": "Philippines",
+    "flag": "🇵🇭"
+  },
+  {
+    "code": "MLI",
+    "name": "Mali",
+    "flag": "🇲🇱"
+  },
+  {
+    "code": "TOG",
+    "name": "Togo",
+    "flag": "🇹🇬"
+  },
+  {
+    "code": "MKD",
+    "name": "North Macedonia",
+    "flag": "🇲🇰"
+  },
+  {
+    "code": "ALB",
+    "name": "Albania",
+    "flag": "🇦🇱"
+  },
+  {
+    "code": "CPV",
+    "name": "Cape Verde",
+    "flag": "🇨🇻"
+  },
+  {
+    "code": "AUS",
+    "name": "Australia",
+    "flag": "🇦🇺"
+  },
+  {
+    "code": "CTA",
+    "name": "Central African Republic",
+    "flag": "🇨🇫"
+  },
+  {
+    "code": "BDI",
+    "name": "Burundi",
+    "flag": "🇧🇮"
+  },
+  {
+    "code": "KSA",
+    "name": "Saudi Arabia",
+    "flag": "🇸🇦"
+  },
+  {
+    "code": "CGO",
+    "name": "Congo",
+    "flag": "🇨🇬"
+  },
+  {
+    "code": "HAI",
+    "name": "Haiti",
+    "flag": "🇭🇹"
+  },
+  {
+    "code": "MTN",
+    "name": "Mauritania",
+    "flag": "🇲🇷"
+  },
+  {
+    "code": "JOR",
+    "name": "Jordan",
+    "flag": "🇯🇴"
+  },
+  {
+    "code": "CRC",
+    "name": "Costa Rica",
+    "flag": "🇨🇷"
+  },
+  {
+    "code": "GNB",
+    "name": "Guinea-Bissau",
+    "flag": "🇬🇼"
+  },
+  {
+    "code": "TAN",
+    "name": "Tanzania",
+    "flag": "🇹🇿"
+  },
+  {
+    "code": "NIR",
+    "name": "Northern Ireland",
+    "flag": "🇬🇧"
+  },
+  {
+    "code": "JAM",
+    "name": "Jamaica",
+    "flag": "🇯🇲"
+  },
+  {
+    "code": "MOZ",
+    "name": "Mozambique",
+    "flag": "🇲🇿"
+  },
+  {
+    "code": "BUL",
+    "name": "Bulgaria",
+    "flag": "🇧🇬"
+  },
+  {
+    "code": "QAT",
+    "name": "Qatar",
+    "flag": "🇶🇦"
+  },
+  {
+    "code": "IRN",
+    "name": "Iran",
+    "flag": "🇮🇷"
+  },
+  {
+    "code": "ARM",
+    "name": "Armenia",
+    "flag": "🇦🇲"
+  },
+  {
+    "code": "EQG",
+    "name": "Equatorial Guinea",
+    "flag": "🇬🇶"
+  },
+  {
+    "code": "LTU",
+    "name": "Lithuania",
+    "flag": "🇱🇹"
+  },
+  {
+    "code": "ANG",
+    "name": "Angola",
+    "flag": "🇦🇴"
+  },
+  {
+    "code": "ISR",
+    "name": "Israel",
+    "flag": "🇮🇱"
   }
 ]

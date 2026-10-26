@@ -49,6 +49,7 @@ function datasetHash(dir: string): string {
 }
 
 const HASH_KEY = 'dataset-hash';
+const IMPORT_CONCURRENCY = 10;
 
 async function main() {
   const db = createDb();
@@ -67,9 +68,11 @@ async function main() {
     }
     console.log(stored ? 'Player data changed — re-importing.' : 'No import fingerprint yet — importing.');
   }
-  const seasons = loadSeasons(dataDir).filter(
-    (s) => seasonIdsOnDisk(dataDir).includes(s.id) && (!onlySeason || s.id === onlySeason),
-  );
+  // Special (exclusive) seasons first: clubs are shared rows, so the regular seasons' club
+  // details (names, colours, league) must be written last and win.
+  const seasons = loadSeasons(dataDir)
+    .filter((s) => seasonIdsOnDisk(dataDir).includes(s.id) && (!onlySeason || s.id === onlySeason))
+    .sort((a, b) => Number(!!b.exclusive) - Number(!!a.exclusive));
   if (!seasons.length) throw new Error(`No season data found in ${dataDir}/seed`);
   const configs = loadCompetitionConfig(dataDir);
 
@@ -138,8 +141,9 @@ async function main() {
       await db.club.upsert({ where: { id: c.id }, create: { id: c.id, ...data }, update: data });
     }
 
-    const ids: string[] = [];
-    for (const p of ds.players) {
+    const ids: string[] = ds.players.map((p) => p.statsId);
+    // A few players at a time: each is two round trips, and a remote database makes sequential writes slow.
+    const upsertOne = async (p: (typeof ds.players)[number]) => {
       await db.player.upsert({
         where: { id: p.playerId },
         create: {
@@ -190,7 +194,9 @@ async function main() {
         create: { id: p.statsId, playerId: p.playerId, seasonId: season.id, ...stats },
         update: stats,
       });
-      ids.push(p.statsId);
+    };
+    for (let i = 0; i < ds.players.length; i += IMPORT_CONCURRENCY) {
+      await Promise.all(ds.players.slice(i, i + IMPORT_CONCURRENCY).map(upsertOne));
     }
 
     const retired = await db.playerStats.updateMany({

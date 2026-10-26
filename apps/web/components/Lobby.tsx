@@ -77,7 +77,7 @@ export function Lobby({ room, me, onLeave, onJoin }: { room: RoomView; me: strin
             <p className="label">Football Auction · {room.name}</p>
             <h1 className="display mt-1 text-5xl font-extrabold leading-none sm:text-7xl">{room.competition.name}</h1>
             <div className="mt-4 flex flex-wrap gap-2">
-              <Pill color={accent}>{room.competition.seasonLabel}</Pill>
+              {room.competition.seasonLabel !== room.competition.name && <Pill color={accent}>{room.competition.seasonLabel}</Pill>}
               <Pill color="#f5c542">
                 <Coin className="h-3 w-3" /> {room.settings.startingBudget.toLocaleString()} budget
               </Pill>

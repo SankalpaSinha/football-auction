@@ -242,7 +242,8 @@ function WinnerHero({ room, winner, name, isMe, animate }: { room: RoomView; win
     >
       {animate && <Confetti />}
       <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="label !text-gold">
-        {room.competition.name} · {room.competition.seasonLabel}
+        {room.competition.name}
+        {room.competition.seasonLabel !== room.competition.name && ` · ${room.competition.seasonLabel}`}
       </motion.div>
       <motion.div
         initial={animate ? { scale: 0.3, opacity: 0, rotate: -20 } : false}

@@ -47,12 +47,14 @@ const entry = (p: PlayerCard, price = 10): SquadEntry => ({ player: p, price, vi
 
 describe('playstyles', () => {
   it('are derived from position and attributes', () => {
-    expect(playstyleOf(card('tm', 'ST', 84, { physical: 88 }))).toBe('TARGET_MAN');
-    expect(playstyleOf(card('pf', 'ST', 84, { pace: 92, physical: 70 }))).toBe('PACE_FORWARD');
+    expect(playstyleOf(card('tm', 'ST', 84, { shooting: 85, physical: 88 }))).toBe('TARGET_MAN');
+    expect(playstyleOf(card('pf', 'ST', 84, { pace: 92, shooting: 84, physical: 70 }))).toBe('PACE_FORWARD');
+    expect(playstyleOf(card('pch', 'ST', 84, { pace: 75, shooting: 88, physical: 70 }))).toBe('POACHER');
+    expect(playstyleOf(card('f9', 'CF', 84, { shooting: 80, passing: 84, dribbling: 86 }))).toBe('FALSE_NINE');
     expect(playstyleOf(card('wc', 'LW', 80, { passing: 80, shooting: 70 }, { preferredFoot: 'Left' }))).toBe('WIDE_CROSSER');
     expect(playstyleOf(card('if', 'LW', 80, { passing: 70, shooting: 80 }, { preferredFoot: 'Right' }))).toBe('INSIDE_FORWARD');
     expect(playstyleOf(card('bpd', 'CB', 80, { passing: 70 }))).toBe('BALL_PLAYING_DEFENDER');
-    expect(playstyleOf(card('sto', 'CB', 80, { passing: 50 }))).toBe('STOPPER');
+    expect(playstyleOf(card('sto', 'CB', 80, { passing: 50, defending: 85 }))).toBe('STOPPER');
     const keeper = makeCard('gk-a', 'GK', 80);
     expect(playstyleOf({ ...keeper, goalkeeping: { ...keeper.goalkeeping!, kicking: 60, speed: 45 } })).toBe('SHOT_STOPPER');
     expect(playstyleOf({ ...keeper, id: 'gk-b', goalkeeping: { ...keeper.goalkeeping!, kicking: 80, speed: 60 } })).toBe('SWEEPER_KEEPER');
@@ -71,7 +73,7 @@ describe('scoring with tactics and synergy', () => {
     card('cm1', 'CM', 80, { physical: 80, defending: 75 }),
     card('cm2', 'CM', 80, { passing: 85, dribbling: 75, physical: 60 }),
     card('rm', 'RM', 80, { pace: 88, passing: 82, shooting: 65 }),
-    card('st1', 'ST', 80, { physical: 88 }),
+    card('st1', 'ST', 80, { shooting: 84, physical: 88 }),
     card('st2', 'ST', 80, { shooting: 85, pace: 75, physical: 70, passing: 60 }),
   ];
   const squad = xi.map((p) => entry(p));
@@ -394,9 +396,30 @@ describe('host position filter', () => {
     // makePool(120, 16): 16 keepers; after the open lot every new lot is a keeper until they run out.
     expect(seen.slice(0, 15).every((p) => p === 'GK')).toBe(true);
     expect(h.room.view().auction!.focus).toBeNull();
-    expect(h.room.view().feed.some((f) => f.text.includes('No more goalkeepers left'))).toBe(true);
+    expect(h.room.view().feed.some((f) => f.text.includes('No more goalkeepers this round'))).toBe(true);
     h.room.setFocus('u1', 'ATT');
     h.room.setFocus('u1', null);
     expect(h.room.view().auction!.focus).toBeNull();
+  });
+});
+
+describe('host filter vs an urgent keeper', () => {
+  it('a manager who urgently needs a goalkeeper gets one even while the host filters to defenders', () => {
+    // Outfielders first, keepers at the back of the queue.
+    const outfield = makePool(80, 0).map((p, i) => ({ ...p, id: `o${i}`, playerId: `o${i}` }));
+    const keepers = Array.from({ length: 6 }, (_, i) => makeCard(`gk${i}`, 'GK', 75));
+    const h = createHarness({ pool: [...outfield, ...keepers], fixedOrder: true });
+    // u1 buys 16 outfielders: 2 slots left, no keeper → urgent.
+    while (h.member('u1').squad.length < 16) {
+      if (h.room.phase === 'PLAYER_SOLD') {
+        nextLot(h);
+        continue;
+      }
+      h.room.bid('u1', h.lot().lotNumber, 10);
+      if (h.room.phase === 'AUCTION') h.room.skip('u2', h.lot().lotNumber);
+    }
+    h.room.setFocus('u1', 'DEF');
+    nextLot(h);
+    expect(h.lot().player.position).toBe('GK');
   });
 });

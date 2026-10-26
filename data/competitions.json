@@ -40,7 +40,7 @@
   },
   {
     "id": "ligue-1", "name": "Ligue 1", "shortName": "L1", "type": "LEAGUE",
-    "accent": "#06b6d4", "sortOrder": 8, "selectable": false, "rules": { "leagues": ["ligue-1"] }
+    "accent": "#06b6d4", "sortOrder": 5, "rules": { "leagues": ["ligue-1"] }
   },
   {
     "id": "icons", "name": "All-Time Icons", "shortName": "ICON", "type": "GLOBAL",

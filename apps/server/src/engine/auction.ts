@@ -994,9 +994,10 @@ export class Auction {
       this.hooks.onFeed('INFO', `Unsold players return to the auction (${this.queue.length})`);
     }
 
-    if (this.someoneUrgentlyNeedsGoalkeeper() && this.queue[0]?.position !== 'GK') {
+    // An urgently needed keeper comes first — even ahead of the host's position filter.
+    if (this.someoneUrgentlyNeedsGoalkeeper()) {
       const idx = this.queue.findIndex((c) => c.position === 'GK');
-      if (idx > 0) {
+      if (idx >= 0) {
         const [gk] = this.queue.splice(idx, 1);
         return { player: gk, reoffer: this.reofferRound && !this.returned.delete(gk.id) };
       }
@@ -1012,9 +1013,15 @@ export class Auction {
         const [p] = this.queue.splice(idx, 1);
         return { player: p, reoffer: this.reofferRound && !this.returned.delete(p.id) };
       }
-      // None of that position left to auction: back to everyone.
+      // None of that position left in this round: back to everyone.
       this.focus = null;
-      this.hooks.onFeed('INFO', `No more ${GROUP_NAMES[g]} left — back to all positions`);
+      const later = !this.reofferRound && this.unsold.some((c) => POSITION_GROUP[c.position] === g);
+      this.hooks.onFeed(
+        'INFO',
+        later
+          ? `No more ${GROUP_NAMES[g]} this round (unsold ones come back later) — back to all positions`
+          : `No more ${GROUP_NAMES[g]} left — back to all positions`,
+      );
     }
 
     const player = this.queue.shift();

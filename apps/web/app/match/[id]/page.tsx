@@ -51,7 +51,7 @@ export default function MatchPage() {
           >
             <div className="flex flex-wrap items-center gap-2">
               <Pill color={m.competition.accent}>{m.competition.name}</Pill>
-              <Pill color="#8b94a8">{m.competition.seasonLabel}</Pill>
+              {m.competition.seasonLabel !== m.competition.name && <Pill color="#8b94a8">{m.competition.seasonLabel}</Pill>}
               {m.mode === 'RANKED' ? <Pill color="#c8ff2e">Ranked</Pill> : <Pill color="#2ee6ff">Casual</Pill>}
             </div>
             <h1 className="display mt-3 text-4xl font-extrabold sm:text-5xl">{m.report.headline}</h1>

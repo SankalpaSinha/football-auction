@@ -1,0 +1,192 @@
+externalId,name,shortName,nation,club,position,secondaryPositions,overall,pace,shooting,passing,dribbling,defending,physical,diving,handling,kicking,reflexes,speed,positioning,age,preferredFoot,heightCm,birthYear,wikidataId
+icon-gianluigi-buffon,Gianluigi Buffon,Buffon,ITA,juventus,GK,,94,,,,,,,91,90,74,94,55,94,28,Right,192,1978,Q68060
+icon-lev-yashin,Lev Yashin,Yashin,URS,dynamo-moscow,GK,,94,,,,,,,92,93,78,95,58,94,34,Right,189,1929,Q167828
+icon-iker-casillas,Iker Casillas,Casillas,ESP,real-madrid,GK,,93,,,,,,,92,86,70,95,60,88,29,Left,185,1981,Q11584
+icon-manuel-neuer,Manuel Neuer,Neuer,GER,bayern-munich,GK,,93,,,,,,,90,89,92,91,62,92,28,Right,193,1986,Q107365
+icon-gordon-banks,Gordon Banks,Banks,ENG,leicester-city,GK,,92,,,,,,,92,90,70,93,52,90,28,Right,185,1937,Q213879
+icon-oliver-kahn,Oliver Kahn,Kahn,GER,bayern-munich,GK,,92,,,,,,,92,88,72,93,52,90,33,Right,188,1969,Q131261
+icon-peter-schmeichel,Peter Schmeichel,Schmeichel,DEN,manchester-united,GK,,92,,,,,,,90,88,84,92,56,90,31,Right,191,1963,Q182314
+icon-dino-zoff,Dino Zoff,Zoff,ITA,juventus,GK,,91,,,,,,,88,92,70,88,48,94,31,Right,182,1942,Q180661
+icon-petr-cech,Petr Čech,Čech,CZE,chelsea,GK,,91,,,,,,,89,90,72,92,50,92,23,Left,196,1982,Q483137
+icon-edwin-van-der-sar,Edwin van der Sar,Van der Sar,NED,ajax,GK,,90,,,,,,,86,88,86,88,50,91,25,Right,197,1970,Q482955
+icon-peter-shilton,Peter Shilton,Shilton,ENG,nottingham-forest,GK,,90,,,,,,,88,90,72,89,48,92,29,Right,183,1949,Q244799
+icon-sepp-maier,Sepp Maier,Maier,GER,bayern-munich,GK,,90,,,,,,,90,88,70,91,52,88,30,Right,183,1944,Q44194
+icon-rinat-dasayev,Rinat Dasayev,Dasayev,URS,spartak-moscow,GK,,89,,,,,,,88,88,72,90,50,90,31,Right,189,1957,Q294444
+icon-dida,Dida,Dida,BRA,milan,GK,,88,,,,,,,89,85,72,90,46,86,30,Right,195,1973,Q188544
+icon-fabien-barthez,Fabien Barthez,Barthez,FRA,monaco,GK,,88,,,,,,,87,82,80,90,62,85,27,Right,180,1971,Q191139
+icon-jose-luis-chilavert,José Luis Chilavert,Chilavert,PAR,velez-sarsfield,GK,,88,,,,,,,85,86,92,87,45,88,31,Left,188,1965,Q216312
+icon-walter-zenga,Walter Zenga,Zenga,ITA,inter,GK,,88,,,,,,,89,84,70,90,52,86,30,Right,188,1960,Q294302
+icon-andoni-zubizarreta,Andoni Zubizarreta,Zubizarreta,ESP,barcelona,GK,,87,,,,,,,85,86,74,86,48,89,30,Right,186,1961,Q215963
+icon-rene-higuita,René Higuita,Higuita,COL,atletico-nacional,GK,,85,,,,,,,84,78,90,86,70,80,23,Right,175,1966,Q237494
+icon-jorge-campos,Jorge Campos,Campos,MEX,pumas-unam,GK,,84,,,,,,,88,76,82,87,72,78,27,Right,168,1966,Q313761
+icon-franz-beckenbauer,Franz Beckenbauer,Beckenbauer,GER,bayern-munich,CB,CDM,95,78,70,90,88,94,82,,,,,,,28,Right,181,1945,Q4457
+icon-paolo-maldini,Paolo Maldini,Maldini,ITA,milan,LB,CB,94,85,52,80,78,96,86,,,,,,,26,Right,186,1968,Q483027
+icon-franco-baresi,Franco Baresi,Baresi,ITA,milan,CB,,93,76,55,80,72,96,80,,,,,,,29,Right,176,1960,Q189984
+icon-alessandro-nesta,Alessandro Nesta,Nesta,ITA,milan,CB,,92,82,45,75,72,95,85,,,,,,,27,Right,187,1976,Q227892
+icon-bobby-moore,Bobby Moore,Moore,ENG,west-ham-united,CB,,92,70,55,82,72,94,82,,,,,,,25,Right,182,1941,Q191492
+icon-fabio-cannavaro,Fabio Cannavaro,Cannavaro,ITA,juventus,CB,,92,82,45,70,68,95,86,,,,,,,32,Right,176,1973,Q102027
+icon-cafu,Cafu,Cafu,BRA,milan,RB,RWB,91,92,66,82,84,86,88,,,,,,,32,Right,176,1970,Q178683
+icon-roberto-carlos,Roberto Carlos,Roberto Carlos,BRA,real-madrid,LB,LWB,91,95,83,85,85,82,86,,,,,,,29,Left,168,1973,Q429039
+icon-sergio-ramos,Sergio Ramos,Ramos,ESP,real-madrid,CB,RB,91,82,72,78,76,91,89,,,,,,,31,Right,184,1986,Q483309
+icon-virgil-van-dijk,Virgil van Dijk,Van Dijk,NED,liverpool,CB,,91,84,62,78,72,92,92,,,,,,,28,Right,193,1991,Q133903
+icon-carlos-alberto-torres,Carlos Alberto Torres,Carlos Alberto,BRA,santos,RB,,90,85,74,82,80,88,82,,,,,,,25,Right,181,1944,Q295262
+icon-daniel-passarella,Daniel Passarella,Passarella,ARG,river-plate,CB,,90,74,76,78,72,91,85,,,,,,,25,Right,173,1953,Q15802
+icon-gaetano-scirea,Gaetano Scirea,Scirea,ITA,juventus,CB,,90,74,58,82,78,91,76,,,,,,,29,Right,178,1953,Q299608
+icon-lilian-thuram,Lilian Thuram,Thuram,FRA,juventus,RB,CB,90,85,52,72,74,91,88,,,,,,,26,Right,182,1972,Q180326
+icon-matthias-sammer,Matthias Sammer,Sammer,GER,borussia-dortmund,CB,CDM,90,76,72,84,80,90,82,,,,,,,29,Right,181,1967,Q57183
+icon-philipp-lahm,Philipp Lahm,Lahm,GER,bayern-munich,RB,LB|CDM,90,85,64,86,85,89,72,,,,,,,29,Right,170,1983,Q43682
+icon-rio-ferdinand,Rio Ferdinand,Ferdinand,ENG,manchester-united,CB,,90,84,48,76,72,91,85,,,,,,,29,Right,189,1978,Q483417
+icon-carles-puyol,Carles Puyol,Puyol,ESP,barcelona,CB,RB,89,78,50,68,66,92,88,,,,,,,28,Right,178,1978,Q17158
+icon-dani-alves,Dani Alves,Dani Alves,BRA,barcelona,RB,RWB|RM,89,89,72,86,86,80,78,,,,,,,28,Right,172,1983,Q172720
+icon-elias-figueroa,Elías Figueroa,Figueroa,CHI,internacional,CB,,89,76,58,74,72,92,85,,,,,,,29,Right,185,1946,Q310981
+icon-fernando-hierro,Fernando Hierro,Hierro,ESP,real-madrid,CB,CDM,89,74,80,84,72,89,86,,,,,,,30,Right,187,1968,Q205499
+icon-giacinto-facchetti,Giacinto Facchetti,Facchetti,ITA,inter,LB,LWB,89,88,72,76,76,87,86,,,,,,,26,Left,191,1942,Q219390
+icon-jaap-stam,Jaap Stam,Stam,NED,manchester-united,CB,,89,76,45,66,60,92,93,,,,,,,27,Right,191,1972,Q216917
+icon-javier-zanetti,Javier Zanetti,Zanetti,ARG,inter,RB,CM|CDM,89,84,62,82,82,87,84,,,,,,,29,Right,178,1973,Q52876
+icon-john-terry,John Terry,Terry,ENG,chelsea,CB,,89,68,58,72,64,92,88,,,,,,,25,Right,187,1980,Q83456
+icon-marcel-desailly,Marcel Desailly,Desailly,FRA,milan,CB,CDM,89,82,52,72,72,91,90,,,,,,,26,Right,186,1968,Q193625
+icon-nemanja-vidic,Nemanja Vidić,Vidić,SRB,manchester-united,CB,,89,72,50,60,55,92,92,,,,,,,27,Right,188,1981,Q163564
+icon-nilton-santos,Nílton Santos,Nílton Santos,BRA,botafogo,LB,,89,84,58,80,80,88,78,,,,,,,33,Left,180,1925,Q83329
+icon-ronald-koeman,Ronald Koeman,Koeman,NED,barcelona,CB,CDM,89,66,88,90,74,86,80,,,,,,,29,Right,181,1963,Q192635
+icon-thiago-silva,Thiago Silva,Thiago Silva,BRA,psg,CB,,89,80,55,76,70,91,84,,,,,,,28,Right,183,1984,Q210453
+icon-andreas-brehme,Andreas Brehme,Brehme,GER,inter,LB,LWB|LM,88,78,82,86,78,84,78,,,,,,,29,Left,176,1960,Q159045
+icon-ashley-cole,Ashley Cole,A. Cole,ENG,chelsea,LB,LWB,88,89,60,80,82,87,78,,,,,,,28,Left,176,1980,Q133556
+icon-djalma-santos,Djalma Santos,Djalma Santos,BRA,palmeiras,RB,,88,84,52,76,76,89,82,,,,,,,29,Right,173,1929,Q299693
+icon-gerard-pique,Gerard Piqué,Piqué,ESP,barcelona,CB,,88,70,60,80,72,89,85,,,,,,,28,Right,194,1987,Q17507
+icon-jurgen-kohler,Jürgen Kohler,Kohler,GER,borussia-dortmund,CB,,88,76,45,64,58,91,88,,,,,,,31,Right,186,1965,Q308925
+icon-laurent-blanc,Laurent Blanc,Blanc,FRA,montpellier,CB,,88,68,70,82,72,89,80,,,,,,,25,Right,192,1965,Q1839
+icon-lucio,Lúcio,Lúcio,BRA,inter,CB,,88,82,58,70,72,89,90,,,,,,,32,Right,188,1978,Q156822
+icon-marcelo,Marcelo,Marcelo,BRA,real-madrid,LB,LWB,88,84,74,86,89,78,78,,,,,,,29,Left,174,1988,Q38136
+icon-mats-hummels,Mats Hummels,Hummels,GER,borussia-dortmund,CB,,88,70,55,82,72,89,84,,,,,,,25,Right,191,1988,Q110053
+icon-paul-breitner,Paul Breitner,Breitner,GER,bayern-munich,LB,CM,88,80,78,84,80,85,79,,,,,,,22,Right,176,1951,Q44458
+icon-ricardo-carvalho,Ricardo Carvalho,Carvalho,POR,chelsea,CB,,88,78,45,68,66,90,82,,,,,,,27,Right,183,1978,Q570811
+icon-ruud-krol,Ruud Krol,Krol,NED,ajax,LB,CB,88,80,62,82,76,88,80,,,,,,,25,Left,183,1949,Q313180
+icon-sol-campbell,Sol Campbell,Campbell,ENG,arsenal,CB,,88,80,48,62,60,90,92,,,,,,,28,Right,188,1974,Q214734
+icon-gianluca-zambrotta,Gianluca Zambrotta,Zambrotta,ITA,juventus,RB,LB,87,87,60,78,80,85,80,,,,,,,29,Right,181,1977,Q182907
+icon-giuseppe-bergomi,Giuseppe Bergomi,Bergomi,ITA,inter,CB,RB,87,76,45,66,64,89,82,,,,,,,27,Right,183,1963,Q235159
+icon-gary-neville,Gary Neville,G. Neville,ENG,manchester-united,RB,,86,78,55,78,72,85,78,,,,,,,24,Right,180,1975,Q348857
+icon-diego-maradona,Diego Maradona,Maradona,ARG,napoli,CAM,CF,97,87,92,93,99,40,78,,,,,,,26,Left,165,1960,Q17515
+icon-zinedine-zidane,Zinedine Zidane,Zidane,FRA,real-madrid,CAM,CM,95,80,88,94,96,62,84,,,,,,,30,Right,185,1972,Q1835
+icon-michel-platini,Michel Platini,Platini,FRA,juventus,CAM,CM,94,77,93,94,90,48,72,,,,,,,29,Right,178,1955,Q4261
+icon-bobby-charlton,Bobby Charlton,Charlton,ENG,manchester-united,CAM,CM|CF,93,80,92,89,86,58,80,,,,,,,28,Right,173,1937,Q171583
+icon-lothar-matthaus,Lothar Matthäus,Matthäus,GER,inter,CM,CDM|CB,93,80,85,88,84,86,85,,,,,,,29,Right,174,1961,Q36386
+icon-ruud-gullit,Ruud Gullit,Gullit,NED,milan,CAM,CF|CM,93,87,88,86,88,72,92,,,,,,,26,Right,191,1962,Q173972
+icon-zico,Zico,Zico,BRA,flamengo,CAM,,93,82,92,92,92,40,70,,,,,,,28,Right,172,1953,Q47526
+icon-andres-iniesta,Andrés Iniesta,Iniesta,ESP,barcelona,CM,CAM|LW,92,78,76,93,95,60,66,,,,,,,26,Right,171,1984,Q43729
+icon-kaka,Kaká,Kaká,BRA,milan,CAM,,92,92,88,87,91,48,78,,,,,,,25,Right,186,1982,Q531814
+icon-xavi,Xavi,Xavi,ESP,barcelona,CM,,92,70,76,97,91,68,66,,,,,,,30,Right,170,1980,Q17500
+icon-frank-rijkaard,Frank Rijkaard,Rijkaard,NED,milan,CDM,CB,91,78,72,84,80,90,90,,,,,,,27,Right,190,1962,Q169098
+icon-kevin-de-bruyne,Kevin De Bruyne,De Bruyne,BEL,manchester-city,CAM,CM,91,77,87,95,87,63,78,,,,,,,29,Right,181,1991,Q357984
+icon-luka-modric,Luka Modrić,Modrić,CRO,real-madrid,CM,CAM,91,76,78,91,91,72,70,,,,,,,32,Right,172,1985,Q483837
+icon-michael-laudrup,Michael Laudrup,Laudrup,DEN,barcelona,CAM,,91,82,80,93,92,40,68,,,,,,,28,Right,183,1964,Q188720
+icon-pavel-nedved,Pavel Nedvěd,Nedvěd,CZE,juventus,LM,CAM|LW,91,84,88,85,87,64,86,,,,,,,31,Right,177,1972,Q171295
+icon-steven-gerrard,Steven Gerrard,Gerrard,ENG,liverpool,CM,CAM,91,82,89,89,84,76,86,,,,,,,25,Right,183,1980,Q459830
+icon-socrates,Sócrates,Sócrates,BRA,corinthians,CAM,CM,91,72,88,92,86,52,80,,,,,,,28,Right,192,1954,Q102331
+icon-andrea-pirlo,Andrea Pirlo,Pirlo,ITA,milan,CM,CDM,90,62,80,95,86,64,66,,,,,,,27,Right,177,1979,Q43926
+icon-david-beckham,David Beckham,Beckham,ENG,manchester-united,RM,CM,90,76,86,94,80,58,76,,,,,,,24,Right,180,1975,Q10520
+icon-didi,Didi,Didi,BRA,botafogo,CM,CAM,90,72,84,93,86,55,74,,,,,,,30,Right,172,1928,Q312486
+icon-frank-lampard,Frank Lampard,Lampard,ENG,chelsea,CM,CAM,90,76,90,87,82,70,82,,,,,,,27,Right,184,1978,Q41533
+icon-gianni-rivera,Gianni Rivera,Rivera,ITA,milan,CAM,,90,78,85,91,89,40,64,,,,,,,26,Right,175,1943,Q230046
+icon-johan-neeskens,Johan Neeskens,Neeskens,NED,ajax,CM,CDM,90,82,82,84,82,80,86,,,,,,,23,Right,178,1951,Q233819
+icon-patrick-vieira,Patrick Vieira,Vieira,FRA,arsenal,CDM,CM,90,78,68,82,82,88,91,,,,,,,27,Right,193,1976,Q46347
+icon-paul-scholes,Paul Scholes,Scholes,ENG,manchester-united,CM,CAM,90,70,88,92,84,68,74,,,,,,,28,Right,170,1974,Q45613
+icon-roberto-rivellino,Roberto Rivellino,Rivellino,BRA,corinthians,LM,CAM,90,78,90,89,90,45,76,,,,,,,24,Left,169,1946,Q220283
+icon-toni-kroos,Toni Kroos,Kroos,GER,real-madrid,CM,,90,58,82,95,82,70,72,,,,,,,27,Right,183,1990,Q131234
+icon-bastian-schweinsteiger,Bastian Schweinsteiger,Schweinsteiger,GER,bayern-munich,CM,CDM,89,72,78,87,82,80,82,,,,,,,29,Right,183,1984,Q44298
+icon-clarence-seedorf,Clarence Seedorf,Seedorf,NED,milan,CM,CAM,89,76,82,87,86,72,86,,,,,,,27,Right,176,1976,Q484909
+icon-edgar-davids,Edgar Davids,Davids,NED,juventus,CDM,CM,89,82,68,82,84,86,86,,,,,,,26,Left,169,1973,Q185115
+icon-fernando-redondo,Fernando Redondo,Redondo,ARG,real-madrid,CDM,CM,89,72,62,88,88,82,78,,,,,,,28,Left,186,1969,Q295456
+icon-gheorghe-hagi,Gheorghe Hagi,Hagi,ROU,galatasaray,CAM,,89,76,86,90,89,40,68,,,,,,,29,Left,174,1965,Q189892
+icon-juan-roman-riquelme,Juan Román Riquelme,Riquelme,ARG,boca-juniors,CAM,,89,62,82,93,90,40,72,,,,,,,29,Right,182,1978,Q192965
+icon-michael-ballack,Michael Ballack,Ballack,GER,bayer-leverkusen,CM,CAM,89,72,87,85,80,76,88,,,,,,,25,Right,189,1976,Q11948
+icon-ngolo-kante,N'Golo Kanté,Kanté,FRA,chelsea,CDM,CM,89,80,62,78,82,90,84,,,,,,,26,Right,168,1991,Q16665941
+icon-paulo-roberto-falcao,Paulo Roberto Falcão,Falcão,BRA,roma,CM,,89,74,80,89,85,72,80,,,,,,,29,Right,183,1953,Q312454
+icon-roy-keane,Roy Keane,Keane,IRL,manchester-united,CDM,CM,89,76,68,82,76,88,88,,,,,,,28,Right,178,1971,Q188632
+icon-sergio-busquets,Sergio Busquets,Busquets,ESP,barcelona,CDM,,89,58,60,87,82,86,80,,,,,,,23,Right,189,1988,Q49704
+icon-wesley-sneijder,Wesley Sneijder,Sneijder,NED,inter,CAM,,89,74,86,91,86,50,70,,,,,,,26,Right,170,1984,Q124086
+icon-xabi-alonso,Xabi Alonso,Xabi Alonso,ESP,real-madrid,CDM,CM,89,62,78,92,78,80,80,,,,,,,29,Right,183,1981,Q208104
+icon-yaya-toure,Yaya Touré,Y. Touré,CIV,manchester-city,CM,CDM,89,80,84,86,84,76,92,,,,,,,30,Right,191,1983,Q184277
+icon-bryan-robson,Bryan Robson,Robson,ENG,manchester-united,CM,,88,78,82,82,78,80,86,,,,,,,26,Right,177,1957,Q296583
+icon-carlos-valderrama,Carlos Valderrama,Valderrama,COL,junior,CAM,,88,60,72,94,86,45,68,,,,,,,29,Right,176,1961,Q204089
+icon-claude-makelele,Claude Makélélé,Makélélé,FRA,chelsea,CDM,,88,72,48,80,76,90,82,,,,,,,32,Right,174,1973,Q184362
+icon-david-silva,David Silva,D. Silva,ESP,manchester-city,CAM,CM,88,72,76,91,91,46,60,,,,,,,26,Left,170,1986,Q161069
+icon-deco,Deco,Deco,POR,fc-porto,CAM,CM,88,74,80,89,89,62,74,,,,,,,26,Right,174,1977,Q659634
+icon-enzo-francescoli,Enzo Francescoli,Francescoli,URU,river-plate,CAM,CF,88,74,84,88,88,40,74,,,,,,,30,Right,181,1961,Q210083
+icon-gunter-netzer,Günter Netzer,Netzer,GER,borussia-monchengladbach,CAM,,88,76,82,91,84,48,76,,,,,,,28,Right,178,1944,Q44326
+icon-juan-sebastian-veron,Juan Sebastián Verón,Verón,ARG,lazio,CM,CAM,88,70,84,91,84,64,78,,,,,,,25,Right,186,1975,Q46502
+icon-juninho-pernambucano,Juninho Pernambucano,Juninho,BRA,lyon,CM,CAM,88,68,90,90,82,58,72,,,,,,,30,Right,178,1975,Q203451
+icon-mesut-ozil,Mesut Özil,Özil,GER,real-madrid,CAM,,88,74,76,92,88,35,62,,,,,,,24,Left,180,1988,Q83488
+icon-michael-essien,Michael Essien,Essien,GHA,chelsea,CM,CDM|RB,88,82,76,80,80,84,90,,,,,,,24,Right,178,1982,Q969520
+icon-paul-gascoigne,Paul Gascoigne,Gascoigne,ENG,tottenham-hotspur,CAM,CM,88,78,84,87,90,50,80,,,,,,,23,Right,178,1967,Q13002
+icon-rui-costa,Rui Costa,Rui Costa,POR,fiorentina,CAM,,88,74,80,91,89,45,72,,,,,,,26,Right,180,1972,Q190608
+icon-gennaro-gattuso,Gennaro Gattuso,Gattuso,ITA,milan,CDM,,87,74,52,72,68,88,90,,,,,,,25,Right,177,1978,Q116980
+icon-jay-jay-okocha,Jay-Jay Okocha,Okocha,NGA,psg,CAM,,87,80,80,84,92,40,74,,,,,,,25,Right,173,1973,Q605817
+icon-pep-guardiola,Pep Guardiola,Guardiola,ESP,barcelona,CDM,CM,87,62,62,90,80,76,68,,,,,,,23,Right,180,1971,Q164038
+icon-hidetoshi-nakata,Hidetoshi Nakata,Nakata,JPN,roma,CAM,CM,86,74,78,85,83,58,76,,,,,,,24,Right,175,1977,Q128725
+icon-park-ji-sung,Park Ji-sung,Park Ji-sung,KOR,manchester-united,CM,RM|LM,86,84,70,78,80,76,84,,,,,,,28,Right,175,1981,Q50603
+icon-pele,Pelé,Pelé,BRA,santos,CF,ST|CAM,98,94,97,92,97,55,82,,,,,,,25,Right,173,1940,Q12897
+icon-lionel-messi,Lionel Messi,Messi,ARG,barcelona,RW,CF|CAM,97,90,95,93,99,38,70,,,,,,,25,Left,170,1987,Q615
+icon-cristiano-ronaldo,Cristiano Ronaldo,C. Ronaldo,POR,real-madrid,ST,LW,96,92,97,84,91,38,88,,,,,,,29,Right,187,1985,Q11571
+icon-johan-cruyff,Johan Cruyff,Cruyff,NED,ajax,CF,CAM|LW,96,92,90,92,97,45,72,,,,,,,26,Right,178,1947,Q17163
+icon-ronaldo-nazario,Ronaldo Nazário,Ronaldo,BRA,inter,ST,,96,97,96,80,97,40,86,,,,,,,21,Right,183,1976,Q529207
+icon-alfredo-di-stefano,Alfredo Di Stéfano,Di Stéfano,ARG,real-madrid,CF,ST|CAM,95,88,93,91,92,65,84,,,,,,,31,Right,178,1926,Q164546
+icon-ferenc-puskas,Ferenc Puskás,Puskás,HUN,real-madrid,ST,CF,94,82,97,88,90,40,78,,,,,,,27,Left,172,1927,Q482931
+icon-marco-van-basten,Marco van Basten,Van Basten,NED,milan,ST,,94,84,96,82,89,40,86,,,,,,,27,Right,188,1964,Q483629
+icon-ronaldinho,Ronaldinho,Ronaldinho,BRA,barcelona,LW,CAM,94,88,89,92,97,40,78,,,,,,,26,Right,181,1980,Q39444
+icon-eusebio,Eusébio,Eusébio,POR,benfica,ST,,93,94,95,80,90,40,84,,,,,,,24,Right,175,1942,Q162043
+icon-garrincha,Garrincha,Garrincha,BRA,botafogo,RW,,93,93,85,80,98,35,70,,,,,,,28,Right,169,1933,Q180642
+icon-george-best,George Best,Best,NIR,manchester-united,RW,LW|CAM,93,93,88,82,96,48,74,,,,,,,22,Right,175,1946,Q164521
+icon-gerd-muller,Gerd Müller,G. Müller,GER,bayern-munich,ST,,93,80,97,72,84,35,82,,,,,,,26,Right,176,1945,Q43744
+icon-roberto-baggio,Roberto Baggio,R. Baggio,ITA,juventus,CF,CAM,93,82,92,89,93,40,68,,,,,,,26,Right,174,1967,Q67964
+icon-thierry-henry,Thierry Henry,Henry,FRA,arsenal,ST,LW,93,94,91,84,91,40,80,,,,,,,26,Right,188,1977,Q45901
+icon-andriy-shevchenko,Andriy Shevchenko,Shevchenko,UKR,milan,ST,,92,90,93,78,86,45,84,,,,,,,27,Right,183,1976,Q41244
+icon-luis-suarez,Luis Suárez,Suárez,URU,barcelona,ST,,92,82,93,82,89,50,84,,,,,,,29,Right,182,1987,Q26517
+icon-luis-figo,Luís Figo,Figo,POR,barcelona,RW,RM,92,86,84,88,92,45,78,,,,,,,27,Right,180,1972,Q483145
+icon-neymar,Neymar,Neymar,BRA,barcelona,LW,,92,91,87,86,95,37,64,,,,,,,23,Right,175,1992,Q142794
+icon-rivaldo,Rivaldo,Rivaldo,BRA,barcelona,LW,CAM,92,82,92,86,91,42,82,,,,,,,27,Left,186,1972,Q483577
+icon-robert-lewandowski,Robert Lewandowski,Lewandowski,POL,bayern-munich,ST,,92,80,94,80,86,44,88,,,,,,,31,Right,185,1988,Q151269
+icon-romario,Romário,Romário,BRA,barcelona,ST,,92,90,94,80,93,32,70,,,,,,,28,Right,167,1966,Q178649
+icon-alan-shearer,Alan Shearer,Shearer,ENG,newcastle-united,ST,,91,80,93,74,80,45,90,,,,,,,25,Right,183,1970,Q483583
+icon-alessandro-del-piero,Alessandro Del Piero,Del Piero,ITA,juventus,CF,LW,91,82,90,86,91,40,70,,,,,,,23,Right,173,1974,Q624
+icon-dennis-bergkamp,Dennis Bergkamp,Bergkamp,NED,arsenal,CF,CAM,91,78,89,90,92,45,76,,,,,,,28,Right,183,1969,Q185389
+icon-francesco-totti,Francesco Totti,Totti,ITA,roma,CF,CAM,91,76,90,90,89,45,82,,,,,,,30,Right,180,1976,Q20110
+icon-gabriel-batistuta,Gabriel Batistuta,Batistuta,ARG,fiorentina,ST,,91,84,95,72,82,40,88,,,,,,,26,Right,185,1969,Q170376
+icon-george-weah,George Weah,Weah,LBR,milan,ST,,91,92,90,78,90,40,88,,,,,,,29,Right,184,1966,Q173139
+icon-hristo-stoichkov,Hristo Stoichkov,Stoichkov,BUL,barcelona,LW,ST,91,88,90,84,88,45,82,,,,,,,28,Left,178,1966,Q187125
+icon-karim-benzema,Karim Benzema,Benzema,FRA,real-madrid,ST,CF,91,80,91,86,88,40,82,,,,,,,34,Right,185,1987,Q1912
+icon-karl-heinz-rummenigge,Karl-Heinz Rummenigge,Rummenigge,GER,bayern-munich,RW,ST,91,88,90,80,88,40,80,,,,,,,25,Right,182,1955,Q152871
+icon-kenny-dalglish,Kenny Dalglish,Dalglish,SCO,liverpool,CF,ST,91,78,90,88,88,45,78,,,,,,,27,Right,173,1951,Q187198
+icon-mohamed-salah,Mohamed Salah,Salah,EGY,liverpool,RW,,91,93,89,82,90,45,76,,,,,,,25,Left,175,1992,Q1354960
+icon-raul,Raúl,Raúl,ESP,real-madrid,ST,CF,91,82,91,82,88,45,74,,,,,,,24,Left,180,1977,Q11576
+icon-zlatan-ibrahimovic,Zlatan Ibrahimović,Ibrahimović,SWE,psg,ST,,91,80,92,84,90,40,92,,,,,,,31,Right,195,1981,Q46896
+icon-arjen-robben,Arjen Robben,Robben,NED,bayern-munich,RW,,90,91,88,82,91,35,72,,,,,,,29,Left,180,1984,Q43913
+icon-denis-law,Denis Law,Law,SCO,manchester-united,ST,CF,90,84,92,74,86,40,76,,,,,,,24,Right,175,1940,Q233565
+icon-didier-drogba,Didier Drogba,Drogba,CIV,chelsea,ST,,90,82,89,72,80,45,94,,,,,,,31,Right,189,1978,Q48892
+icon-eden-hazard,Eden Hazard,Hazard,BEL,chelsea,LW,,90,88,82,86,94,35,70,,,,,,,24,Right,175,1991,Q214204
+icon-eric-cantona,Eric Cantona,Cantona,FRA,manchester-united,CF,ST,90,76,88,86,86,45,86,,,,,,,28,Right,188,1966,Q170328
+icon-franck-ribery,Franck Ribéry,Ribéry,FRA,bayern-munich,LW,,90,89,82,86,92,40,72,,,,,,,30,Right,170,1983,Q1918
+icon-gareth-bale,Gareth Bale,Bale,WAL,real-madrid,RW,LW,90,95,87,82,86,50,84,,,,,,,25,Left,185,1989,Q184586
+icon-hugo-sanchez,Hugo Sánchez,H. Sánchez,MEX,real-madrid,ST,,90,80,93,74,84,32,78,,,,,,,31,Right,175,1958,Q487155
+icon-ian-rush,Ian Rush,Rush,WAL,liverpool,ST,,90,86,92,72,80,45,78,,,,,,,22,Right,180,1961,Q219354
+icon-jairzinho,Jairzinho,Jairzinho,BRA,botafogo,RW,,90,92,88,78,90,40,82,,,,,,,25,Right,172,1944,Q210102
+icon-just-fontaine,Just Fontaine,Fontaine,FRA,stade-de-reims,ST,,90,86,94,70,84,35,76,,,,,,,24,Right,174,1933,Q192749
+icon-kevin-keegan,Kevin Keegan,Keegan,ENG,hamburger-sv,CF,ST,90,86,86,82,88,50,78,,,,,,,28,Right,173,1951,Q152832
+icon-luigi-riva,Luigi Riva,Riva,ITA,cagliari,LW,ST,90,85,93,72,84,40,82,,,,,,,26,Left,180,1944,Q276026
+icon-mario-kempes,Mario Kempes,Kempes,ARG,valencia,ST,CF,90,86,90,80,88,45,84,,,,,,,24,Left,184,1954,Q180649
+icon-robin-van-persie,Robin van Persie,Van Persie,NED,arsenal,ST,,90,76,92,84,86,40,76,,,,,,,28,Left,186,1983,Q2339
+icon-ruud-van-nistelrooy,Ruud van Nistelrooy,Van Nistelrooy,NED,manchester-united,ST,,90,80,93,70,82,35,84,,,,,,,26,Right,188,1976,Q45626
+icon-samuel-etoo,Samuel Eto'o,Eto'o,CMR,barcelona,ST,,90,92,89,76,86,45,80,,,,,,,27,Right,180,1981,Q1255625
+icon-sergio-aguero,Sergio Agüero,Agüero,ARG,manchester-city,ST,,90,86,92,78,89,35,76,,,,,,,26,Right,173,1988,Q119562
+icon-wayne-rooney,Wayne Rooney,Rooney,ENG,manchester-united,ST,CF|CAM,90,84,88,85,86,58,86,,,,,,,24,Right,176,1985,Q266613
+icon-antoine-griezmann,Antoine Griezmann,Griezmann,FRA,atletico-madrid,ST,CF|CAM,89,82,87,86,87,55,76,,,,,,,27,Left,176,1991,Q455462
+icon-christian-vieri,Christian Vieri,Vieri,ITA,inter,ST,,89,82,90,68,76,38,92,,,,,,,28,Left,185,1973,Q188696
+icon-david-villa,David Villa,Villa,ESP,valencia,ST,LW,89,84,90,78,86,35,70,,,,,,,28,Right,175,1981,Q83006
+icon-fernando-torres,Fernando Torres,Torres,ESP,liverpool,ST,,89,90,88,72,85,35,80,,,,,,,24,Right,186,1984,Q42731
+icon-gary-lineker,Gary Lineker,Lineker,ENG,tottenham-hotspur,ST,,89,86,91,72,80,30,72,,,,,,,29,Right,177,1960,Q47778
+icon-gianfranco-zola,Gianfranco Zola,Zola,ITA,chelsea,CF,CAM,89,82,86,86,91,38,62,,,,,,,31,Right,168,1966,Q9354
+icon-jean-pierre-papin,Jean-Pierre Papin,Papin,FRA,marseille,ST,,89,82,92,70,82,35,78,,,,,,,27,Right,176,1963,Q13494
+icon-jurgen-klinsmann,Jürgen Klinsmann,Klinsmann,GER,inter,ST,,89,85,89,72,80,40,82,,,,,,,26,Right,181,1964,Q57079
+icon-michael-owen,Michael Owen,Owen,ENG,liverpool,ST,,89,95,88,68,84,30,66,,,,,,,21,Right,173,1979,Q128829
+icon-paolo-rossi,Paolo Rossi,P. Rossi,ITA,juventus,ST,,89,84,90,72,84,35,64,,,,,,,25,Right,174,1956,Q178628
+icon-son-heung-min,Son Heung-min,Son,KOR,tottenham-hotspur,LW,ST,89,89,89,79,86,42,74,,,,,,,29,Right,183,1992,Q439722
+icon-hernan-crespo,Hernán Crespo,Crespo,ARG,parma,ST,,88,80,90,72,82,40,82,,,,,,,25,Right,184,1975,Q160206

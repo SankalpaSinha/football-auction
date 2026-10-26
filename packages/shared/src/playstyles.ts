@@ -43,12 +43,13 @@ export function playstyleOf(p: PlayerCard): PlaystyleId {
 function classify(p: PlayerCard): PlaystyleId {
   if (p.position === 'GK' || !p.outfield) {
     const g = p.goalkeeping;
-    return g && g.kicking + g.speed >= 115 ? 'SWEEPER_KEEPER' : 'SHOT_STOPPER';
+    // Relative to their shot-stopping, so it works for any rating level (current players and icons alike).
+    return g && g.kicking + g.speed - (g.diving + g.reflexes) / 2 >= 38 ? 'SWEEPER_KEEPER' : 'SHOT_STOPPER';
   }
   const s: OutfieldStats = p.outfield;
   switch (p.position) {
     case 'CB':
-      return s.passing >= 61 ? 'BALL_PLAYING_DEFENDER' : 'STOPPER';
+      return s.passing >= s.defending - 22 ? 'BALL_PLAYING_DEFENDER' : 'STOPPER';
     case 'LB':
     case 'RB':
     case 'LWB':
@@ -74,11 +75,12 @@ function classify(p: PlayerCard): PlaystyleId {
     case 'CF':
     case 'ST':
     default:
-      if (s.physical >= 84 || p.heightCm >= 192) return 'TARGET_MAN';
-      if (s.pace >= 88) return 'PACE_FORWARD';
-      if (s.passing >= 74 && s.dribbling >= 78) return 'FALSE_NINE';
-      if (s.physical >= 79 || p.heightCm >= 188) return 'TARGET_MAN';
-      if (s.pace >= 80) return 'PACE_FORWARD';
+      // Explosive and skilful beats big: a quick elite dribbler is a runner, not a target man.
+      if (s.pace >= 88 && s.dribbling >= 88) return 'PACE_FORWARD';
+      // Relative to their own finishing, so the split holds at any rating level.
+      if ((s.passing + s.dribbling) / 2 >= s.shooting - 3) return 'FALSE_NINE';
+      if (s.physical >= s.pace + 4 || p.heightCm >= 190) return 'TARGET_MAN';
+      if (s.pace >= s.shooting - 1) return 'PACE_FORWARD';
       return 'POACHER';
   }
 }

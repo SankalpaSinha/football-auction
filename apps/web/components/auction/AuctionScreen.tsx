@@ -45,7 +45,9 @@ export function AuctionScreen({ room, me }: { room: RoomView; me: string }) {
           <Logo compact />
           <Pill color={room.competition.accent}>{room.competition.shortName}</Pill>
           <span className="hidden text-sm font-semibold sm:inline">{room.competition.name}</span>
-          <span className="hidden text-xs text-muted md:inline">{room.competition.seasonLabel}</span>
+          {room.competition.seasonLabel !== room.competition.name && (
+            <span className="hidden text-xs text-muted md:inline">{room.competition.seasonLabel}</span>
+          )}
           <div className="ml-auto flex items-center gap-3 text-xs text-muted sm:gap-5">
             <span>
               Lot <span className="display text-base font-bold text-ink num">{lot?.lotNumber ?? auction.lastResult?.lotNumber ?? '–'}</span>

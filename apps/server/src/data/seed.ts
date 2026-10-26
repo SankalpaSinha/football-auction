@@ -52,6 +52,8 @@ export interface CompetitionConfig {
   sortOrder?: number;
   /** Rules applied to every season, plus `clubTags` resolved against clubs.json. */
   rules: PoolRules & { clubTags?: string[] };
+  /** Only these seasons (default: every season that isn't `exclusive`). */
+  seasons?: string[];
   seasonRules?: Record<string, PoolRules & { clubTags?: string[] }>;
 }
 
@@ -60,6 +62,13 @@ export interface SeasonRecord {
   label: string;
   startYear: number;
   isCurrent?: boolean;
+  /** A special dataset (e.g. all-time icons) that only competitions listing it explicitly use. */
+  exclusive?: boolean;
+}
+
+/** Whether a competition offers this season. */
+export function competitionHasSeason(cfg: CompetitionConfig, season: SeasonRecord): boolean {
+  return cfg.seasons ? cfg.seasons.includes(season.id) : !season.exclusive;
 }
 
 export interface NormalizedPlayer {
@@ -346,7 +355,7 @@ export function catalogFromSeedFiles(dataDir: string): { data: CatalogData; erro
     const ds = loadSeasonDataset(dataDir, season);
     errors.push(...ds.errors.map((e) => `${season.id} ${e}`));
     configs.forEach((cfg, i) => {
-      competitions[i].seasons[season.id] = resolveRules(cfg, season.id, ds.clubs);
+      if (competitionHasSeason(cfg, season)) competitions[i].seasons[season.id] = resolveRules(cfg, season.id, ds.clubs);
     });
     const nationBy = new Map(ds.nations.map((n) => [n.code, n]));
     const clubBy = new Map(ds.clubs.map((c) => [c.id, c]));

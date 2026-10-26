@@ -378,3 +378,25 @@ describe('custom formations', () => {
     expect(lineupSchema.safeParse({ formationId: 'custom', slots: [], custom: [{ role: 'XX', x: 1, y: 1 }] }).success).toBe(false);
   });
 });
+
+describe('host position filter', () => {
+  it('only the host can choose; the next players come from that position; it ends when none are left', () => {
+    const h = createHarness({ players: 2 });
+    expect(code(() => h.room.setFocus('u2', 'GK'))).toBe('NOT_HOST');
+    h.room.setFocus('u1', 'GK');
+    expect(h.room.view().auction!.focus).toBe('GK');
+    const seen: string[] = [];
+    for (let i = 0; i < 20; i++) {
+      for (const u of ['u1', 'u2']) if (h.room.phase === 'AUCTION') code(() => h.room.skip(u, h.lot().lotNumber));
+      nextLot(h);
+      if (h.room.phase === 'AUCTION') seen.push(h.lot().player.position);
+    }
+    // makePool(120, 16): 16 keepers; after the open lot every new lot is a keeper until they run out.
+    expect(seen.slice(0, 15).every((p) => p === 'GK')).toBe(true);
+    expect(h.room.view().auction!.focus).toBeNull();
+    expect(h.room.view().feed.some((f) => f.text.includes('No more goalkeepers left'))).toBe(true);
+    h.room.setFocus('u1', 'ATT');
+    h.room.setFocus('u1', null);
+    expect(h.room.view().auction!.focus).toBeNull();
+  });
+});

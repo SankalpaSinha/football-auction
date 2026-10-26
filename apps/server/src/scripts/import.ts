@@ -20,6 +20,7 @@ import {
   loadSeasonDataset,
   loadSeasons,
   resolveRules,
+  competitionHasSeason,
   seasonIdsOnDisk,
 } from '../data/seed';
 
@@ -199,6 +200,7 @@ async function main() {
     if (retired.count) console.log(`  ${retired.count} players no longer in dataset → INACTIVE`);
 
     for (const cfg of configs) {
+      if (!competitionHasSeason(cfg, season)) continue;
       const rules = resolveRules(cfg, season.id, ds.clubs);
       await db.competitionSeason.upsert({
         where: { competitionId_seasonId: { competitionId: cfg.id, seasonId: season.id } },

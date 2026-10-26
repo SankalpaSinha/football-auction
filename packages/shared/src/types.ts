@@ -1,3 +1,4 @@
+import type { PositionGroup } from './positions';
 import type { FormationSlot } from './formations';
 import type { ObjectiveId } from './objectives';
 import type { TacticId } from './playstyles';
@@ -208,6 +209,8 @@ export interface AuctionView {
   unsoldWaiting: number;
   reofferRound: boolean;
   paused: boolean;
+  /** Host's choice of which positions come up next (null = any). */
+  focus: PositionGroup | null;
   /** A pause every manager agreed to. Any manager can resume; it ends by itself at `until`. */
   hold: { by: string; until: number } | null;
   /** Someone asked to pause; it happens only if every connected manager agrees. */

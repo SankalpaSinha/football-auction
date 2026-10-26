@@ -18,6 +18,7 @@ import {
   DEFAULT_TACTIC,
   CUSTOM_FORMATION_ID,
   isStarPlayer,
+  type PositionGroup,
   drawObjectives,
   type ObjectiveId,
 } from '@fa/shared';
@@ -549,6 +550,13 @@ export class Room {
   pick(userId: string, playerId: string) {
     this.assertInAuction(userId);
     this.auction!.pick(userId, playerId);
+  }
+
+  /** Host only: choose which positions come up next (null = any). */
+  setFocus(userId: string, group: PositionGroup | null) {
+    this.assertInAuction(userId);
+    if (userId !== this.hostId) fail('NOT_HOST');
+    this.auction!.setFocus(group);
   }
 
   requestPause(userId: string) {

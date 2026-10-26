@@ -2,6 +2,8 @@ import {
   DEFAULT_VALUATION,
   estimateValue,
   isStarPlayer,
+  POSITION_GROUP,
+  type PositionGroup,
   verdictFor,
   type AuctionView,
   type FeedKind,
@@ -100,6 +102,8 @@ interface OpenLot {
 
 type Stage = 'IDLE' | 'LOT_OPEN' | 'REVEAL' | 'FREE_PICK' | 'COMPLETE';
 
+const GROUP_NAMES: Record<PositionGroup, string> = { GK: 'goalkeepers', DEF: 'defenders', MID: 'midfielders', ATT: 'attackers' };
+
 /** Minimum time left on the clock when a paused lot resumes. */
 const RESUME_MIN_MS = 5_000;
 
@@ -145,6 +149,8 @@ export class Auction {
   private idleLots = new Map<string, number>();
   private readonly startingParticipants: number;
   private trades = new Map<string, TradeOffer & { timer: TimerHandle }>();
+  /** Host's choice of which positions come up next (null = any). */
+  private focus: PositionGroup | null = null;
   /** Quit while holding the top bid: leave as soon as that lot closes. */
   private pendingQuits = new Set<string>();
 
@@ -742,6 +748,7 @@ export class Auction {
       unsoldWaiting: this.unsold.length,
       reofferRound: this.reofferRound,
       paused: this.isPaused,
+      focus: this.focus,
       hold: this.hold && { ...this.hold },
       pauseVote: this.pauseVote && {
         requestedBy: this.pauseVote.requestedBy,
@@ -998,8 +1005,29 @@ export class Auction {
       if (j >= 0) return { player: this.unsold.splice(j, 1)[0], reoffer: true };
     }
 
+    if (this.focus) {
+      const g = this.focus;
+      const idx = this.queue.findIndex((c) => POSITION_GROUP[c.position] === g);
+      if (idx >= 0) {
+        const [p] = this.queue.splice(idx, 1);
+        return { player: p, reoffer: this.reofferRound && !this.returned.delete(p.id) };
+      }
+      // None of that position left to auction: back to everyone.
+      this.focus = null;
+      this.hooks.onFeed('INFO', `No more ${GROUP_NAMES[g]} left — back to all positions`);
+    }
+
     const player = this.queue.shift();
     return player ? { player, reoffer: this.reofferRound && !this.returned.delete(player.id) } : null;
+  }
+
+  /** Host control: auction only this kind of player for now (null = any). Applies from the next lot. */
+  setFocus(group: PositionGroup | null) {
+    if (this.stage !== 'LOT_OPEN' && this.stage !== 'REVEAL') fail('WRONG_PHASE');
+    if (this.focus === group) return;
+    this.focus = group;
+    this.hooks.onFeed('HOST', group ? `Host: ${GROUP_NAMES[group]} only from the next player` : 'Host: back to all positions');
+    this.hooks.onChange();
   }
 
   private someoneUrgentlyNeedsGoalkeeper() {

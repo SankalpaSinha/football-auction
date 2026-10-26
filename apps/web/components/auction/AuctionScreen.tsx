@@ -16,6 +16,7 @@ import { useCountdown } from './useCountdown';
 import { FreePickPanel } from './FreePick';
 import { SquadSheet } from '../SquadViews';
 import { PauseBanners, PauseButton } from './PauseControls';
+import { FocusControl } from './FocusControl';
 import { ExitButton } from '../ExitButton';
 import { dealsOpen, TradeComposer, TradeInbox } from './Trades';
 import { Button } from '../ui';
@@ -86,6 +87,7 @@ export function AuctionScreen({ room, me }: { room: RoomView; me: string }) {
         {/* @container: the lot layout adapts to this column's width, not the window's */}
         <section className="@container flex min-w-0 flex-col gap-4">
           <PauseBanners room={room} me={me} />
+          <FocusControl room={room} me={me} />
           {self && <TradeInbox room={room} me={me} />}
           {auction.freePick ? (
             <FreePickPanel room={room} me={me} />

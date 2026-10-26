@@ -11,7 +11,7 @@
  */
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
-import { loadSeasonDataset, loadSeasons, seasonIdsOnDisk } from '../data/seed';
+import { loadSeasonDataset, loadSeasons, parseCsv, seasonIdsOnDisk } from '../data/seed';
 
 const args = process.argv.slice(2);
 const arg = (n: string) => {
@@ -184,13 +184,48 @@ async function main() {
   const ds = loadSeasonDataset(dataDir, season);
   const file = join(dataDir, 'seed', season.id, 'images.json');
   const cache: Record<string, ImageEntry> = existsSync(file) ? JSON.parse(readFileSync(file, 'utf8')) : {};
-  const todo = ds.players.filter((p) => refresh || !cache[p.playerId]);
+  // Optional extra CSV columns (used by the all-time icons): the real birth year and Wikidata id.
+  const extras = new Map<string, { birthYear?: number; qid?: string }>();
+  const csvFile = join(dataDir, 'seed', season.id, 'players.csv');
+  if (existsSync(csvFile)) {
+    for (const r of parseCsv(readFileSync(csvFile, 'utf8'))) {
+      const birthYear = Number(r.birthYear) || undefined;
+      const qid = /^Q\d+$/.test(r.wikidataId ?? '') ? r.wikidataId : undefined;
+      if (birthYear || qid) extras.set(r.externalId, { birthYear, qid });
+    }
+  }
+  // Name matching uses "season year − age" as the birth year; legends have a real one instead.
+  const todo = ds.players
+    .filter((p) => refresh || !cache[p.playerId])
+    .map((p) => {
+      const by = extras.get(p.playerId)?.birthYear;
+      return by ? { ...p, age: startYear - by } : p;
+    });
   console.log(`📷 ${season.label}: ${ds.players.length} players, ${todo.length} to look up`);
 
   const save = () => writeFileSync(file, JSON.stringify(cache, null, 1) + '\n');
 
+  // Known Wikidata ids: read the image straight from the entity.
+  const known = todo.filter((p) => extras.get(p.playerId)?.qid);
+  if (known.length) {
+    const files = new Map<string, { playerId: string; qid: string }>();
+    for (let i = 0; i < known.length; i += 50) {
+      const batch = known.slice(i, i + 50);
+      const ids = batch.map((p) => extras.get(p.playerId)!.qid!).join('|');
+      const r = await getJson(`https://www.wikidata.org/w/api.php?${new URLSearchParams({ action: 'wbgetentities', ids, props: 'claims', format: 'json' })}`);
+      for (const p of batch) {
+        const qid = extras.get(p.playerId)!.qid!;
+        const img = r?.entities?.[qid]?.claims?.P18?.[0]?.mainsnak?.datavalue?.value;
+        if (img) files.set(`File:${img}`, { playerId: p.playerId, qid });
+      }
+    }
+    await attachCommons(files, cache);
+    save();
+    console.log(`   Wikidata ids matched ${files.size}/${known.length}`);
+  }
+
   // Fast path: bulk SPARQL by exact name.
-  const bulk = await sparqlBulk(todo, startYear);
+  const bulk = await sparqlBulk(todo.filter((p) => !cache[p.playerId]), startYear);
   console.log(`   SPARQL matched ${bulk.size}/${todo.length}`);
   await attachCommons(
     new Map([...bulk].map(([playerId, v]) => [`File:${v.file}`, { playerId, qid: v.qid }])),

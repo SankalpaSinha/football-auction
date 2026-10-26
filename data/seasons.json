@@ -1,3 +1,4 @@
 [
-  { "id": "2026-27", "label": "2026–27", "startYear": 2026, "isCurrent": true }
+  {"id": "2026-27", "label": "2026–27", "startYear": 2026, "isCurrent": true},
+  {"id": "icons", "label": "All-Time Icons", "startYear": 2026, "isCurrent": false, "exclusive": true}
 ]

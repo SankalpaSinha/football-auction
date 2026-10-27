@@ -42,7 +42,7 @@ describe('ELO', () => {
 });
 
 import { autoPick } from '@fa/shared';
-import { completeAuction, createHarness } from './helpers';
+import { completeAuction, createHarness, toResults } from './helpers';
 
 describe('ranked games', () => {
   it('report rating changes on the results; casual games do not', async () => {
@@ -54,7 +54,7 @@ describe('ranked games', () => {
         const squad = h.member(u.id).squad.map((e) => e.player);
         h.room.lockLineup(u.id, { formationId: '4-3-3', slots: autoPick(squad, '4-3-3') });
       }
-      h.clock.advance(h.room.view('u1').resultsAt! - h.clock.now());
+      toResults(h);
       const r = h.room.view('u1').results!;
       if (mode === 'CASUAL') {
         expect(r.ratingChanges).toBeNull();

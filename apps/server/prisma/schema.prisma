@@ -257,6 +257,8 @@ model Game {
   status    GameStatus @default(AUCTION)
   startedAt DateTime   @default(now())
   endedAt   DateTime?
+  /// The knockout cup played after the auction (CupSummary JSON).
+  cup       Json?
   room      Room       @relation(fields: [roomId], references: [id])
 
   auction Auction?

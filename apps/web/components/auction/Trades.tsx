@@ -12,10 +12,10 @@ import { useCountdownTo } from './useCountdown';
 
 /** Trades and releases are open while lots are being auctioned (not in free pick). */
 export function dealsOpen(room: RoomView) {
-  return (room.phase === 'AUCTION' || room.phase === 'PLAYER_SOLD') && !!room.auction && !room.auction.freePick;
+  return (room.phase === 'AUCTION' || room.phase === 'PLAYER_SOLD') && !!room.auction && !room.auction.freePick && !room.auction.draft;
 }
 
-const RESERVE = 10;
+
 
 const sortSquad = (squad: SquadEntry[]) =>
   [...squad].sort(
@@ -52,8 +52,8 @@ export function TradeComposer({ room, me, partner, onClose }: { room: RoomView; 
     if (theirs > size) return `${partner.username} would have more than ${size} players.`;
     const myBudget = (me.budget ?? 0) - coinsSigned;
     const theirBudget = (partner.budget ?? 0) + coinsSigned;
-    if (myBudget < (size - mine) * RESERVE) return 'You wouldn’t have enough coins left to fill your squad.';
-    if (theirBudget < (size - theirs) * RESERVE) return `${partner.username} couldn’t afford that.`;
+    if (myBudget < (size - mine) * room.rules.reservePerSlot) return 'You wouldn’t have enough coins left to fill your squad.';
+    if (theirBudget < (size - theirs) * room.rules.reservePerSlot) return `${partner.username} couldn’t afford that.`;
     return null;
   }, [give, take, me, partner, size, coinsSigned]);
 

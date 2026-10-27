@@ -87,6 +87,39 @@ class SoundKit {
     this.tone(1568, 0.9, { type: 'sine', gain: 0.035, delay: 0.65 });
   }
 
+  pop() {
+    this.tone(760, 0.07, { type: 'sine', gain: 0.025, slideTo: 1100 });
+  }
+  taunt() {
+    this.tone(420, 0.09, { type: 'square', gain: 0.02 });
+    this.tone(320, 0.12, { type: 'square', gain: 0.02, delay: 0.08 });
+  }
+  whistle(long = false) {
+    this.tone(2600, long ? 0.6 : 0.25, { type: 'sine', gain: 0.03 });
+    if (long) this.tone(2600, 0.35, { type: 'sine', gain: 0.03, delay: 0.75 });
+  }
+  goal(mine: boolean) {
+    if (mine) {
+      [523, 659, 784, 1046, 1318].forEach((f, i) => this.tone(f, 0.35, { type: 'triangle', gain: 0.05, delay: i * 0.07 }));
+      this.tone(196, 0.6, { type: 'sawtooth', gain: 0.02 });
+    } else {
+      this.tone(330, 0.45, { type: 'sawtooth', gain: 0.025, slideTo: 260 });
+    }
+  }
+  groan() {
+    this.tone(260, 0.5, { type: 'sawtooth', gain: 0.03, slideTo: 150 });
+  }
+  freeze() {
+    [1760, 1318, 988].forEach((f, i) => this.tone(f, 0.18, { type: 'sine', gain: 0.03, delay: i * 0.06 }));
+  }
+  steal() {
+    this.tone(220, 0.12, { type: 'square', gain: 0.04 });
+    this.tone(880, 0.25, { type: 'sawtooth', gain: 0.03, delay: 0.1, slideTo: 1320 });
+  }
+  market() {
+    [659, 880, 659].forEach((f, i) => this.tone(f, 0.14, { type: 'triangle', gain: 0.035, delay: i * 0.1 }));
+  }
+
   onEvent(e: GameEvent, me: string) {
     switch (e.type) {
       case 'LOT_OPEN':
@@ -108,6 +141,21 @@ class SoundKit {
         return this.bid();
       case 'RESULTS':
         return; // the results screen plays its own reveal sounds
+      case 'FROZEN':
+        return this.freeze();
+      case 'STOLEN':
+        return this.steal();
+      case 'MARKET':
+        return this.market();
+      case 'KICKOFF':
+      case 'HALF_TIME':
+        return this.whistle();
+      case 'FULL_TIME':
+        return this.whistle(true);
+      case 'GOAL':
+        return this.goal(e.userId === me);
+      case 'CHAMPION':
+        return e.userId === me ? this.winner() : this.complete();
     }
   }
 }

@@ -5,6 +5,7 @@ import type {
   LeaderboardRow,
   MatchDetailView,
   ProfileView,
+  RivalryRecord,
   SessionUser,
 } from '@fa/shared';
 
@@ -99,6 +100,7 @@ export const api = {
   leaderboard: (mode: GameMode) => request<{ mode: GameMode; rows: LeaderboardRow[] }>(`/api/leaderboard?mode=${mode}`),
   profile: (username: string) => request<ProfileView>(`/api/users/${encodeURIComponent(username)}`),
   match: (id: string) => request<MatchDetailView>(`/api/matches/${encodeURIComponent(id)}`),
+  rivalries: (ids: string[]) => request<{ rivalries: RivalryRecord[] }>(`/api/rivalries?ids=${ids.map(encodeURIComponent).join(',')}`),
   room: (code: string) =>
     request<{ code: string; name: string; phase: string; members: number; maxPlayers: number; competition: { name: string } }>(
       `/api/rooms/${encodeURIComponent(code)}`,

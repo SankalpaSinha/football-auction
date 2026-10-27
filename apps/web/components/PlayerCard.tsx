@@ -213,3 +213,43 @@ function contrast(hex: string) {
   const bl = n & 255;
   return r * 0.299 + g * 0.587 + bl * 0.114 > 150 ? '#0b0f17' : '#ffffff';
 }
+
+/** Stand-in card for a mystery lot: only the position and nation are known. */
+export function MysteryCard({ player, size = 'lg', className = '' }: { player: Card; size?: keyof typeof SIZES; className?: string }) {
+  return (
+    <div
+      className={`relative select-none ${className}`}
+      style={{ fontSize: SIZES[size], width: '18.75em', filter: 'drop-shadow(0 1.5em 2.5em rgba(167,139,250,.45))' }}
+    >
+      <div className="cut-corners absolute inset-0" style={{ background: 'linear-gradient(160deg,#ddd6fe,#6d28d9 50%,#a78bfa)' }} />
+      <div
+        className="cut-corners relative m-[0.12em] flex flex-col items-center overflow-hidden"
+        style={{ background: 'linear-gradient(160deg,#4c1d95 0%,#1e1b4b 55%,#0b0a1f 100%)', aspectRatio: '300 / 430', color: '#ede9fe' }}
+      >
+        <div
+          className="animate-holo pointer-events-none absolute inset-0 opacity-20 mix-blend-color-dodge"
+          style={{ backgroundImage: 'linear-gradient(110deg,transparent 20%,#c4b5fd 40%,#7af5ff 55%,transparent 75%)', backgroundSize: '200% 100%' }}
+        />
+        <div className="relative mt-[1.2em] flex w-full items-start justify-between px-[1.3em]">
+          <div className="text-center">
+            <div className="display text-[3.2em] font-extrabold leading-[0.85]">??</div>
+            <div className="display mt-[0.15em] text-[1.35em] font-bold tracking-wider opacity-90">{player.position}</div>
+          </div>
+          <div className="text-[2.2em] leading-none" title={player.nation.name}>
+            {player.nation.flag}
+          </div>
+        </div>
+        <div className="display relative mt-[0.4em] text-[7em] font-extrabold leading-none opacity-90" style={{ textShadow: '0 0 40px rgba(196,181,253,.7)' }}>
+          ?
+        </div>
+        <div className="display relative mt-[0.3em] text-[1.9em] font-extrabold">Mystery Player</div>
+        <div className="relative text-[0.8em] font-medium uppercase tracking-[0.18em] opacity-70">
+          {player.nation.name} · {player.position}
+        </div>
+        <div className="absolute inset-x-0 bottom-[0.9em] text-center text-[0.7em] font-bold uppercase tracking-[0.3em] opacity-70">
+          Revealed when sold
+        </div>
+      </div>
+    </div>
+  );
+}

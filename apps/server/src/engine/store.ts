@@ -1,6 +1,6 @@
-import type { EloChange, FormationSlot, GameMode, RankedScore, RoomSettings } from '@fa/shared';
+import type { CupSummary, EloChange, FormationSlot, GameMode, RankedScore, RoomSettings } from '@fa/shared';
 import { ELO_CONFIG } from '@fa/shared';
-import type { LotRecord, Participant } from './auction';
+import type { LotRecord, Participant, StealRecord } from './auction';
 
 /**
  * Persistence port for the engine. The live game never waits on it; writes are
@@ -31,8 +31,12 @@ export interface GameStore {
   auctionCompleted(gameId: string, participants: Participant[]): Promise<void>;
   /** A manager was removed mid-auction: drop their squad (its players are back in the pool). */
   participantRemoved(gameId: string, userId: string): Promise<void>;
-  /** A manager let a player go (no refund). */
-  playerReleased(gameId: string, userId: string, playerId: string): Promise<void>;
+  /** A manager let a player go; `budget` is theirs afterwards (a Refund card pays half back). */
+  playerReleased(gameId: string, userId: string, playerId: string, budget: number): Promise<void>;
+  /** A Steal card moved a just-sold player (and the price) to another manager. */
+  playerStolen(gameId: string, steal: StealRecord, budgets: { userId: string; budget: number }[]): Promise<void>;
+  /** Budgets changed outside a sale (sponsor money). */
+  budgetsChanged(gameId: string, budgets: { userId: string; budget: number }[]): Promise<void>;
   /** Players moved between squads (with their new price) and both budgets changed. */
   tradeCompleted(
     gameId: string,
@@ -48,6 +52,7 @@ export interface GameStore {
     rankings: RankedScore[],
     ratingChanges: EloChange[] | null,
     achievements: Record<string, string[]>,
+    cup?: CupSummary | null,
   ): Promise<void>;
   /** Current rating per user for a mode (defaults for users who never played it). */
   ratingsFor(userIds: string[], mode: GameMode): Promise<Record<string, { elo: number; games: number }>>;
@@ -64,6 +69,8 @@ export class NoopGameStore implements GameStore {
   async auctionCompleted() {}
   async participantRemoved() {}
   async playerReleased() {}
+  async playerStolen() {}
+  async budgetsChanged() {}
   async tradeCompleted() {}
   async lineupsFinalized() {}
   async gameFinished() {}

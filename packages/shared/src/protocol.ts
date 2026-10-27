@@ -1,8 +1,11 @@
 import { z } from 'zod';
 import { TACTIC_IDS, type TacticId } from './playstyles';
 import { POSITIONS } from './positions';
-import { GAME_RULES } from './rules';
-import type { ChatMessage, GameEvent, PlayerCard, RoomView } from './types';
+import { ALL_TWISTS, GAME_RULES } from './rules';
+import { REACTION_EMOJIS, TAUNT_IDS, type TauntId } from './twists';
+import type { ChatMessage, GameEvent, PlayerCard, Reaction, RoomView } from './types';
+
+export const SEASON_LENGTHS = [1, 3, 5] as const;
 
 export const USERNAME_RE = /^[A-Za-z0-9_]{3,16}$/;
 export const ROOM_CODE_RE = /^[A-Z0-9]{6}$/;
@@ -38,8 +41,18 @@ export const createRoomSchema = z.object({
   mode: z.enum(['CASUAL', 'RANKED']).default('CASUAL'),
   isPublic: z.boolean().default(false),
   antiSnipe: z.boolean().default(true),
+  format: z.enum(['CLASSIC', 'BLITZ', 'BUDGET', 'DRAFT']).default('CLASSIC'),
+  twists: z
+    .object({ mystery: z.boolean(), sealed: z.boolean(), events: z.boolean(), cards: z.boolean() })
+    .default({ ...ALL_TWISTS }),
+  seasonLength: z
+    .number()
+    .int()
+    .refine((v) => (SEASON_LENGTHS as readonly number[]).includes(v), 'Seasons are 1, 3 or 5 games.')
+    .default(1),
 });
-export type CreateRoomInput = z.infer<typeof createRoomSchema>;
+export type CreateRoomInput = z.input<typeof createRoomSchema>;
+export type CreateRoomData = z.infer<typeof createRoomSchema>;
 
 export const quickMatchSchema = z.object({
   mode: z.enum(['CASUAL', 'RANKED']).default('CASUAL'),
@@ -77,6 +90,22 @@ export const focusSchema = z.object({ group: z.enum(['GK', 'DEF', 'MID', 'ATT'])
 export const presenceSchema = z.object({ away: z.boolean() });
 export const pauseVoteSchema = z.object({ agree: z.boolean() });
 export const pickSchema = z.object({ playerId: z.string().min(1).max(120) });
+/** Sealed lot: one secret bid, or null to pass. */
+export const sealedBidSchema = z.object({
+  lotNumber: z.number().int().positive(),
+  amount: z.number().int().positive().max(1_000_000).nullable(),
+});
+export const freezeSchema = z.object({ lotNumber: z.number().int().positive(), targetId: z.string().min(1).max(64) });
+export const stealSchema = z.object({ lotNumber: z.number().int().positive() });
+export const refundSchema = z.object({ playerId: playerIdSchema });
+export const reactSchema = z
+  .object({
+    emoji: z.enum(REACTION_EMOJIS).optional(),
+    taunt: z.enum(TAUNT_IDS as [TauntId, ...TauntId[]]).optional(),
+  })
+  .refine((r) => !!r.emoji !== !!r.taunt, 'Send one emoji or one taunt.');
+export const talkSchema = z.object({ talk: z.enum(['ATTACK', 'CALM', 'TIGHT']) });
+export const shoutSchema = z.object({ shout: z.enum(['ALL_OUT', 'PARK_IT']) });
 export const lineupSchema = z.object({
   formationId: z.string().min(1).max(16),
   slots: z.array(z.string().min(1).max(80).nullable()).max(11),
@@ -113,6 +142,14 @@ export interface ClientToServer {
   'trade:respond': (input: unknown, ack: (r: Ack) => void) => void;
   'trade:cancel': (input: unknown, ack: (r: Ack) => void) => void;
   'auction:pool': (input: unknown, ack: (r: Ack<{ players: PlayerCard[] }>) => void) => void;
+  'auction:sealed': (input: unknown, ack: (r: Ack) => void) => void;
+  'card:freeze': (input: unknown, ack: (r: Ack) => void) => void;
+  'card:steal': (input: unknown, ack: (r: Ack) => void) => void;
+  'card:refund': (input: unknown, ack: (r: Ack) => void) => void;
+  'room:react': (input: unknown, ack: (r: Ack) => void) => void;
+  'room:rematch': (input: unknown, ack: (r: Ack) => void) => void;
+  'match:talk': (input: unknown, ack: (r: Ack) => void) => void;
+  'match:shout': (input: unknown, ack: (r: Ack) => void) => void;
   'squad:draft': (input: unknown, ack: (r: Ack) => void) => void;
   'squad:lock': (input: unknown, ack: (r: Ack) => void) => void;
   'squad:unlock': (input: unknown, ack: (r: Ack) => void) => void;
@@ -129,6 +166,7 @@ export interface ServerToClient {
   /** You were taken out of a game (e.g. for inactivity). */
   'room:removed': (info: { code: string; reason: string }) => void;
   'room:chat': (msg: ChatMessage & { code: string }) => void;
+  'room:reaction': (r: Reaction & { code: string }) => void;
   'session:replaced': () => void;
 }
 
@@ -148,7 +186,7 @@ export const ERROR_MESSAGES = {
   WRONG_PHASE: 'That is not possible right now.',
   COMPETITION_UNAVAILABLE: 'That competition/season is not available.',
   POOL_TOO_SMALL: 'This player pool is too small for that many players.',
-  RANKED_SETTINGS: 'Ranked games use the standard 1,000-coin budget.',
+  RANKED_SETTINGS: 'Ranked games use the Classic format and the standard 1,000-coin budget.',
   TOO_MANY_ROOMS: 'You have created too many rooms recently.',
   TOO_MANY_SPECTATORS: 'This game has as many spectators as it can take.',
   // auction
@@ -180,6 +218,19 @@ export const ERROR_MESSAGES = {
   POOL_RESERVED: 'Other managers still need the remaining players to complete their squads.',
   STAR_LIMIT: 'You already have the maximum number of star players.',
   CANT_REFILL: 'You couldn’t afford to fill the empty slot again.',
+  PRICE_CAP: 'That’s more than any player can cost in this mode.',
+  SEALED_LOT: 'This is a sealed lot — make one secret bid instead.',
+  NOT_SEALED: 'This isn’t a sealed lot.',
+  ALREADY_DECIDED: 'You’ve already made your sealed choice.',
+  FROZEN: 'You’ve been frozen out of this player ❄️',
+  NO_CARD: 'You’ve already used that card.',
+  BAD_TARGET: 'Pick a rival who can still bid on this player.',
+  STEAL_CLOSED: 'Too late — the steal window has closed.',
+  CANT_STEAL: 'You can’t take that player.',
+  NOT_IN_MATCH: 'You’re not playing a match right now.',
+  TALK_CLOSED: 'Half-time is over.',
+  NO_SHOUT: 'You’ve already used that shout.',
+  SEASON_OVER: 'Start a new season instead.',
   // squad building
   INVALID_FORMATION: 'Unknown formation.',
   LINEUP_INCOMPLETE: 'Fill all 11 positions first.',

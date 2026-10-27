@@ -1,6 +1,7 @@
 'use client';
 import { useEffect, useMemo, useState } from 'react';
 import { ChatButton } from './ChatPanel';
+import { ReactionButton } from './Reactions';
 import Link from 'next/link';
 import { sound } from '@/lib/sound';
 import { EarnedBadges } from './Achievements';
@@ -21,6 +22,12 @@ import {
 import { PlayerAvatar } from './PlayerAvatar';
 import { MiniPitch } from './squad/Pitch';
 import { Avatar, Button, Coin, Logo, Pill, SoundToggle } from './ui';
+import { Bracket, cellsFromTournament } from './cup/Bracket';
+import { liveState } from './cup/Tournament';
+import { emit } from '@/lib/socket';
+import { useGame } from '@/lib/store';
+import { api } from '@/lib/api';
+import type { RivalryRecord } from '@fa/shared';
 
 const COMPONENT_LABEL: Record<ScoreComponent, string> = {
   quality: 'Player quality',
@@ -41,8 +48,8 @@ export function Results({ room, me, onLeave }: { room: RoomView; me: string; onL
   const winner = rankings[0];
   const nameOf = (id: string) => room.members.find((m) => m.userId === id)?.username ?? 'Manager';
   const [selected, setSelected] = useState(rankings.find((r) => r.userId === me)?.userId ?? winner.userId);
-  // Arriving late (refresh / reconnect)? Skip the show.
-  const late = serverNow() - results.evaluatedAt > 20_000;
+  // Arriving late (refresh / reconnect)? Skip the show. After a cup the order was decided live — no countdown.
+  const late = !!room.tournament || serverNow() - results.evaluatedAt > 20_000;
   const [shown, setShown] = useState(late ? rankings.length : 0);
   const done = shown >= rankings.length;
 
@@ -73,6 +80,7 @@ export function Results({ room, me, onLeave }: { room: RoomView; me: string; onL
       <header className="flex h-16 items-center justify-between">
         <Logo />
         <div className="flex items-center gap-1">
+          <ReactionButton canTaunt={room.members.some((m) => m.userId === me)} />
           <ChatButton />
             <SoundToggle />
           <Button variant="ghost" size="sm" onClick={onLeave}>
@@ -84,12 +92,13 @@ export function Results({ room, me, onLeave }: { room: RoomView; me: string; onL
       {!done ? (
         <PodiumCountdown rankings={rankings} shown={shown} nameOf={nameOf} me={me} onSkip={() => setShown(rankings.length)} />
       ) : (
-        <WinnerHero room={room} winner={winner} name={nameOf(winner.userId)} isMe={winner.userId === me} animate={!late} />
+        <WinnerHero room={room} winner={winner} name={nameOf(winner.userId)} isMe={winner.userId === me} animate={!late || !!room.tournament} />
       )}
 
       <AnimatePresence>
         {done && (
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: late ? 0 : 1.6 }}>
+            <NextGame room={room} me={me} />
             {(results.achievements[me]?.length ?? 0) > 0 && (
               <div className="glass mt-6 rounded-2xl p-5">
                 <EarnedBadges keys={results.achievements[me]} title="🏅 Your achievements this game" />
@@ -99,7 +108,7 @@ export function Results({ room, me, onLeave }: { room: RoomView; me: string; onL
 
             <div className="mt-6 grid gap-6 lg:grid-cols-[380px_1fr]">
               <div className="glass h-fit rounded-2xl p-4">
-                <div className="label mb-3">Final ranking</div>
+                <div className="label mb-3">Final standings</div>
                 <ol className="space-y-2">
                   {rankings.map((r, i) => (
                     <li key={r.userId}>
@@ -116,11 +125,19 @@ export function Results({ room, me, onLeave }: { room: RoomView; me: string; onL
                             {nameOf(r.userId)} {r.userId === me && <span className="text-xs text-muted">(you)</span>}
                           </span>
                           <span className="text-xs text-muted">
-                            {room.lineups?.[r.userId]?.formationId} · spent {r.spent}
+                            {r.cupFinish ? (
+                              <>
+                                <b className={r.cupFinish === 'Champion' ? 'text-gold' : 'text-ink/80'}>{r.cupFinish}</b> · squad {r.total.toFixed(1)} (#{r.squadRank})
+                              </>
+                            ) : (
+                              <>
+                                {room.lineups?.[r.userId]?.formationId} · spent {r.spent}
+                              </>
+                            )}
                           </span>
                         </span>
                         <span className="text-right">
-                          <span className="display block text-3xl font-extrabold leading-none num">{r.total.toFixed(1)}</span>
+                          <span className="display block text-3xl font-extrabold leading-none num">{r.cupFinish ? `#${r.rank}` : r.total.toFixed(1)}</span>
                           {results.ratingChanges && (
                             <EloDelta delta={results.ratingChanges.find((c) => c.userId === r.userId)?.delta ?? 0} />
                           )}
@@ -130,8 +147,9 @@ export function Results({ room, me, onLeave }: { room: RoomView; me: string; onL
                   ))}
                 </ol>
                 <p className="mt-4 text-xs text-dim">
-                  Scores come from a fixed formula on the server — the same squad always gets the same score. Tap a manager to see their
-                  breakdown.
+                  {room.tournament
+                    ? 'The cup decides the final standings. Squad scores come from a fixed formula (the same squad always gets the same score) and set the seeding. Tap a manager to see their breakdown.'
+                    : 'Scores come from a fixed formula on the server — the same squad always gets the same score. Tap a manager to see their breakdown.'}
                 </p>
                 {room.gameId && (
                   <Link href={`/match/${room.gameId}`} className="mt-3 inline-block text-sm font-semibold text-volt hover:underline">
@@ -153,6 +171,10 @@ export function Results({ room, me, onLeave }: { room: RoomView; me: string; onL
                 })()}
               />
             </div>
+
+            {room.tournament && <CupRecap room={room} me={me} nameOf={nameOf} />}
+            {room.season && <SeasonTable room={room} me={me} />}
+            <Rivalries room={room} />
 
             <section className="mt-10">
               <h2 className="display mb-3 text-3xl font-extrabold">All squads</h2>
@@ -253,7 +275,7 @@ function WinnerHero({ room, winner, name, isMe, animate }: { room: RoomView; win
       >
         🏆
       </motion.div>
-      <div className="display mt-2 text-xl font-bold tracking-[0.3em] text-gold">Winner</div>
+      <div className="display mt-2 text-xl font-bold tracking-[0.3em] text-gold">{room.tournament ? 'Cup winner' : 'Winner'}</div>
       <motion.h1
         initial={animate ? { opacity: 0, y: 30, scale: 0.9 } : false}
         animate={{ opacity: 1, y: 0, scale: 1 }}
@@ -262,10 +284,19 @@ function WinnerHero({ room, winner, name, isMe, animate }: { room: RoomView; win
       >
         {name}
       </motion.h1>
-      <div className="display mt-2 text-5xl font-extrabold text-gold num sm:text-6xl">
-        {animate ? <CountUp to={winner.total} delay={800} /> : winner.total.toFixed(1)}
-      </div>
+      {room.tournament ? (
+        <FinalLine room={room} winnerId={winner.userId} />
+      ) : (
+        <div className="display mt-2 text-5xl font-extrabold text-gold num sm:text-6xl">
+          {animate ? <CountUp to={winner.total} delay={800} /> : winner.total.toFixed(1)}
+        </div>
+      )}
       {isMe && <p className="mt-3 font-semibold text-volt">That’s you. Champion manager.</p>}
+      {room.season?.finished && room.season.championId && (
+        <p className="mt-2 text-sm font-bold text-gold">
+          👑 Season champion: {room.season.table.find((r) => r.userId === room.season!.championId)?.username}
+        </p>
+      )}
     </section>
   );
 }
@@ -578,8 +609,9 @@ export function EvaluatingBanner({ until }: { until: number | null }) {
     <div className="mx-auto mt-6 flex max-w-2xl items-center gap-3 rounded-2xl border border-gold/40 bg-gold/[.08] px-5 py-4 text-sm">
       <span className="h-3 w-3 animate-ping rounded-full bg-gold" />
       <span>
-        <span className="font-bold text-gold">Evaluating squads…</span> quality, position fit, tactics, synergy, chemistry, balance, depth and secret objectives.
-        {until ? ' Results in a moment.' : ''}
+        <span className="font-bold text-gold">Rating the squads…</span> quality, position fit, tactics, synergy, chemistry, balance, depth and secret objectives
+        set the seeds for the cup.
+        {until ? ' Kick-off in a moment!' : ''}
       </span>
       <Pill color="#f5c542" className="ml-auto">
         Deterministic
@@ -591,4 +623,171 @@ export function EvaluatingBanner({ until }: { until: number | null }) {
 export function EloDelta({ delta }: { delta: number }) {
   const cls = delta > 0 ? 'text-emerald-300' : delta < 0 ? 'text-rose-300' : 'text-muted';
   return <span className={`text-xs font-bold num ${cls}`}>{delta > 0 ? `+${delta}` : delta === 0 ? '±0' : delta} ELO</span>;
+}
+
+/** "Beat Ben 2–1 in the final (4–3 on pens)". */
+function FinalLine({ room, winnerId }: { room: RoomView; winnerId: string }) {
+  const t = room.tournament!;
+  const final = t.matches.filter((m) => m.round === t.rounds.length - 1).at(-1);
+  if (!final) return null;
+  const other = final.home.userId === winnerId ? final.away.userId : final.home.userId;
+  const name = room.members.find((m) => m.userId === other)?.username ?? 'their rival';
+  const w = final.home.userId === winnerId ? [final.home.goals, final.away.goals] : [final.away.goals, final.home.goals];
+  const p = final.pens ? (final.home.userId === winnerId ? final.pens : [final.pens[1], final.pens[0]]) : null;
+  return (
+    <p className="display mt-3 text-2xl font-bold text-ink/90 sm:text-3xl">
+      beat {name} <span className="text-gold num">{w[0]}–{w[1]}</span> in the final{p ? ` (${p[0]}–${p[1]} on pens)` : ''}
+    </p>
+  );
+}
+
+/** Host: another game in this room (the next game of the season). Everyone else waits. */
+function NextGame({ room, me }: { room: RoomView; me: string }) {
+  const toast = useGame((s) => s.toast);
+  const [busy, setBusy] = useState(false);
+  const isMember = room.members.some((m) => m.userId === me);
+  if (!isMember) return null;
+  const s = room.season;
+  const label = s && !s.finished ? `Next game (${s.played + 1} of ${s.length}) →` : s?.finished ? 'Start a new season →' : 'Play again →';
+  async function go() {
+    setBusy(true);
+    const r = await emit('room:rematch');
+    setBusy(false);
+    if (!r.ok) toast('error', r.error);
+  }
+  return (
+    <div className="mt-6 flex flex-col items-center gap-2 rounded-2xl border border-volt/30 bg-volt/[.05] px-5 py-4 text-center sm:flex-row sm:text-left">
+      <div className="min-w-0 flex-1">
+        <div className="display text-xl font-extrabold">{s && !s.finished ? `Season: game ${s.played} of ${s.length} done` : 'Fancy another?'}</div>
+        <div className="text-sm text-muted">
+          {room.hostId === me ? 'Same room, same friends — everyone readies up again.' : 'The host can start another game in this room.'}
+        </div>
+      </div>
+      {room.hostId === me ? (
+        <Button onClick={go} disabled={busy}>
+          {label}
+        </Button>
+      ) : (
+        <span className="text-sm font-semibold text-muted">Waiting for the host…</span>
+      )}
+    </div>
+  );
+}
+
+function CupRecap({ room, me, nameOf }: { room: RoomView; me: string; nameOf: (id: string) => string }) {
+  const t = room.tournament!;
+  const now = serverNow();
+  const cells = cellsFromTournament(t, (id) => ({ score: liveState(t.matches.find((m) => m.id === id)!, now).score, live: null }));
+  return (
+    <section className="mt-10">
+      <h2 className="display mb-3 text-3xl font-extrabold">The cup</h2>
+      <div className="glass rounded-2xl p-4">
+        <Bracket rounds={t.rounds} cells={cells} seeds={t.seeds} nameOf={nameOf} me={me} />
+        <ul className="mt-4 grid gap-2 sm:grid-cols-2">
+          {t.matches.map((m) => {
+            const goals = m.events.filter((e) => e.kind === 'GOAL' || e.kind === 'PEN_GOAL');
+            const scorers = (side: 0 | 1) =>
+              goals
+                .filter((g) => g.side === side)
+                .map((g) => `${room.members.flatMap((x) => x.squad).find((e) => e.player.id === g.playerId)?.player.shortName ?? '?'} ${g.minute}'`)
+                .join(', ');
+            return (
+              <li key={m.id} className="rounded-xl bg-white/[.03] px-3 py-2.5 text-sm">
+                <div className="text-[10px] font-bold uppercase tracking-wider text-muted">{t.rounds[m.round]}</div>
+                <div className="flex items-center justify-between gap-2 font-semibold">
+                  <span className="truncate">{nameOf(m.home.userId)}</span>
+                  <span className="display text-lg font-extrabold num">
+                    {m.home.goals}–{m.away.goals}
+                    {m.pens && <span className="ml-1 text-xs text-muted">({m.pens[0]}–{m.pens[1]} p)</span>}
+                  </span>
+                  <span className="truncate text-right">{nameOf(m.away.userId)}</span>
+                </div>
+                {goals.length > 0 && (
+                  <div className="mt-0.5 flex justify-between gap-3 text-[11px] text-muted">
+                    <span className="truncate">{scorers(0)}</span>
+                    <span className="truncate text-right">{scorers(1)}</span>
+                  </div>
+                )}
+              </li>
+            );
+          })}
+        </ul>
+      </div>
+    </section>
+  );
+}
+
+function SeasonTable({ room, me }: { room: RoomView; me: string }) {
+  const s = room.season!;
+  return (
+    <section className="mt-10">
+      <h2 className="display mb-3 text-3xl font-extrabold">
+        Season table <span className="text-muted">· {s.played}/{s.length} games</span>
+      </h2>
+      <div className="glass overflow-hidden rounded-2xl">
+        <table className="w-full text-sm">
+          <thead className="bg-white/[.03] text-left text-[11px] uppercase tracking-wider text-muted">
+            <tr>
+              <th className="px-4 py-2">#</th>
+              <th className="px-2 py-2">Manager</th>
+              <th className="px-2 py-2 text-right">Played</th>
+              <th className="px-2 py-2 text-right">Wins</th>
+              <th className="px-4 py-2 text-right">Pts</th>
+            </tr>
+          </thead>
+          <tbody>
+            {s.table.map((r, i) => (
+              <tr key={r.userId} className={`border-t border-white/5 ${r.userId === me ? 'bg-volt/[.06]' : ''}`}>
+                <td className="px-4 py-2 font-bold">{s.finished && i === 0 ? '👑' : i + 1}</td>
+                <td className="px-2 py-2 font-semibold">{r.username}</td>
+                <td className="px-2 py-2 text-right num">{r.played}</td>
+                <td className="px-2 py-2 text-right num">{r.wins}</td>
+                <td className="display px-4 py-2 text-right text-lg font-extrabold num">{r.points}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+        <p className="border-t border-white/5 px-4 py-2 text-[11px] text-dim">Points per game: 10 for the winner, then 7, 5, 4, 3, 2, 1.</p>
+      </div>
+    </section>
+  );
+}
+
+/** Head-to-head between the managers in this room, across every game they've played together. */
+export function Rivalries({ room }: { room: RoomView }) {
+  const [rows, setRows] = useState<RivalryRecord[] | null>(null);
+  const ids = room.members.map((m) => m.userId).sort().join(',');
+  useEffect(() => {
+    let live = true;
+    api
+      .rivalries(ids.split(','))
+      .then((r) => live && setRows(r.rivalries))
+      .catch(() => live && setRows([]));
+    return () => {
+      live = false;
+    };
+  }, [ids, room.results?.evaluatedAt]);
+  const name = (id: string) => room.members.find((m) => m.userId === id)?.username ?? '?';
+  const shown = (rows ?? []).filter((r) => r.aWins + r.bWins > 0).sort((a, b) => b.aWins + b.bWins - (a.aWins + a.bWins));
+  if (!shown.length) return null;
+  return (
+    <section className="mt-10">
+      <h2 className="display mb-3 text-3xl font-extrabold">Rivalries</h2>
+      <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+        {shown.slice(0, 9).map((r) => {
+          const lead = r.aWins === r.bWins ? null : r.aWins > r.bWins ? r.a : r.b;
+          return (
+            <div key={`${r.a}|${r.b}`} className="glass flex items-center gap-3 rounded-2xl px-4 py-3">
+              <span className={`min-w-0 flex-1 truncate font-bold ${lead === r.a ? 'text-volt' : ''}`}>{name(r.a)}</span>
+              <span className="display text-2xl font-extrabold num">
+                {r.aWins}–{r.bWins}
+              </span>
+              <span className={`min-w-0 flex-1 truncate text-right font-bold ${lead === r.b ? 'text-volt' : ''}`}>{name(r.b)}</span>
+            </div>
+          );
+        })}
+      </div>
+      <p className="mt-2 text-xs text-dim">Who finished higher, across every game you’ve played together.</p>
+    </section>
+  );
 }

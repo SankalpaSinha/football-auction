@@ -1,5 +1,5 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { makeRules, validateLineup } from '@fa/shared';
+import { ALL_TWISTS, makeRules, NO_TWISTS, validateLineup } from '@fa/shared';
 import { createApp } from '../src/app';
 import { InMemoryCatalog } from '../src/data/catalog';
 import { systemClock } from '../src/engine/clock';
@@ -38,7 +38,21 @@ beforeAll(async () => {
     users: new MemoryUserStore(),
     store: new NoopGameStore(),
     clock: systemClock,
-    rules: makeRules({ startCountdownMs: 50, soldRevealMs: 15, unsoldRevealMs: 10, evaluationMs: 50 }),
+    rules: makeRules({
+      startCountdownMs: 50,
+      soldRevealMs: 15,
+      unsoldRevealMs: 10,
+      evaluationMs: 50,
+      // A quick cup.
+      matchMinuteMs: 2,
+      extraMinuteMs: 2,
+      halfTimeMs: 400,
+      penaltyKickMs: 10,
+      roundIntroMs: 30,
+      roundBreakMs: 30,
+      ceremonyMs: 30,
+      stealWindowMs: 40,
+    }),
     corsOrigins: true,
     registrationsPerHour: 1000,
   });
@@ -57,6 +71,8 @@ const roomInput = {
   startingBudget: 1000,
   maxPlayers: 4,
   lotDurationSec: 15,
+  // Plain auctions here (twists move coins around); the twists get their own game below.
+  twists: { ...NO_TWISTS },
 };
 
 describe('multiplayer over websockets', () => {
@@ -281,5 +297,100 @@ describe('multiplayer over websockets', () => {
     expect(results.some((r) => !r.ok && r.code === 'RATE_LIMITED')).toBe(true);
     for (const b of [p1, p2, fan]) b.disconnect();
   });
-});
 
+  it('a Blitz game with every twist on, then the cup, ends with a champion and sound squads', async () => {
+    const bots = await Promise.all(
+      ['TwistA', 'TwistB', 'TwistC', 'TwistD'].map(async (n) => (await new Bot(base, n, { aggression: 0.75, cardiness: 0.9 }).login()).connect()),
+    );
+    const [host, ...rest] = bots;
+    const { code } = await host.must<{ code: string }>('room:create', { ...roomInput, format: 'BLITZ', twists: { ...ALL_TWISTS } });
+    for (const b of rest) {
+      await b.must('room:join', { code });
+      await b.must('room:ready', { ready: true });
+    }
+    await host.waitFor((v) => v.members.length === 4 && v.members.every((m) => m.ready));
+    await host.must('room:start');
+    const kinds = new Set<string>();
+    const markets = new Set<string>();
+    host.socket.on('room:state', (v) => {
+      if (v.auction?.lot) kinds.add(v.auction.lot.kind);
+      if (v.auction?.market) markets.add(v.auction.market.id);
+    });
+    const cup = await host.waitFor((v) => v.phase === 'TOURNAMENT', 120_000);
+    expect(cup.tournament!.rounds).toEqual(['Semi-finals', 'Final']);
+    const done = await host.waitFor((v) => v.phase === 'RESULTS', 60_000);
+    const t = done.tournament!;
+    expect(t.championId).toBe(done.results!.rankings[0].userId);
+    expect(t.matches.every((m) => m.status === 'FINISHED')).toBe(true);
+    expect(t.matches).toHaveLength(3);
+    expect(done.results!.rankings[0].cupFinish).toBe('Champion');
+    const ids = new Set<string>();
+    for (const m of done.members) {
+      expect(m.squad).toHaveLength(11);
+      expect(m.budget).toBeGreaterThanOrEqual(0);
+      for (const e of m.squad) {
+        expect(ids.has(e.player.id)).toBe(false);
+        ids.add(e.player.id);
+      }
+    }
+    expect(kinds.has('SEALED')).toBe(true);
+    expect(kinds.has('MYSTERY')).toBe(true);
+    expect(markets.size).toBeGreaterThan(0);
+    expect(bots.flatMap((b) => b.played).some((p) => p.startsWith('talk:'))).toBe(true);
+    expect(bots.flatMap((b) => b.errors).filter((e) => e !== 'RATE_LIMITED')).toEqual([]);
+    for (const b of bots) b.disconnect();
+  }, 200_000);
+
+  it('a snake draft: picks go round in order, then back the other way', async () => {
+    const bots = await Promise.all(
+      ['DraftA', 'DraftB', 'DraftC'].map(async (n) => (await new Bot(base, n, { aggression: 0 }).login()).connect()),
+    );
+    const [host, ...rest] = bots;
+    const { code } = await host.must<{ code: string }>('room:create', { ...roomInput, format: 'DRAFT' });
+    for (const b of rest) {
+      await b.must('room:join', { code });
+      await b.must('room:ready', { ready: true });
+    }
+    await host.waitFor((v) => v.members.length === 3 && v.members.every((m) => m.ready));
+    const pickers: string[] = [];
+    host.socket.on('room:state', (v) => {
+      const d = v.auction?.draft;
+      if (d && pickers.length < d.pick) pickers[d.pick - 1] = d.userId;
+    });
+    await host.must('room:start');
+    const built = await host.waitFor((v) => v.phase === 'SQUAD_BUILDING', 60_000);
+    // Round 1 one way, round 2 the other.
+    expect(pickers.slice(3, 6)).toEqual(pickers.slice(0, 3).reverse());
+    expect(new Set(pickers.slice(0, 3)).size).toBe(3);
+    for (const m of built.members) {
+      expect(m.squad).toHaveLength(18);
+      expect(m.squad.every((e) => e.price === 0)).toBe(true);
+      expect(m.budget).toBe(1000);
+    }
+    const done = await host.waitFor((v) => v.phase === 'RESULTS', 60_000);
+    expect(done.results!.rankings).toHaveLength(3);
+    expect(bots.flatMap((b) => b.errors)).toEqual([]);
+    for (const b of bots) b.disconnect();
+  }, 120_000);
+
+  it('creating Blitz and Budget Cap rooms from the normal form: the server sets their timer and budget', async () => {
+    const bot = await (await new Bot(base, 'FormatHost', { aggression: 0 }).login()).connect();
+    await bot.must('room:create', { ...roomInput, format: 'BLITZ', lotDurationSec: 30 });
+    let v = await bot.waitFor((x) => x.settings.format === 'BLITZ');
+    expect(v.settings.lotDurationSec).toBe(10);
+    expect(v.rules.squadSize).toBe(11);
+    await bot.must('room:leave');
+    await bot.must('room:create', { ...roomInput, format: 'BUDGET', startingBudget: 1500 });
+    v = await bot.waitFor((x) => x.settings.format === 'BUDGET');
+    expect(v.settings.startingBudget).toBe(50);
+    expect(v.rules.maxPrice).toBe(5);
+    await bot.must('room:leave');
+    await bot.must('room:create', { ...roomInput, format: 'DRAFT', twists: { mystery: true, sealed: true, events: true, cards: true } });
+    v = await bot.waitFor((x) => x.settings.format === 'DRAFT');
+    expect(Object.values(v.settings.twists).some(Boolean)).toBe(false);
+    const ranked = await bot.emit('room:create', { ...roomInput, mode: 'RANKED', format: 'BLITZ' });
+    expect(ranked.ok).toBe(false);
+    if (!ranked.ok) expect(ranked.code).toBe('RANKED_SETTINGS');
+    bot.disconnect();
+  });
+});

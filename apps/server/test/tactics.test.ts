@@ -20,7 +20,7 @@ import {
 } from '@fa/shared';
 import { GameError } from '../src/engine/errors';
 import { createRng } from '../src/engine/rng';
-import { completeAuction, createHarness, makeCard, makePool, nextLot } from './helpers';
+import { completeAuction, createHarness, makeCard, makePool, nextLot, toResults } from './helpers';
 
 const code = (fn: () => void) => {
   try {
@@ -196,7 +196,7 @@ describe('room: tactics and objectives', () => {
     expect(h.room.view().myObjectives).toBeNull();
     completeAuction(h);
     expect(h.room.phase).toBe('SQUAD_BUILDING');
-    h.clock.advance(GAME_RULES.squadBuildingMs + 10_000);
+    toResults(h);
     const r = h.room.view().results!.rankings.find((x) => x.userId === 'u1')!;
     expect(r.objectives.map((o) => o.id)).toEqual(mine);
   });
@@ -219,7 +219,7 @@ describe('room: tactics and objectives', () => {
     h.room.saveLineupDraft('u1', { formationId: '4-3-3', slots, tactic: 'COUNTER_ATTACK' });
     expect(h.room.view('u1').squadBuilding!.mine!.tactic).toBe('COUNTER_ATTACK');
     h.room.lockLineup('u1', { formationId: '4-3-3', slots, tactic: 'HIGH_PRESS' });
-    h.clock.advance(600_000 + 10_000); // deadline, then the evaluation pause
+    toResults(h); // deadline, the evaluation pause, then the cup
     const results = h.room.view().results!;
     expect(results.rankings.find((r) => r.userId === 'u1')!.tacticId).toBe('HIGH_PRESS');
     // Auto-completed lineups keep the default tactic.
@@ -367,7 +367,7 @@ describe('custom formations', () => {
     const slots = autoPick(squad, { formationId: 'custom', custom });
     expect(code(() => h.room.lockLineup('u1', { formationId: 'custom', custom: custom.slice(0, 10), slots }))).toBe('INVALID_FORMATION');
     h.room.lockLineup('u1', { formationId: 'custom', custom, slots });
-    h.clock.advance(GAME_RULES.squadBuildingMs + 10_000);
+    toResults(h);
     const v = h.room.view();
     expect(v.lineups!.u1.formationId).toBe('custom');
     expect(v.lineups!.u1.custom![1]).toMatchObject({ role: 'LWB', x: 10, y: 55 });

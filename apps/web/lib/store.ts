@@ -1,6 +1,6 @@
 'use client';
 import { create } from 'zustand';
-import type { ChatMessage, GameEvent, RoomView } from '@fa/shared';
+import type { ChatMessage, GameEvent, Reaction, RoomView } from '@fa/shared';
 import type { StoredSession } from './api';
 
 export type ConnectionState = 'idle' | 'connecting' | 'connected' | 'reconnecting' | 'replaced' | 'error';
@@ -32,6 +32,8 @@ interface GameStore {
   chat: ChatMessage[];
   chatOpen: boolean;
   chatUnread: number;
+  /** Floating emojis and taunts on screen right now. */
+  reactions: (Reaction & { at: number })[];
 
   setSession(s: StoredSession | null): void;
   setConnection(c: ConnectionState): void;
@@ -47,6 +49,7 @@ interface GameStore {
   setChat(messages: ChatMessage[]): void;
   addChat(msg: ChatMessage): void;
   setChatOpen(open: boolean): void;
+  addReaction(r: Reaction): void;
 }
 
 let toastSeq = 0;
@@ -67,6 +70,7 @@ export const useGame = create<GameStore>((set, get) => ({
   chat: [],
   chatOpen: false,
   chatUnread: 0,
+  reactions: [],
 
   setSession: (session) => set({ session, sessionLoaded: true }),
   setConnection: (connection) => set({ connection }),
@@ -97,6 +101,10 @@ export const useGame = create<GameStore>((set, get) => ({
     set({ chat: [...cur.slice(-99), msg], chatUnread: get().chatOpen ? 0 : get().chatUnread + 1 });
   },
   setChatOpen: (chatOpen) => set({ chatOpen, ...(chatOpen ? { chatUnread: 0 } : {}) }),
+  addReaction: (r) => {
+    const now = Date.now();
+    set({ reactions: [...get().reactions.filter((x) => now - x.at < 4500).slice(-24), { ...r, at: now }] });
+  },
   setSound: (soundOn) => {
     try {
       localStorage.setItem('fa.sound', soundOn ? '1' : '0');

@@ -57,11 +57,48 @@ export interface GameRules {
   maxTradePlayers: number;
   /** Time managers get to pick formation + starting XI after the auction. */
   squadBuildingMs: number;
+  /**
+   * Once every connected manager has locked in, managers who are offline get at most
+   * this long before their lineup is completed for them.
+   */
+  squadOfflineGraceMs: number;
   /** Suspense pause between lineup reveal and the results. */
   evaluationMs: number;
   lobbyDisconnectGraceMs: number;
   hostTransferGraceMs: number;
   abandonAfterMs: number;
+
+  // ------------------------------------------------------------ twists
+  /** Lot n is a mystery lot when n is a multiple of this (0 = never). */
+  mysteryEvery: number;
+  /** Lot n is a sealed-bid lot when n % sealedEvery === sealedEvery / 2 (0 = never). */
+  sealedEvery: number;
+  /** A market event starts roughly every this many lots… */
+  marketEvery: number;
+  /** …and covers this many lots. */
+  marketLots: number;
+  /** After a sale, managers with a Steal card have this long to match the price. */
+  stealWindowMs: number;
+  /** Most any single player can cost (Budget Cap), or null for no cap. */
+  maxPrice: number | null;
+
+  // ------------------------------------------------------------ the cup
+  /** Real time per match minute (a half of 45 minutes ≈ 18s). */
+  matchMinuteMs: number;
+  /** Real time per extra-time minute. */
+  extraMinuteMs: number;
+  /** Half-time: managers pick a team talk. */
+  halfTimeMs: number;
+  /** Between penalty kicks. */
+  penaltyKickMs: number;
+  /** Pause before a round kicks off (bracket on screen). */
+  roundIntroMs: number;
+  /** Pause after a round before the next one. */
+  roundBreakMs: number;
+  /** Trophy lift before the results screen. */
+  ceremonyMs: number;
+  /** Snake draft: an offline picker gets this long before a pick is made for them. */
+  draftOfflinePickMs: number;
 }
 
 /**
@@ -98,14 +135,70 @@ export const GAME_RULES: Readonly<GameRules> = {
   tradeOfferMs: 90_000,
   maxTradePlayers: 3,
   squadBuildingMs: 600_000,
+  squadOfflineGraceMs: 45_000,
   evaluationMs: 4_000,
   lobbyDisconnectGraceMs: 60_000,
   hostTransferGraceMs: 10_000,
   abandonAfterMs: 5 * 60_000,
+  mysteryEvery: 10,
+  sealedEvery: 12,
+  marketEvery: 15,
+  marketLots: 3,
+  stealWindowMs: 3_000,
+  maxPrice: null,
+  matchMinuteMs: 400,
+  extraMinuteMs: 300,
+  halfTimeMs: 9_000,
+  penaltyKickMs: 1_300,
+  roundIntroMs: 4_000,
+  roundBreakMs: 6_000,
+  ceremonyMs: 5_000,
+  draftOfflinePickMs: 4_000,
 };
 
 export function makeRules(overrides: Partial<GameRules> = {}): GameRules {
   return { ...structuredClone(GAME_RULES as GameRules), ...overrides };
+}
+
+// ---------------------------------------------------------------- formats
+
+export const GAME_FORMATS = {
+  CLASSIC: { label: 'Classic', emoji: '🔨', blurb: '18-man squads and open bidding.' },
+  BLITZ: { label: 'Blitz', emoji: '⚡', blurb: '11-man squads and 10-second lots — about 10 minutes.' },
+  BUDGET: { label: 'Budget Cap', emoji: '🪙', blurb: 'Every player costs 1–5 coins. It’s all about fit and tactics.' },
+  DRAFT: { label: 'Snake Draft', emoji: '🐍', blurb: 'No bidding: take turns picking. Calm and great for new players.' },
+} as const;
+
+export const FORMAT_IDS = Object.keys(GAME_FORMATS) as (keyof typeof GAME_FORMATS)[];
+
+/** Budget Cap: everyone gets this many coins. */
+export const BUDGET_CAP_BUDGET = 50;
+/** Blitz: seconds per lot. */
+export const BLITZ_LOT_SEC = 10;
+
+export const ALL_TWISTS = { mystery: true, sealed: true, events: true, cards: true } as const;
+export const NO_TWISTS = { mystery: false, sealed: false, events: false, cards: false } as const;
+
+/** The rules a room actually plays with, given its format. */
+export function rulesForFormat(base: GameRules, format: 'CLASSIC' | 'BLITZ' | 'BUDGET' | 'DRAFT'): GameRules {
+  switch (format) {
+    case 'BLITZ':
+      return {
+        ...base,
+        squadSize: 11,
+        soldRevealMs: Math.min(base.soldRevealMs, 2_800),
+        unsoldRevealMs: Math.min(base.unsoldRevealMs, 1_200),
+        squadBuildingMs: Math.min(base.squadBuildingMs, 180_000),
+        mysteryEvery: base.mysteryEvery && 6,
+        sealedEvery: base.sealedEvery && 8,
+        marketEvery: base.marketEvery && 10,
+        marketLots: Math.min(base.marketLots, 2),
+      };
+    case 'BUDGET':
+      return { ...base, openingBid: 1, minIncrement: 1, bidIncrements: [1, 2], reservePerSlot: 1, maxPrice: 5 };
+    default:
+      return base;
+  }
 }
 
 export const TIERS = ['COMMON', 'RARE', 'ELITE', 'LEGENDARY'] as const;

@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { GameError } from '../src/engine/errors';
+import { POSITION_GROUP } from '@fa/shared';
 import { seededRandomOrder } from '../src/engine/ordering';
 import { createHarness, freePickStep, makeCard, makePool, nextLot, skipAll } from './helpers';
 
@@ -260,7 +261,7 @@ describe('squads', () => {
     expect(h.member('u2').squad.some((e) => e.player.position === 'GK')).toBe(true);
   });
 
-  it('free pick: running out of time picks the best fitting player for you', () => {
+  it('free pick: running out of time picks the best player in a position you need', () => {
     const h = createHarness({ players: 2 });
     while (h.member('u1').squad.length < 18) {
       if (h.room.phase === 'PLAYER_SOLD') nextLot(h);
@@ -269,9 +270,12 @@ describe('squads', () => {
       if (h.room.phase === 'AUCTION') h.room.skip('u2', lot.lotNumber);
     }
     nextLot(h);
-    const best = h.room.pickPool('u2')[0];
+    const pool = h.room.pickPool('u2');
     h.clock.advance(h.room.view().auction!.freePick!.endsAt - h.clock.now());
-    expect(h.member('u2').squad[0].player.id).toBe(best.id);
+    const picked = h.member('u2').squad[0].player;
+    // An empty 18-man squad needs defenders most: the best one available is taken.
+    expect(POSITION_GROUP[picked.position]).toBe('DEF');
+    expect(picked.id).toBe(pool.find((p) => POSITION_GROUP[p.position] === 'DEF')!.id);
     expect(h.room.view().auction!.freePick!.picksLeft).toBe(17);
   });
 

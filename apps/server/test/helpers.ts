@@ -1,4 +1,4 @@
-import { makeRules, tierFor, type GameEvent, type GameRules, type PlayerCard, type Position, type RoomSettings } from '@fa/shared';
+import { makeRules, NO_TWISTS, tierFor, type GameEvent, type GameRules, type PlayerCard, type Position, type RoomSettings } from '@fa/shared';
 import { ManualClock } from '../src/engine/clock';
 import { Room } from '../src/engine/room';
 import { NoopGameStore } from '../src/engine/store';
@@ -50,6 +50,9 @@ export function settings(o: Partial<RoomSettings> = {}): RoomSettings {
     mode: 'CASUAL',
     isPublic: false,
     antiSnipe: true,
+    format: 'CLASSIC',
+    twists: { ...NO_TWISTS },
+    seasonLength: 1,
     ...o,
   };
 }
@@ -184,4 +187,10 @@ export function completeAuction(h: Harness) {
     }
     if (h.room.view().auction?.lot?.lotNumber === lot.lotNumber) skipAll(h);
   }
+}
+
+/** Let the clock run until the results are in (squad builder deadline, the cup, the trophy lift). */
+export function toResults(h: Harness, maxMs = 40 * 60_000) {
+  for (let t = 0; t < maxMs && h.room.phase !== 'RESULTS' && !h.room.closed; t += 500) h.clock.advance(500);
+  if (h.room.phase !== 'RESULTS') throw new Error(`never reached the results (phase ${h.room.phase})`);
 }

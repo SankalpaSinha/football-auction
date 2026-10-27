@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { autoPick, careerAchievements, gameAchievements, scoreSquad, type SquadEntry } from '@fa/shared';
-import { completeAuction, createHarness, makeCard } from './helpers';
+import { completeAuction, createHarness, makeCard, toResults } from './helpers';
 
 function squad(prefix: string, ovr: number, price = 30, value = 60): SquadEntry[] {
   const shape = ['GK', 'GK', 'CB', 'CB', 'CB', 'LB', 'RB', 'CDM', 'CM', 'CM', 'CAM', 'LW', 'RW', 'ST', 'ST'] as const;
@@ -52,7 +52,7 @@ describe('achievements', () => {
       const s = h.member(u.id).squad.map((e) => e.player);
       h.room.lockLineup(u.id, { formationId: '4-3-3', slots: autoPick(s, '4-3-3') });
     }
-    h.clock.advance(h.room.view('u1').resultsAt! - h.clock.now());
+    toResults(h);
     const r = h.room.view('u1').results!;
     expect(r.achievements.u1).toContain('first_whistle');
     expect(r.achievements[r.rankings[0].userId]).toContain('champion');

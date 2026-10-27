@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { GameError } from '../src/engine/errors';
-import { completeAuction, createHarness, makePool, nextLot, skipAll, testRules } from './helpers';
+import { completeAuction, createHarness, makePool, nextLot, skipAll, testRules, toResults } from './helpers';
 
 const code = (fn: () => void) => {
   try {
@@ -136,12 +136,11 @@ describe('disconnect / reconnect', () => {
     const h = createHarness({ players: 2 });
     h.room.setConnected('u1', false);
     h.room.setConnected('u2', false);
-    // Absent squads are auto-completed after a minute, so by the abandon deadline we're picking lineups.
+    // Absent squads are auto-completed after a minute and their lineups soon after; the cup is
+    // played out, so by the abandon deadline the game has a result and the room just closes.
     h.clock.advance(testRules().abandonAfterMs);
-    expect(h.closed).toEqual([]);
-    expect(h.room.phase).toBe('FINAL_EVALUATION');
-    h.clock.advance(testRules().evaluationMs + 1_000);
     expect(h.room.phase).toBe('RESULTS');
+    expect(h.room.view().results!.rankings).toHaveLength(2);
     expect(h.closed).toEqual(['everyone left']);
   });
 

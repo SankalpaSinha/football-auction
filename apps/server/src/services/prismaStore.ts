@@ -1,4 +1,5 @@
-import { careerAchievements, CUSTOM_FORMATION_ID, ELO_CONFIG, FORMATIONS, type EloChange, type GameMode, type RankedScore } from '@fa/shared';
+import { careerAchievements, CUSTOM_FORMATION_ID, ELO_CONFIG, FORMATIONS, type CupSummary, type EloChange, type GameMode, type RankedScore } from '@fa/shared';
+import type { StealRecord } from '../engine/auction';
 import type { GameStore } from '../engine/store';
 import type { Db } from '../lib/db';
 
@@ -155,8 +156,34 @@ export class PrismaGameStore implements GameStore {
     });
   }
 
-  async playerReleased(gameId: string, _userId: string, playerId: string) {
-    await this.db.squadPlayer.deleteMany({ where: { gameId, playerStatsId: playerId } });
+  async playerReleased(gameId: string, userId: string, playerId: string, budget: number) {
+    await this.db.$transaction(async (tx) => {
+      await tx.squadPlayer.deleteMany({ where: { gameId, playerStatsId: playerId } });
+      await tx.squad.updateMany({ where: { gameId, userId }, data: { budgetRemaining: budget } });
+    });
+  }
+
+  async playerStolen(gameId: string, steal: StealRecord, budgets: { userId: string; budget: number }[]) {
+    const auctionId = this.auctionIds.get(gameId);
+    await this.db.$transaction(async (tx) => {
+      const squad = await tx.squad.findUniqueOrThrow({ where: { gameId_userId: { gameId, userId: steal.userId } } });
+      await tx.squadPlayer.update({
+        where: { gameId_playerStatsId: { gameId, playerStatsId: steal.playerId } },
+        data: { squadId: squad.id },
+      });
+      if (auctionId) {
+        await tx.auctionLot.updateMany({ where: { auctionId, lotNumber: steal.lotNumber }, data: { winnerUserId: steal.userId } });
+      }
+      for (const b of budgets) {
+        await tx.squad.update({ where: { gameId_userId: { gameId, userId: b.userId } }, data: { budgetRemaining: b.budget } });
+      }
+    });
+  }
+
+  async budgetsChanged(gameId: string, budgets: { userId: string; budget: number }[]) {
+    await this.db.$transaction(
+      budgets.map((b) => this.db.squad.update({ where: { gameId_userId: { gameId, userId: b.userId } }, data: { budgetRemaining: b.budget } })),
+    );
   }
 
   async tradeCompleted(
@@ -193,9 +220,15 @@ export class PrismaGameStore implements GameStore {
     rankings: RankedScore[],
     ratingChanges: EloChange[] | null,
     achievements: Record<string, string[]>,
+    cup: CupSummary | null = null,
   ) {
+    // The last write that needs the auction row: forget it (rematches start new games in the same room).
+    this.auctionIds.delete(gameId);
     await this.db.$transaction(async (tx) => {
-      const game = await tx.game.update({ where: { id: gameId }, data: { status: 'FINISHED', endedAt: new Date() } });
+      const game = await tx.game.update({
+        where: { id: gameId },
+        data: { status: 'FINISHED', endedAt: new Date(), ...(cup ? { cup: cup as object } : {}) },
+      });
       await tx.room.update({ where: { id: game.roomId }, data: { status: 'FINISHED' } });
       for (const r of rankings) {
         const { userId, rank, total, ...detail } = r;
@@ -253,7 +286,7 @@ export class PrismaGameStore implements GameStore {
         });
       }
 
-      // Managers removed for inactivity in a ranked game take a last-place rating loss.
+      // (Kept for older games: managers removed for inactivity take a last-place rating loss.)
       const ranked = new Set(rankings.map((r) => r.userId));
       for (const c of ratingChanges ?? []) {
         if (ranked.has(c.userId)) continue;

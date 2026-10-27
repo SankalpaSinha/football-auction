@@ -1,8 +1,10 @@
 'use client';
 import { useEffect, useState } from 'react';
 import { ChatButton } from './ChatPanel';
+import { ReactionButton } from './Reactions';
 import { AnimatePresence, motion } from 'motion/react';
-import type { RoomView } from '@fa/shared';
+import { GAME_FORMATS, type RoomView } from '@fa/shared';
+import { Rivalries } from './Results';
 import { emit } from '@/lib/socket';
 import { serverNow, useGame } from '@/lib/store';
 import { Avatar, Button, Coin, Logo, Pill, SoundToggle } from './ui';
@@ -62,6 +64,7 @@ export function Lobby({ room, me, onLeave, onJoin }: { room: RoomView; me: strin
       <header className="flex h-16 items-center justify-between">
         <Logo />
         <div className="flex items-center gap-1">
+          <ReactionButton canTaunt={room.members.some((m) => m.userId === me)} />
           <ChatButton />
             <SoundToggle />
           <Button variant="ghost" size="sm" onClick={onLeave}>
@@ -78,10 +81,38 @@ export function Lobby({ room, me, onLeave, onJoin }: { room: RoomView; me: strin
             <h1 className="display mt-1 text-5xl font-extrabold leading-none sm:text-7xl">{room.competition.name}</h1>
             <div className="mt-4 flex flex-wrap gap-2">
               {room.competition.seasonLabel !== room.competition.name && <Pill color={accent}>{room.competition.seasonLabel}</Pill>}
-              <Pill color="#f5c542">
-                <Coin className="h-3 w-3" /> {room.settings.startingBudget.toLocaleString()} budget
+              <Pill color="#c8ff2e">
+                {GAME_FORMATS[room.settings.format].emoji} {GAME_FORMATS[room.settings.format].label}
               </Pill>
-              <Pill color="#2ee6ff">{room.settings.lotDurationSec}s per player</Pill>
+              {room.settings.format !== 'DRAFT' && (
+                <Pill color="#f5c542">
+                  <Coin className="h-3 w-3" /> {room.settings.startingBudget.toLocaleString()} budget
+                  {room.rules.maxPrice ? ` · max ${room.rules.maxPrice} a player` : ''}
+                </Pill>
+              )}
+              <Pill color="#2ee6ff">
+                {room.settings.lotDurationSec}s per {room.settings.format === 'DRAFT' ? 'pick' : 'player'}
+              </Pill>
+              {room.settings.seasonLength > 1 && (
+                <Pill color="#f5c542">
+                  👑 Season · game {Math.min((room.season?.played ?? 0) + 1, room.settings.seasonLength)} of {room.settings.seasonLength}
+                </Pill>
+              )}
+              {room.settings.format !== 'DRAFT' &&
+                (
+                  [
+                    ['mystery', '🎁 Mystery'],
+                    ['sealed', '🔒 Sealed bids'],
+                    ['events', '📰 Market events'],
+                    ['cards', '🃏 Cards'],
+                  ] as const
+                )
+                  .filter(([k]) => room.settings.twists[k])
+                  .map(([k, label]) => (
+                    <Pill key={k} color="#a78bfa">
+                      {label}
+                    </Pill>
+                  ))}
               <Pill color="#c8ff2e">{room.settings.mode === 'CASUAL' ? 'Casual' : 'Ranked ⚡ ELO on the line'}</Pill>
               <Pill color="#8b94a8">{room.settings.isPublic ? 'Public' : 'Private'}</Pill>
               <Pill color="#8b94a8">{room.rules.squadSize}-man squads</Pill>
@@ -154,6 +185,26 @@ export function Lobby({ room, me, onLeave, onJoin }: { room: RoomView; me: strin
         </div>
       </section>
 
+      {room.season && room.season.played > 0 && (
+        <section className="mt-8">
+          <h2 className="display mb-3 text-2xl font-extrabold">
+            Season table <span className="text-muted">· {room.season.played}/{room.season.length}</span>
+          </h2>
+          <ol className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+            {room.season.table.map((r, i) => (
+              <li key={r.userId} className={`glass flex items-center gap-3 rounded-xl px-4 py-2.5 ${r.userId === me ? 'ring-1 ring-volt/50' : ''}`}>
+                <span className="display w-5 text-lg font-extrabold text-muted">{i + 1}</span>
+                <span className="min-w-0 flex-1 truncate font-bold">{r.username}</span>
+                <span className="display text-xl font-extrabold num">{r.points}</span>
+                <span className="text-[10px] uppercase tracking-wider text-muted">pts</span>
+              </li>
+            ))}
+          </ol>
+        </section>
+      )}
+
+      <Rivalries room={room} />
+
       <section className="sticky bottom-0 mt-10 -mx-4 flex flex-col items-center gap-3 bg-gradient-to-t from-night via-night/95 to-transparent px-4 pb-4 pt-6 sm:mx-0 sm:flex-row sm:justify-end sm:bg-none sm:px-0">
         {onJoin ? (
           <>
@@ -185,7 +236,9 @@ export function Lobby({ room, me, onLeave, onJoin }: { room: RoomView; me: strin
         )}
       </section>
 
-      <AnimatePresence>{room.phase === 'STARTING' && room.startsAt && <Countdown until={room.startsAt} />}</AnimatePresence>
+      <AnimatePresence>
+        {room.phase === 'STARTING' && room.startsAt && <Countdown until={room.startsAt} what={room.settings.format === 'DRAFT' ? 'draft' : 'auction'} />}
+      </AnimatePresence>
     </main>
   );
 }
@@ -195,7 +248,7 @@ function StatusDot({ state }: { state: 'ready' | 'waiting' | 'offline' }) {
   return <span className={`inline-block h-2.5 w-2.5 rounded-full ${c} ${state === 'ready' ? 'shadow-[0_0_10px_#34d399]' : ''}`} />;
 }
 
-function Countdown({ until }: { until: number }) {
+function Countdown({ until, what }: { until: number; what: string }) {
   const [n, setN] = useState(() => Math.max(1, Math.ceil((until - serverNow()) / 1000)));
   useEffect(() => {
     const t = setInterval(() => setN(Math.max(1, Math.ceil((until - serverNow()) / 1000))), 100);
@@ -209,7 +262,7 @@ function Countdown({ until }: { until: number }) {
       className="fixed inset-0 z-50 grid place-items-center bg-night/85 backdrop-blur-md"
     >
       <div className="text-center">
-        <p className="label mb-4 text-volt">The auction starts in</p>
+        <p className="label mb-4 text-volt">The {what} starts in</p>
         <AnimatePresence mode="popLayout">
           <motion.div
             key={n}

@@ -1,6 +1,7 @@
 'use client';
 import { motion } from 'motion/react';
 import { ChatButton } from './ChatPanel';
+import { ReactionButton } from './Reactions';
 import { summarizeLineup, TACTICS, type PlayerCard, type RoomView } from '@fa/shared';
 import { coins } from '@/lib/format';
 import { PlayerAvatar } from './PlayerAvatar';
@@ -17,6 +18,7 @@ export function AuctionComplete({ room, me, onLeave }: { room: RoomView; me: str
       <header className="flex h-16 items-center justify-between">
         <Logo />
         <div className="flex items-center gap-1">
+          <ReactionButton canTaunt={room.members.some((m) => m.userId === me)} />
           <ChatButton />
             <SoundToggle />
           <Button variant="ghost" size="sm" onClick={onLeave}>

@@ -1,5 +1,18 @@
 import { randomInt } from 'node:crypto';
-import { ELO_CONFIG, GAME_RULES, type CreateRoomInput, type GameMode, type GameRules, type RoomSettings, type SessionUser } from '@fa/shared';
+import {
+  ALL_TWISTS,
+  BLITZ_LOT_SEC,
+  BUDGET_CAP_BUDGET,
+  ELO_CONFIG,
+  GAME_RULES,
+  NO_TWISTS,
+  type CreateRoomData,
+  type GameMode,
+  type GameRules,
+  type RoomSettings,
+  type SessionUser,
+  type TauntId,
+} from '@fa/shared';
 import type { Server } from 'socket.io';
 import { maxPlayersForPool, type PlayerCatalog } from '../data/catalog';
 import type { Clock } from '../engine/clock';
@@ -44,6 +57,8 @@ export class RoomManager {
   private userRoom = new Map<string, string>();
   /** userId → code of the room they are watching. */
   private watching = new Map<string, string>();
+  /** userId → code of a game they stepped out of (exit button / sat out); they can come back to it. */
+  private left = new Map<string, string>();
   private dirty = new Set<Room>();
   private flushScheduled = false;
   private createLimiter: RateLimiter;
@@ -70,8 +85,26 @@ export class RoomManager {
     return code ? this.rooms.get(code) : undefined;
   }
 
-  create(user: SessionUser, input: CreateRoomInput): Room {
-    if (input.mode === 'RANKED' && input.startingBudget !== GAME_RULES.defaultBudget) fail('RANKED_SETTINGS');
+  /** The room to offer a "Rejoin" for: the one they're in, or a game they stepped out of that's still on. */
+  resumableRoom(userId: string): Room | undefined {
+    const current = this.roomOf(userId);
+    if (current) return current;
+    const code = this.left.get(userId);
+    const room = code ? this.rooms.get(code) : undefined;
+    if (room && !room.closed && room.hasMember(userId) && !room.isLobby) return room;
+    if (code) this.left.delete(userId);
+    return undefined;
+  }
+
+  /** Step out of a running game: they stay a member (squad kept) and can come back with the code. */
+  private detach(userId: string, room: Room) {
+    if (this.userRoom.get(userId) === room.code) this.userRoom.delete(userId);
+    this.io.in(userChannel(userId)).socketsLeave(roomChannel(room.code));
+    if (room.hasMember(userId) && !room.isLobby) this.left.set(userId, room.code);
+  }
+
+  create(user: SessionUser, input: CreateRoomData): Room {
+    if (input.mode === 'RANKED' && (input.startingBudget !== GAME_RULES.defaultBudget || input.format !== 'CLASSIC')) fail('RANKED_SETTINGS');
     // Ranked rooms are always public (harder to farm ELO against your own alt accounts).
     if (input.mode === 'RANKED') input = { ...input, isPublic: true };
     const meta = this.deps.catalog.meta(input.competitionId, input.seasonId) ?? fail('COMPETITION_UNAVAILABLE');
@@ -82,15 +115,21 @@ export class RoomManager {
     this.leaveCurrentRoomForSwitch(user.id, null);
     this.stopWatching(user.id);
 
+    const format = input.format;
     const settings: RoomSettings = {
       competitionId: input.competitionId,
       seasonId: input.seasonId,
-      startingBudget: input.startingBudget,
+      // Budget Cap: everyone has the same small purse; prices run 1–5.
+      startingBudget: format === 'BUDGET' ? BUDGET_CAP_BUDGET : input.startingBudget,
       maxPlayers: input.maxPlayers,
-      lotDurationSec: input.lotDurationSec,
+      lotDurationSec: format === 'BLITZ' ? BLITZ_LOT_SEC : input.lotDurationSec,
       mode: input.mode,
       isPublic: input.isPublic,
       antiSnipe: input.antiSnipe,
+      format,
+      // A draft has no lots, so no auction twists.
+      twists: format === 'DRAFT' ? { ...NO_TWISTS } : { ...input.twists },
+      seasonLength: input.seasonLength,
     };
 
     const code = this.newCode();
@@ -117,7 +156,10 @@ export class RoomManager {
       },
       onClosed: (r, reason) => this.onClosed(r, reason),
       onChat: (r, msg) => this.io.to(roomChannel(r.code)).emit('room:chat', { ...msg, code: r.code }),
-      onKicked: (r, userId, reason) => this.io.in(userChannel(userId)).emit('room:removed', { code: r.code, reason }),
+      onKicked: (r, userId, reason) => {
+        this.io.in(userChannel(userId)).emit('room:removed', { code: r.code, reason });
+        this.detach(userId, r);
+      },
       onMemberRemoved: (r, userId) => {
         if (this.userRoom.get(userId) === r.code) this.userRoom.delete(userId);
         this.io.in(userChannel(userId)).socketsLeave(roomChannel(r.code));
@@ -133,7 +175,6 @@ export class RoomManager {
     const room = this.rooms.get(code) ?? fail('ROOM_NOT_FOUND');
     // Validate before touching spectator state, so a refused join doesn't end watching.
     if (!room.hasMember(user.id)) {
-      room.assertNotKicked(user.id);
       if (!room.isLobby) fail('GAME_IN_PROGRESS');
       if (room.memberCount >= room.settings.maxPlayers) fail('ROOM_FULL');
     }
@@ -142,6 +183,7 @@ export class RoomManager {
     this.leaveCurrentRoomForSwitch(user.id, code);
     this.stopWatching(user.id);
     room.join(user);
+    this.left.delete(user.id);
     this.userRoom.set(user.id, code);
     this.io.in(userChannel(user.id)).socketsJoin(roomChannel(code));
     this.markDirty(room);
@@ -151,7 +193,8 @@ export class RoomManager {
   /** Watch a room read-only. A member asking to watch simply re-joins as themselves. */
   spectate(user: SessionUser, code: string): { room: Room; role: 'member' | 'spectator' } {
     const room = this.rooms.get(code) ?? fail('ROOM_NOT_FOUND');
-    if (room.hasMember(user.id)) return { room: this.join(user, code), role: 'member' };
+    // A member who stepped out (exit / sat out) can just watch; otherwise watching your own game rejoins it.
+    if (room.hasMember(user.id) && this.left.get(user.id) !== code) return { room: this.join(user, code), role: 'member' };
     this.leaveCurrentRoomForSwitch(user.id, null);
     this.stopWatching(user.id);
     room.addSpectator(user.id);
@@ -203,16 +246,27 @@ export class RoomManager {
     const room = this.roomOf(userId) ?? fail('NOT_IN_ROOM');
     room.leave(userId);
     // Mid-game the member stays in the room (squad intact) but is free to go elsewhere.
-    if (this.userRoom.get(userId) === room.code) this.userRoom.delete(userId);
-    this.io.in(userChannel(userId)).socketsLeave(roomChannel(room.code));
+    this.detach(userId, room);
   }
 
-  /** Exit a game for good (see Room.quit), then detach like a normal leave. */
+  /** Exit button (see Room.quit): mid-game they keep their squad and can rejoin with the code. */
   quit(userId: string) {
     const room = this.roomOf(userId) ?? fail('NOT_IN_ROOM');
     room.quit(userId);
-    if (this.userRoom.get(userId) === room.code) this.userRoom.delete(userId);
-    this.io.in(userChannel(userId)).socketsLeave(roomChannel(room.code));
+    this.detach(userId, room);
+  }
+
+  /** Host: another game in the same room. */
+  rematch(userId: string) {
+    const room = this.roomOf(userId) ?? fail('NOT_IN_ROOM');
+    room.rematch(userId);
+  }
+
+  /** Floating emoji / taunt to everyone in (or watching) the room. */
+  react(user: SessionUser, input: { emoji?: string; taunt?: TauntId }) {
+    const room = this.roomOf(user.id) ?? this.watchedRoom(user.id) ?? fail('NOT_IN_ROOM');
+    const r = room.react(user, input);
+    this.io.to(roomChannel(room.code)).emit('room:reaction', { ...r, code: room.code });
   }
 
   /** Before entering another room: leave a lobby, refuse while an auction is live. */
@@ -294,6 +348,9 @@ export class RoomManager {
       mode: prefs.mode,
       isPublic: true,
       antiSnipe: true,
+      format: 'CLASSIC',
+      twists: { ...ALL_TWISTS },
+      seasonLength: 1,
     });
     return { room, created: true };
   }
@@ -308,6 +365,7 @@ export class RoomManager {
     for (const [userId, code] of this.watching) if (code === room.code) this.watching.delete(userId);
     this.io.in(spectateChannel(room.code)).socketsLeave(spectateChannel(room.code));
     for (const [userId, code] of this.userRoom) if (code === room.code) this.userRoom.delete(userId);
+    for (const [userId, code] of this.left) if (code === room.code) this.left.delete(userId);
     this.io.to(roomChannel(room.code)).emit('room:closed', { code: room.code, reason });
     this.io.in(roomChannel(room.code)).socketsLeave(roomChannel(room.code));
   }

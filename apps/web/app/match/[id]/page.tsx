@@ -7,6 +7,7 @@ import { Analysis, EloDelta, ManagerReport } from '@/components/Results';
 import { MobileNav, SiteHeader } from '@/components/SiteHeader';
 import { AllSquads } from '@/components/SquadViews';
 import { Avatar, Pill } from '@/components/ui';
+import { Bracket, cellsFromSummary } from '@/components/cup/Bracket';
 import { api } from '@/lib/api';
 
 const MEDAL = ['🥇', '🥈', '🥉'];
@@ -63,7 +64,7 @@ export default function MatchPage() {
 
           <div className="mt-6 grid gap-6 lg:grid-cols-[360px_1fr]">
             <div className="glass h-fit rounded-2xl p-4">
-              <div className="label mb-3">Final ranking</div>
+              <div className="label mb-3">{m.cup ? 'Final standings' : 'Final ranking'}</div>
               <ol className="space-y-2">
                 {m.rankings.map((r, i) => {
                   const mgr = m.managers.find((x) => x.userId === r.userId);
@@ -81,11 +82,19 @@ export default function MatchPage() {
                         <span className="min-w-0 flex-1">
                           <span className="block truncate font-bold">{mgr.username}</span>
                           <span className="text-xs text-muted">
-                            {mgr.lineup?.formationId} · spent {r.spent}
+                            {r.cupFinish ? (
+                              <>
+                                <b className={r.cupFinish === 'Champion' ? 'text-gold' : ''}>{r.cupFinish}</b> · squad {r.total.toFixed(1)}
+                              </>
+                            ) : (
+                              <>
+                                {mgr.lineup?.formationId} · spent {r.spent}
+                              </>
+                            )}
                           </span>
                         </span>
                         <span className="text-right">
-                          <span className="display block text-2xl font-extrabold leading-none num">{r.total.toFixed(1)}</span>
+                          <span className="display block text-2xl font-extrabold leading-none num">{r.cupFinish ? `#${r.rank}` : r.total.toFixed(1)}</span>
                           {mgr.eloBefore !== null && mgr.eloAfter !== null && <EloDelta delta={mgr.eloAfter - mgr.eloBefore} />}
                         </span>
                       </button>
@@ -120,6 +129,43 @@ export default function MatchPage() {
           </div>
 
           <Analysis report={m.report} nameOf={nameOf} players={players} />
+
+          {m.cup && (
+            <section className="mt-8">
+              <h2 className="display mb-3 text-2xl font-extrabold">The cup</h2>
+              <div className="glass rounded-2xl p-4">
+                <Bracket rounds={m.cup.rounds} cells={cellsFromSummary(m.cup)} seeds={m.cup.seeds} nameOf={nameOf} />
+                <ul className="mt-4 grid gap-2 sm:grid-cols-2">
+                  {m.cup.matches.map((x, i) => (
+                    <li key={i} className="rounded-xl bg-white/[.03] px-3 py-2.5 text-sm">
+                      <div className="text-[10px] font-bold uppercase tracking-wider text-muted">{m.cup!.rounds[x.round]}</div>
+                      <div className="flex items-center justify-between gap-2 font-semibold">
+                        <span className="truncate">{nameOf(x.homeId)}</span>
+                        <span className="display text-lg font-extrabold num">
+                          {x.score[0]}–{x.score[1]}
+                          {x.pens && <span className="ml-1 text-xs text-muted">({x.pens[0]}–{x.pens[1]} p)</span>}
+                        </span>
+                        <span className="truncate text-right">{nameOf(x.awayId)}</span>
+                      </div>
+                      {x.goals.length > 0 && (
+                        <div className="mt-0.5 flex justify-between gap-3 text-[11px] text-muted">
+                          {([0, 1] as const).map((side) => (
+                            <span key={side} className={`truncate ${side ? 'text-right' : ''}`}>
+                              {x.goals
+                                .filter((g) => g.side === side)
+                                .map((g) => `${players.get(g.playerId)?.shortName ?? '?'} ${g.minute}'${g.pen ? ' (p)' : ''}`)
+                                .join(', ')}
+                            </span>
+                          ))}
+                        </div>
+                      )}
+                      {x.motm && <div className="mt-0.5 text-[11px] text-dim">⭐ {players.get(x.motm.playerId)?.name ?? 'Man of the match'}</div>}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </section>
+          )}
 
           <div className="mt-8 flex gap-1">
             {(['squads', 'auction'] as const).map((t) => (

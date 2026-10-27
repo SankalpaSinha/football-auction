@@ -1,10 +1,11 @@
 'use client';
 import { useEffect, useState } from 'react';
-import { motion } from 'motion/react';
+import { AnimatePresence, motion } from 'motion/react';
 import type { LotResultView, RoomView } from '@fa/shared';
 import { serverNow } from '@/lib/store';
 import { PlayerCard } from '../PlayerCard';
 import { Avatar, Coin } from '../ui';
+import { StealButton } from './Twists';
 
 const VERDICT = {
   BARGAIN: { label: 'Bargain', cls: 'border-emerald-400/60 bg-emerald-400/15 text-emerald-200', icon: '🟢' },
@@ -35,33 +36,57 @@ export function SoldOverlay({ room, result, me }: { room: RoomView; result: LotR
   }
 
   const verdict = result.verdict ? VERDICT[result.verdict] : null;
+  const stolen = !!result.stolenFrom;
+  const victim = room.members.find((m) => m.userId === result.stolenFrom);
+  const nameOf = (id: string) => (id === me ? 'You' : (room.members.find((m) => m.userId === id)?.username ?? '?'));
 
   return (
     <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0, transition: { duration: 0.25 } }}
-      className="fixed inset-0 z-40 grid place-items-center overflow-hidden bg-night/80 px-4 backdrop-blur-md"
+      className="fixed inset-0 z-40 grid place-items-center overflow-y-auto overflow-x-hidden bg-night/80 px-4 py-6 backdrop-blur-md"
     >
       {mine && <Burst />}
-      <div className="relative flex flex-col items-center gap-6 sm:flex-row sm:gap-12">
+      <div className="relative flex flex-col items-center gap-4 sm:flex-row sm:gap-12">
         <motion.div initial={{ x: -60, opacity: 0, rotate: -8 }} animate={{ x: 0, opacity: 1, rotate: -3 }} transition={{ type: 'spring', stiffness: 120 }}>
-          <PlayerCard player={result.player} size="md" />
+          {result.kind === 'MYSTERY' && (
+            <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="mb-2 text-center text-sm font-bold text-violet-200">
+              🎁 The mystery player was…
+            </motion.div>
+          )}
+          <PlayerCard player={result.player} size="sm" className="sm:hidden" />
+          <PlayerCard player={result.player} size="md" className="hidden sm:block" />
         </motion.div>
 
         <div className="text-center sm:text-left">
-          <motion.div
-            initial={{ scale: 3, opacity: 0, rotate: -25 }}
-            animate={{ scale: 1, opacity: 1, rotate: -8 }}
-            transition={{ type: 'spring', stiffness: 260, damping: 14, delay: 0.1 }}
-            className="display inline-block rounded-xl border-[5px] border-danger px-6 py-1 text-7xl font-extrabold text-danger shadow-[0_0_60px_-10px_#ff4d5e] sm:text-8xl"
-          >
-            Sold!
-          </motion.div>
+          <AnimatePresence mode="wait">
+            {stolen ? (
+              <motion.div
+                key="stolen"
+                initial={{ scale: 3, opacity: 0, rotate: 20 }}
+                animate={{ scale: 1, opacity: 1, rotate: 6 }}
+                transition={{ type: 'spring', stiffness: 260, damping: 12 }}
+                className="display inline-block rounded-xl border-[5px] border-fuchsia-400 px-6 py-1 text-5xl font-extrabold text-fuchsia-300 shadow-[0_0_60px_-10px_#e879f9] sm:text-7xl"
+              >
+                Stolen!
+              </motion.div>
+            ) : (
+              <motion.div
+                key="sold"
+                initial={{ scale: 3, opacity: 0, rotate: -25 }}
+                animate={{ scale: 1, opacity: 1, rotate: -8 }}
+                transition={{ type: 'spring', stiffness: 260, damping: 14, delay: 0.1 }}
+                className="display inline-block rounded-xl border-[5px] border-danger px-6 py-1 text-5xl font-extrabold text-danger shadow-[0_0_60px_-10px_#ff4d5e] sm:text-8xl"
+              >
+                Sold!
+              </motion.div>
+            )}
+          </AnimatePresence>
 
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.35 }} className="mt-6">
-            <div className="display text-4xl font-extrabold">{result.player.name}</div>
-            <div className="label mt-4">Sold to</div>
+            <div className="display text-3xl font-extrabold sm:text-4xl">{result.player.name}</div>
+            <div className="label mt-4">{stolen ? `Stolen from ${victim?.userId === me ? 'you' : (victim?.username ?? '?')} by` : 'Sold to'}</div>
             <div className="mt-1 flex items-center justify-center gap-3 sm:justify-start">
               <Avatar name={winner?.username ?? '?'} size={40} ring={mine ? '#c8ff2e' : undefined} />
               <span className={`display text-4xl font-extrabold ${mine ? 'text-volt' : ''}`}>{mine ? 'You!' : winner?.username}</span>
@@ -69,11 +94,29 @@ export function SoldOverlay({ room, result, me }: { room: RoomView; result: LotR
             <div className="label mt-4">For</div>
             <div className="mt-1 flex items-center justify-center gap-2 sm:justify-start">
               <Coin className="h-8 w-8" />
-              <span className="display text-6xl font-extrabold text-gold num">{result.price}</span>
+              <span className="display text-5xl font-extrabold text-gold num sm:text-6xl">{result.price}</span>
               <span className="display text-xl font-bold text-muted">coins</span>
             </div>
           </motion.div>
 
+          {result.sealedBids && result.sealedBids.length > 0 && (
+            <motion.ul initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.5 }} className="mt-4 space-y-1">
+              <li className="label !text-cyan">🔒 The sealed bids</li>
+              {result.sealedBids.map((b, i) => (
+                <motion.li
+                  key={b.userId}
+                  initial={{ opacity: 0, x: -10 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: 0.6 + i * 0.25 }}
+                  className={`flex items-center gap-2 text-sm ${i === 0 ? 'font-bold text-volt' : 'text-muted'}`}
+                >
+                  <span className="w-24 truncate">{nameOf(b.userId)}</span>
+                  <Coin className="h-3.5 w-3.5" /> <span className="num">{b.amount}</span>
+                </motion.li>
+              ))}
+            </motion.ul>
+          )}
+          <StealButton room={room} me={me} />
           {verdict && (
             <motion.div
               initial={{ opacity: 0, scale: 0.8 }}

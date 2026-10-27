@@ -9,7 +9,7 @@ import {
   type Position,
   type SquadEntry,
 } from '@fa/shared';
-import { completeAuction, createHarness } from './helpers';
+import { completeAuction, createHarness, toResults } from './helpers';
 import { autoPick } from '@fa/shared';
 
 /** A player whose attributes look like a real player of that position. */
@@ -181,7 +181,7 @@ describe('results phase', () => {
     }
     expect(h.room.phase).toBe('FINAL_EVALUATION');
     expect(h.room.view('u1').results).toBeNull();
-    h.clock.advance(h.room.view('u1').resultsAt! - h.clock.now());
+    toResults(h);
     expect(h.room.phase).toBe('RESULTS');
     const r = h.room.view('u2').results!;
     expect(r.rankings.map((x) => x.rank)).toEqual([1, 2, 3]);

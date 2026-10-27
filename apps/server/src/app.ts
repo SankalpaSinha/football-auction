@@ -21,6 +21,13 @@ import {
   tradeRespondSchema,
   tradeCancelSchema,
   credentialsSchema,
+  sealedBidSchema,
+  freezeSchema,
+  stealSchema,
+  refundSchema,
+  reactSchema,
+  talkSchema,
+  shoutSchema,
   type Ack,
   type ClientToServer,
   type ErrorCode,
@@ -203,7 +210,7 @@ export function createApp(deps: AppDeps) {
     const user = token ? await deps.users.findByToken(token).catch(() => null) : null;
     if (!user) return void res.status(401).json(errorAck('UNAUTHENTICATED'));
     deps.users.touch(user.id).catch(() => {});
-    res.json({ user, activeRoom: manager.roomOf(user.id)?.code ?? null });
+    res.json({ user, activeRoom: manager.resumableRoom(user.id)?.code ?? null });
   });
 
   app.get('/api/competitions', (_req, res) => {
@@ -248,6 +255,21 @@ export function createApp(deps: AppDeps) {
       res.json(match);
     } catch (e) {
       fail500(res, 'match', e);
+    }
+  });
+
+  app.get('/api/rivalries', async (req, res) => {
+    const stats = needStats(res);
+    if (!stats) return;
+    const ids = String(req.query.ids ?? '')
+      .split(',')
+      .map((s) => s.trim())
+      .filter((s) => s.length > 0 && s.length <= 64)
+      .slice(0, 8);
+    try {
+      res.json({ rivalries: await stats.rivalries(ids) });
+    } catch (e) {
+      fail500(res, 'rivalries', e);
     }
   });
 
@@ -329,6 +351,7 @@ export function createApp(deps: AppDeps) {
     const bids = new TokenBucket(6, 10, () => deps.clock.now());
     const syncs = new TokenBucket(2, 8, () => deps.clock.now());
     const chats = new TokenBucket(1, 5, () => deps.clock.now());
+    const reactions = new TokenBucket(2, 6, () => deps.clock.now());
     // Failed room lookups by code — guessing private codes gets cut off quickly.
     let codeMisses = 0;
     const lookup = <T>(fn: () => T): T => {
@@ -462,6 +485,14 @@ export function createApp(deps: AppDeps) {
     on('trade:propose', tradeProposeSchema, (t) => inRoom().proposeTrade(user.id, t));
     on('trade:respond', tradeRespondSchema, ({ tradeId, accept }) => inRoom().respondTrade(user.id, tradeId, accept));
     on('trade:cancel', tradeCancelSchema, ({ tradeId }) => inRoom().cancelTrade(user.id, tradeId));
+    on('auction:sealed', sealedBidSchema, ({ lotNumber, amount }) => inRoom().sealedBid(user.id, lotNumber, amount), bids);
+    on('card:freeze', freezeSchema, ({ lotNumber, targetId }) => inRoom().freeze(user.id, lotNumber, targetId));
+    on('card:steal', stealSchema, ({ lotNumber }) => inRoom().steal(user.id, lotNumber));
+    on('card:refund', refundSchema, ({ playerId }) => inRoom().refund(user.id, playerId));
+    on('room:rematch', null, () => manager.rematch(user.id));
+    on('room:react', reactSchema, (r) => manager.react(user, r), reactions);
+    on('match:talk', talkSchema, ({ talk }) => inRoom().talk(user.id, talk));
+    on('match:shout', shoutSchema, ({ shout }) => inRoom().shout(user.id, shout));
     on('squad:draft', lineupSchema, (l) => inRoom().saveLineupDraft(user.id, l));
     on('squad:lock', lineupSchema, (l) => inRoom().lockLineup(user.id, l));
     on('squad:unlock', null, () => inRoom().unlockLineup(user.id));

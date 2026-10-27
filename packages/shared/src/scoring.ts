@@ -107,6 +107,8 @@ export interface ScoreContext {
   startingBudget?: number;
   /** Coins left at the end of the auction (for budget objectives). */
   budgetLeft?: number;
+  /** Players per squad in this game (Blitz squads are smaller). Defaults to 18. */
+  squadSize?: number;
 }
 
 export interface SynergyHit {
@@ -316,7 +318,8 @@ export function scoreSquad(squad: SquadEntry[], lineup: LineupInput, ctx: ScoreC
   const counts: Record<PositionGroup, number> = { GK: 0, DEF: 0, MID: 0, ATT: 0 };
   for (const e of squad) counts[POSITION_GROUP[e.player.position]]++;
   let balancePenalty = 0;
-  for (const [g, [lo, hi]] of Object.entries(cfg.balance.ranges) as [PositionGroup, [number, number]][]) {
+  for (const [g, range] of Object.entries(cfg.balance.ranges) as [PositionGroup, [number, number]][]) {
+    const [lo, hi] = scaledRange(g, range, ctx.squadSize ?? 18);
     const outside = counts[g] < lo ? lo - counts[g] : counts[g] > hi ? counts[g] - hi : 0;
     balancePenalty += outside * cfg.balance.perPlayerOutside;
     if (outside && counts[g] < lo) notes.push({ kind: 'weakness', text: `Thin squad: only ${counts[g]} ${g === 'GK' ? 'goalkeeper' : g.toLowerCase()} option${counts[g] === 1 ? '' : 's'}` });
@@ -333,11 +336,11 @@ export function scoreSquad(squad: SquadEntry[], lineup: LineupInput, ctx: ScoreC
   }
   const balance = clamp(100 - balancePenalty);
 
-  // --- depth: bench quality + cover
+  // --- depth: bench quality + cover (squads with no bench at all — Blitz — are all scored the same)
   const benchQuality = scaleRating(avg(benchPlayers.map((p) => p.overall)));
   const benchGroups = new Set(benchPlayers.map((p) => POSITION_GROUP[p.position]));
   const cover = (['GK', 'DEF', 'MID', 'ATT'] as PositionGroup[]).filter((g) => benchGroups.has(g)).length / 4;
-  const depth = clamp(0.7 * benchQuality + 30 * cover);
+  const depth = benchPlayers.length === 0 && (ctx.squadSize ?? 18) <= 11 ? 50 : clamp(0.7 * benchQuality + 30 * cover);
 
   // --- budget efficiency
   const spent = squad.reduce((s, e) => s + e.price, 0);
@@ -427,6 +430,14 @@ export function scoreSquad(squad: SquadEntry[], lineup: LineupInput, ctx: ScoreC
   };
 }
 
+/** Balance ranges are written for 18-man squads; smaller squads scale them down. */
+function scaledRange(g: PositionGroup, [lo, hi]: [number, number], squadSize: number): [number, number] {
+  if (squadSize >= 18) return [lo, hi];
+  const k = squadSize / 18;
+  const min = g === 'GK' ? 1 : Math.max(1, Math.round(lo * k));
+  return [min, Math.max(min, Math.ceil(hi * k))];
+}
+
 const sameFlank = (x1: number, x2: number) => (x1 <= 50 && x2 <= 50) || (x1 >= 50 && x2 >= 50);
 
 function objectiveDone(
@@ -481,7 +492,12 @@ export const objectiveText = (id: ObjectiveId) => OBJECTIVES[id].text;
 
 export interface RankedScore extends SquadScore {
   userId: string;
+  /** Final position (after the cup, when one was played). */
   rank: number;
+  /** Position by squad score alone (the cup seed). */
+  squadRank?: number;
+  /** How far they got in the cup ("Champion", "Semi-finalist"…). */
+  cupFinish?: string;
 }
 
 /** Rank managers. Ties: higher quality, then position fit, then fewer coins spent, then user id. */

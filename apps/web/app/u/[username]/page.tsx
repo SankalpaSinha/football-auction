@@ -104,6 +104,26 @@ export default function ProfilePage() {
             </div>
           </div>
 
+          {(p.rivals?.length ?? 0) > 0 && (
+            <section className="mt-8">
+              <h2 className="display mb-3 text-2xl font-extrabold">Rivalries</h2>
+              <ul className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+                {p.rivals.map((r) => (
+                  <li key={r.username}>
+                    <Link href={`/u/${r.username}`} className="glass flex items-center gap-3 rounded-2xl px-4 py-3 transition hover:bg-white/[.07]">
+                      <Avatar name={r.username} size={32} />
+                      <span className="min-w-0 flex-1 truncate font-bold">{r.username}</span>
+                      <span className={`display text-2xl font-extrabold num ${r.wins > r.losses ? 'text-volt' : r.wins < r.losses ? 'text-rose-300' : ''}`}>
+                        {r.wins}–{r.losses}
+                      </span>
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+              <p className="mt-2 text-xs text-dim">Head to head: who finished higher in the games you played together.</p>
+            </section>
+          )}
+
           <section className="mt-8">
             <AchievementGrid unlocked={p.achievements} />
           </section>

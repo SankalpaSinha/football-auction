@@ -1,6 +1,7 @@
 'use client';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { ChatButton } from '../ChatPanel';
+import { ReactionButton } from '../Reactions';
 import { AnimatePresence, motion } from 'motion/react';
 import {
   autoPick,
@@ -313,6 +314,7 @@ export function SquadBuilder({ room, me }: { room: RoomView; me: string }) {
           <div className="ml-auto flex items-center gap-3">
             <Deadline endsAt={sb.endsAt} />
             <ExitButton room={room} />
+            <ReactionButton canTaunt={room.members.some((m) => m.userId === me)} />
             <ChatButton />
             <SoundToggle />
           </div>
@@ -411,7 +413,7 @@ export function SquadBuilder({ room, me }: { room: RoomView; me: string }) {
           </PitchSurface>
 
           <div className="grid w-full max-w-[640px] grid-cols-3 gap-2 text-center sm:grid-cols-5">
-            <Stat label="Projected score" value={projected ? projected.total.toFixed(1) : '–'} hint="Preview — final scores are calculated by the server" accent />
+            <Stat label="Projected score" value={projected ? projected.total.toFixed(1) : '–'} hint="Preview. The server calculates the final score, which seeds the cup your XI plays next" accent />
             <Stat label="Tactic fit" value={projected ? projected.breakdown.tactics.toFixed(0) : '–'} />
             <Stat label="Synergy" value={projected ? projected.breakdown.synergy.toFixed(0) : '–'} />
             <Stat label="Chemistry" value={projected ? projected.breakdown.chemistry.toFixed(0) : '–'} />

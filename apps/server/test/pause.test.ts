@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { GameError } from '../src/engine/errors';
-import { completeAuction, createHarness, nextLot, testRules } from './helpers';
+import { completeAuction, createHarness, nextLot, testRules, toResults } from './helpers';
 
 const code = (fn: () => void) => {
   try {
@@ -129,9 +129,9 @@ describe('inactive managers', () => {
     nextLot(h);
   };
 
-  it('warns after two idle lots and removes the manager after three', () => {
+  it('warns after two idle lots and sits the manager out after three — they keep their squad', () => {
     const h = createHarness({ players: 3, rules: { inactiveLotsToRemove: 3 } });
-    // u3 buys one player first, so we can see it go back into the pool.
+    // u3 buys one player first, so we can check it stays theirs.
     const first = h.lot();
     h.room.bid('u3', first.lotNumber, 10);
     h.room.skip('u1', first.lotNumber);
@@ -151,15 +151,27 @@ describe('inactive managers', () => {
     h.room.bid('u2', n, 20);
     h.clock.advance(h.lot().endsAt - h.clock.now());
 
-    expect(h.room.memberIds()).toEqual(['u1', 'u2']);
+    expect(h.room.memberIds()).toEqual(['u1', 'u2', 'u3']);
+    expect(h.member('u3').connected).toBe(false);
     expect(h.kicked).toEqual([{ userId: 'u3', reason: expect.stringContaining('3 lots') }]);
     expect(h.events.some((e) => e.type === 'REMOVED' && e.userId === 'u3')).toBe(true);
     expect(auction(h).idleLots).toEqual({});
-    // Their player is back up for auction.
-    expect(auction(h).remainingInQueue).toBe(before + 1);
-    expect(code(() => h.room.bid('u3', n + 1, 10))).toBe('NOT_IN_ROOM');
+    // Their player stays theirs; nothing went back into the pool.
+    expect(h.member('u3').squad).toHaveLength(1);
+    expect(auction(h).remainingInQueue).toBe(before);
+    // Lots no longer wait for them…
+    nextLot(h);
+    const m = h.lot().lotNumber;
+    h.room.bid('u1', m, 10);
+    h.room.skip('u2', m);
+    expect(h.room.phase).toBe('PLAYER_SOLD');
+    // …until they come back with the code.
+    h.room.join({ id: 'u3', username: 'user3' });
+    expect(h.member('u3').connected).toBe(true);
+    nextLot(h);
+    h.room.bid('u3', h.lot().lotNumber, 10);
+    expect(h.lot().highestBidderId).toBe('u3');
   });
-
   it('a lot nobody touched counts against nobody', () => {
     const h = createHarness({ players: 2, rules: { inactiveLotsToRemove: 3 } });
     for (let i = 0; i < 4; i++) {
@@ -185,17 +197,17 @@ describe('inactive managers', () => {
     expect(h.room.memberIds()).toEqual(['u1', 'u2']);
   });
 
-  it('the host can be removed — hosting passes on and the last manager picks freely', () => {
+  it('a sat-out host hands over hosting after the grace period and the game carries on', () => {
     const h = createHarness({ players: 2, rules: { inactiveLotsToRemove: 3 } });
     timedLot(h, ['u2']);
     timedLot(h, ['u2']);
     timedLot(h, ['u2']);
-    expect(h.room.memberIds()).toEqual(['u2']);
+    expect(h.member('u1').connected).toBe(false);
+    h.clock.advance(testRules().hostTransferGraceMs);
     expect(h.room.hostId).toBe('u2');
-    expect(auction(h).freePick?.userId).toBe('u2');
+    expect(h.room.phase === 'AUCTION' || h.room.phase === 'PLAYER_SOLD').toBe(true);
     expect(h.closed).toEqual([]);
   });
-
   it('an agreed pause does not count as idle time', () => {
     const h = createHarness({ players: 2, rules: { inactiveLotsToRemove: 3 } });
     timedLot(h);
@@ -204,6 +216,29 @@ describe('inactive managers', () => {
     h.room.votePause('u2', true);
     h.clock.advance(4 * 60_000);
     expect(h.room.memberIds()).toEqual(['u1', 'u2']);
+  });
+});
+
+describe('inactivity: acting always resets the count', () => {
+  it('a skip on a lot that closes early still counts as being there', () => {
+    const h = createHarness({ players: 2, rules: { inactiveLotsToRemove: 3 } });
+    const timed = () => {
+      const n = h.lot().lotNumber;
+      h.room.bid('u1', n, h.lot().minNextBid);
+      h.clock.advance(h.lot().endsAt - h.clock.now());
+      nextLot(h);
+    };
+    for (let i = 0; i < 4; i++) {
+      timed(); // u2 misses one…
+      expect(auction(h).idleLots.u2).toBe(1);
+      // …then skips the next, which closes at once.
+      const n = h.lot().lotNumber;
+      h.room.bid('u1', n, 10);
+      h.room.skip('u2', n);
+      expect(auction(h).idleLots.u2).toBeUndefined();
+      nextLot(h);
+    }
+    expect(h.member('u2').connected).toBe(true);
   });
 });
 
@@ -223,19 +258,25 @@ describe('inactivity edge cases', () => {
     expect(auction(h).idleLots.u3).toBeUndefined();
   });
 
-  it('a removed manager cannot rejoin, and is told why', () => {
+  it('a sat-out manager is told why, and gets their squad back by rejoining', () => {
     const h = createHarness({ players: 2, rules: { inactiveLotsToRemove: 3 } });
+    const first = h.lot();
+    h.room.bid('u2', first.lotNumber, 10);
+    h.room.skip('u1', first.lotNumber);
+    nextLot(h);
     for (let i = 0; i < 3; i++) {
       const n = h.lot().lotNumber;
       h.room.bid('u1', n, h.lot().minNextBid);
       h.clock.advance(h.lot().endsAt - h.clock.now());
       nextLot(h);
     }
-    expect(h.room.memberIds()).toEqual(['u1']);
-    expect(code(() => h.room.join({ id: 'u2', username: 'user2' }))).toBe('REMOVED_FROM_GAME');
+    expect(h.kicked[0]).toMatchObject({ userId: 'u2', reason: expect.stringContaining('3 lots') });
+    expect(h.member('u2').connected).toBe(false);
+    h.room.join({ id: 'u2', username: 'user2' });
+    expect(h.member('u2').connected).toBe(true);
+    expect(h.member('u2').squad).toHaveLength(1);
   });
-
-  it('in ranked games a removed manager still takes a last-place rating loss', async () => {
+  it('a sat-out manager who never comes back still finishes the game with a full squad and a result', async () => {
     const h = createHarness({ players: 3, settings: { mode: 'RANKED' }, rules: { inactiveLotsToRemove: 3 } });
     await new Promise((r) => setTimeout(r, 0)); // ratings load
     for (let i = 0; i < 3; i++) {
@@ -245,14 +286,14 @@ describe('inactivity edge cases', () => {
       h.clock.advance(h.lot().endsAt - h.clock.now());
       nextLot(h);
     }
-    expect(h.room.memberIds()).toEqual(['u1', 'u2']);
+    expect(h.member('u3').connected).toBe(false);
     completeAuction(h);
     expect(h.room.phase).toBe('SQUAD_BUILDING');
-    h.clock.advance(600_000 + 10_000);
+    expect(h.member('u3').squad).toHaveLength(18);
+    toResults(h);
     const changes = h.room.view().results!.ratingChanges!;
     expect(changes.map((c) => c.userId).sort()).toEqual(['u1', 'u2', 'u3']);
-    expect(changes.find((c) => c.userId === 'u3')!.delta).toBeLessThan(0);
-    expect(h.room.view().results!.rankings.map((r) => r.userId)).not.toContain('u3');
+    expect(h.room.view().results!.rankings.map((r) => r.userId).sort()).toEqual(['u1', 'u2', 'u3']);
   });
 });
 
@@ -329,13 +370,14 @@ describe('default inactivity limit', () => {
     expect(h.room.view().feed.some((f) => f.text.includes('user2 has sat out 4 lots'))).toBe(true);
     expect(h.room.memberIds()).toEqual(['u1', 'u2']);
     timed();
-    expect(h.room.memberIds()).toEqual(['u1']);
+    expect(h.room.memberIds()).toEqual(['u1', 'u2']);
+    expect(h.member('u2').connected).toBe(false);
     expect(h.kicked[0].reason).toContain('5 lots');
   });
 });
 
 describe('exit game', () => {
-  it('leaving mid-auction returns your players to the pool and you cannot rejoin as a player', () => {
+  it('exiting mid-auction keeps your squad, and entering the code again brings you back', () => {
     const h = createHarness({ players: 3 });
     const first = h.lot();
     h.room.bid('u3', first.lotNumber, 10);
@@ -344,32 +386,44 @@ describe('exit game', () => {
     nextLot(h);
     const queued = auction(h).remainingInQueue;
     h.room.quit('u3');
-    expect(h.room.memberIds()).toEqual(['u1', 'u2']);
-    expect(auction(h).remainingInQueue).toBe(queued + 1);
+    expect(h.room.memberIds()).toEqual(['u1', 'u2', 'u3']);
+    expect(h.member('u3').connected).toBe(false);
+    expect(h.member('u3').squad).toHaveLength(1);
+    expect(auction(h).remainingInQueue).toBe(queued);
     expect(h.kicked).toEqual([]); // they chose to go: no "you were removed" notice
-    expect(h.room.view().feed.some((f) => f.text === 'user3 left the game')).toBe(true);
-    expect(code(() => h.room.join({ id: 'u3', username: 'user3' }))).toBe('REMOVED_FROM_GAME');
+    expect(h.room.view().feed.some((f) => f.text.startsWith('user3 left the game') && f.text.includes('rejoin'))).toBe(true);
+    // Lots don't wait for them while they're gone.
+    const n = h.lot().lotNumber;
+    h.room.bid('u1', n, 10);
+    h.room.skip('u2', n);
+    expect(h.room.phase).toBe('PLAYER_SOLD');
+    h.room.join({ id: 'u3', username: 'user3' });
+    expect(h.member('u3').connected).toBe(true);
+    expect(h.member('u3').squad).toHaveLength(1);
   });
 
-  it('holding the top bid: you leave as soon as the lot closes (or when outbid)', () => {
+  it('a manager who stepped out can watch without rejoining as a player', () => {
+    const h = createHarness({ players: 2 });
+    h.room.quit('u2');
+    h.room.addSpectator('u2');
+    expect(h.room.view().spectators).toBe(1);
+    expect(h.member('u2').connected).toBe(false);
+    // Someone still playing is never a spectator.
+    h.room.addSpectator('u1');
+    expect(h.room.view().spectators).toBe(1);
+  });
+
+  it('exiting while holding the top bid: you still win the player', () => {
     const h = createHarness({ players: 3 });
-    let n = h.lot().lotNumber;
+    const n = h.lot().lotNumber;
     h.room.bid('u3', n, 50);
     h.room.quit('u3');
-    expect(h.room.memberIds()).toContain('u3'); // still holds the bid
-    h.room.bid('u1', n, 60); // outbid → gone straight away
-    expect(h.room.memberIds()).toEqual(['u1', 'u2']);
-
     h.clock.advance(h.lot().endsAt - h.clock.now());
-    nextLot(h);
-    n = h.lot().lotNumber;
-    h.room.bid('u2', n, 20);
-    h.room.quit('u2');
-    h.clock.advance(h.lot().endsAt - h.clock.now());
-    expect(h.room.memberIds()).toEqual(['u1']);
+    expect(h.member('u3').squad).toHaveLength(1);
+    expect(h.member('u3').budget).toBe(950);
   });
 
-  it('the free-pick manager leaving ends the auction', () => {
+  it('the free-pick manager exiting: their squad is completed automatically', () => {
     const h = createHarness({ players: 2 });
     while (h.member('u1').squad.length < 18) {
       if (h.room.phase === 'PLAYER_SOLD') {
@@ -382,18 +436,19 @@ describe('exit game', () => {
     nextLot(h);
     expect(auction(h).freePick?.userId).toBe('u2');
     h.room.quit('u2');
+    h.clock.advance(testRules().absentAutoFillMs);
     expect(h.room.phase).toBe('SQUAD_BUILDING');
-    expect(h.room.memberIds()).toEqual(['u1']);
+    expect(h.member('u2').squad).toHaveLength(18);
   });
 
-  it('in a ranked game leaving counts as last place', async () => {
+  it('in a ranked game leaving doesn’t dodge the result', async () => {
     const h = createHarness({ players: 3, settings: { mode: 'RANKED' } });
     await new Promise((r) => setTimeout(r, 0));
     h.room.quit('u3');
     completeAuction(h);
-    h.clock.advance(testRules().squadBuildingMs + 10_000);
+    toResults(h);
     const c = h.room.view().results!.ratingChanges!.find((x) => x.userId === 'u3');
-    expect(c?.delta).toBeLessThan(0);
+    expect(c).toBeDefined();
   });
 
   it('after the auction, exiting just takes you offline and you still get a result', () => {
@@ -402,7 +457,7 @@ describe('exit game', () => {
     h.room.quit('u2');
     expect(h.room.memberIds()).toEqual(['u1', 'u2']);
     expect(h.member('u2').connected).toBe(false);
-    h.clock.advance(testRules().squadBuildingMs + 10_000);
+    toResults(h);
     expect(h.room.view().results!.rankings.map((r) => r.userId).sort()).toEqual(['u1', 'u2']);
   });
 });

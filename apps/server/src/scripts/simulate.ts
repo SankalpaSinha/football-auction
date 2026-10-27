@@ -7,6 +7,7 @@
  *
  * Options: --server http://localhost:4000  --bots N  --competition id  --season 2026-27
  *          --aggression 0..1  --think-min ms  --think-max ms  --mode casual|ranked
+ *          --format classic|blitz|budget|draft  --no-twists  --season-length 1|3|5
  *          --names A,B,C (reuse the same bot accounts)  --public
  */
 import { randomBytes } from 'node:crypto';
@@ -27,6 +28,11 @@ const aggression = Number(arg('aggression', '0.6'));
 const fixedNames = arg('names')?.split(',').map((n) => n.trim()).filter(Boolean);
 const isPublic = args.includes('--public');
 const mode = (arg('mode', 'casual')!.toUpperCase() === 'RANKED' ? 'RANKED' : 'CASUAL') as 'RANKED' | 'CASUAL';
+const format = (arg('format', 'classic')!.toUpperCase()) as 'CLASSIC' | 'BLITZ' | 'BUDGET' | 'DRAFT';
+const twists = !args.includes('--no-twists');
+const seasonLength = Number(arg('season-length', '1'));
+/** Keep playing this many games in the room (the host starts each rematch). */
+const games = Number(arg('games', '1'));
 const think: [number, number] = [Number(arg('think-min', join ? '900' : '150')), Number(arg('think-max', join ? '4000' : '600'))];
 
 const NAMES = ['BotKlopp', 'BotPep', 'BotAncelotti', 'BotSimeone', 'BotArteta', 'BotXabi', 'BotZidane', 'BotMourinho'];
@@ -37,7 +43,7 @@ async function main() {
     Array.from({ length: count }, async (_, i) => {
       // Unique even with more bots than names.
       const name = fixedNames?.[i] ?? `${NAMES[i % NAMES.length].slice(0, 11)}${i >= NAMES.length ? i : ''}_${tag}`.slice(0, 16);
-      const bot = new Bot(base, name, { aggression, thinkMs: think });
+      const bot = new Bot(base, name, { aggression, thinkMs: think, cardiness: 0.4, autoReady: true, reconnect: true });
       await bot.login();
       return bot.connect();
     }),
@@ -62,6 +68,9 @@ async function main() {
       lotDurationSec: 15,
       mode,
       isPublic,
+      format,
+      twists: { mystery: twists, sealed: twists, events: twists, cards: twists },
+      seasonLength,
     }));
     for (const b of bots.slice(1)) {
       await b.must('room:join', { code });
@@ -84,21 +93,38 @@ async function main() {
     }
   });
 
-  await watcher.waitFor((v) => v.phase === 'SQUAD_BUILDING', 60 * 60_000);
-  console.log('\n🏁 Auction complete — bots are picking lineups\n');
-  const final = await watcher.waitFor((v) => v.phase === 'RESULTS', 10 * 60_000);
-  console.log('🏆 Results\n');
-  for (const r of final.results!.rankings) {
-    const name = final.members.find((m) => m.userId === r.userId)?.username;
-    console.log(`  ${r.rank}. ${String(name).padEnd(18)} ${r.total.toFixed(1)}  ${Object.entries(r.breakdown).map(([k, v]) => `${k} ${v}`).join(' · ')}`);
-  }
-  console.log('');
-  for (const m of final.members) {
-    const spent = m.squad.reduce((s, e) => s + e.price, 0);
-    const gk = m.squad.filter((e) => e.player.position === 'GK').length;
-    const avg = (m.squad.reduce((s, e) => s + e.player.overall, 0) / m.squad.length).toFixed(1);
-    const l = final.lineups?.[m.userId];
-    console.log(`  ${m.username.padEnd(18)} ${m.squad.length} players · ${gk} GK · avg ${avg} OVR · spent ${spent} · left ${m.budget} · ${l?.formationId}${l?.auto ? ' (auto)' : ''}`);
+  for (let game = 1; game <= games; game++) {
+    if (game > 1) {
+      await watcher.waitFor((v) => v.phase === 'LOBBY' || v.phase === 'WAITING_FOR_PLAYERS', 60 * 60_000);
+      console.log(`\n🔁 Game ${game}: back in the lobby`);
+      if (!join) {
+        await watcher.waitFor((v) => v.members.every((m) => m.ready), 60_000);
+        await watcher.must('room:start');
+      }
+    }
+    await watcher.waitFor((v) => v.phase === 'SQUAD_BUILDING', 60 * 60_000);
+    console.log('\n🏁 Auction complete — bots are picking lineups\n');
+    await watcher.waitFor((v) => v.phase === 'TOURNAMENT', 15 * 60_000);
+    console.log('⚽ The cup is on\n');
+    const final = await watcher.waitFor((v) => v.phase === 'RESULTS', 15 * 60_000);
+    const nameOf = (id: string) => final.members.find((m) => m.userId === id)?.username ?? id;
+    for (const m of final.tournament?.matches ?? []) {
+      const pens = m.pens ? ` (${m.pens[0]}–${m.pens[1]} pens)` : '';
+      console.log(`  ${final.tournament!.rounds[m.round].padEnd(14)} ${nameOf(m.home.userId)} ${m.home.goals}–${m.away.goals} ${nameOf(m.away.userId)}${pens}`);
+    }
+    console.log('\n🏆 Results\n');
+    for (const r of final.results!.rankings) {
+      console.log(`  ${r.rank}. ${String(nameOf(r.userId)).padEnd(18)} ${(r.cupFinish ?? '').padEnd(14)} squad ${r.total.toFixed(1)} (#${r.squadRank})`);
+    }
+    console.log('');
+    for (const m of final.members) {
+      const spent = m.squad.reduce((s, e) => s + e.price, 0);
+      const gk = m.squad.filter((e) => e.player.position === 'GK').length;
+      const avg = (m.squad.reduce((s, e) => s + e.player.overall, 0) / m.squad.length).toFixed(1);
+      const l = final.lineups?.[m.userId];
+      console.log(`  ${m.username.padEnd(18)} ${m.squad.length} players · ${gk} GK · avg ${avg} OVR · spent ${spent} · left ${m.budget} · ${l?.formationId}${l?.auto ? ' (auto)' : ''}`);
+    }
+    if (game < games && !join) await watcher.must('room:rematch');
   }
   const errors = bots.flatMap((b) => b.errors);
   if (errors.length) console.log(`\n  unexpected rejections: ${errors.join(', ')}`);

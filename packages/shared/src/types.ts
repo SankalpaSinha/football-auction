@@ -96,12 +96,29 @@ export const ROOM_PHASES = [
   'SQUAD_BUILDING',
   'FORMATION_SELECTION',
   'FINAL_EVALUATION',
+  /** The squads play a knockout cup; the winner lifts the trophy. */
+  'TOURNAMENT',
   'RESULTS',
   'FINISHED',
 ] as const;
 export type RoomPhase = (typeof ROOM_PHASES)[number];
 
 export type GameMode = 'CASUAL' | 'RANKED';
+
+/** How players are acquired. See GAME_FORMATS. */
+export type GameFormat = 'CLASSIC' | 'BLITZ' | 'BUDGET' | 'DRAFT';
+
+/** Optional auction twists (the host switches them on or off). */
+export interface Twists {
+  /** Now and then a player's name and rating stay hidden until someone wins them. */
+  mystery: boolean;
+  /** Now and then everyone gets one secret bid; the highest wins. */
+  sealed: boolean;
+  /** Market events: deadline day, bargain hour, quick-fire, sponsor money. */
+  events: boolean;
+  /** Freeze, Steal and Refund cards, once each per manager. */
+  cards: boolean;
+}
 
 export interface RoomSettings {
   competitionId: string;
@@ -112,6 +129,10 @@ export interface RoomSettings {
   mode: GameMode;
   isPublic: boolean;
   antiSnipe: boolean;
+  format: GameFormat;
+  twists: Twists;
+  /** Games in the season (1 = a single game). Points carry over between games. */
+  seasonLength: number;
 }
 
 /** AUCTION = won a lot · PICK = chosen in free pick · AUTO = auto-assigned. */
@@ -143,14 +164,21 @@ export interface MemberView {
 
 export type LotOutcome = 'SOLD' | 'UNSOLD' | 'AUTO_ASSIGNED' | 'PICKED';
 
+/** NORMAL: open bidding · MYSTERY: player hidden until sold · SEALED: one secret bid each. */
+export type LotKind = 'NORMAL' | 'MYSTERY' | 'SEALED';
+
 export interface LotView {
   lotNumber: number;
+  kind: LotKind;
+  /** For a mystery lot this is a stand-in card: only the position and nation are real. */
   player: PlayerCard;
   openedAt: number;
   /** Server epoch ms. Clients render a countdown against their synced clock. */
   endsAt: number;
   /** Set while the auction is paused (everyone disconnected). */
   pausedRemainingMs: number | null;
+  /** Full clock for this lot (quick-fire lots get half). */
+  durationMs: number;
   currentBid: number | null;
   highestBidderId: string | null;
   minNextBid: number;
@@ -159,10 +187,17 @@ export interface LotView {
   extended: boolean;
   /** Was this player already offered once without a buyer? */
   reoffer: boolean;
+  /** Managers frozen out of this lot by a Freeze card. */
+  frozen: string[];
+  /** The winning bid costs this much more (deadline day: 1.2 = +20%). */
+  surcharge: number;
+  /** Sealed lots: who has made their one secret choice (bid or pass), and the viewer's own. */
+  sealed: { decided: string[]; mine: number | 'PASS' | null } | null;
 }
 
 export interface LotResultView {
   lotNumber: number;
+  kind: LotKind;
   player: PlayerCard;
   outcome: LotOutcome;
   winnerId: string | null;
@@ -171,6 +206,35 @@ export interface LotResultView {
   verdict: ValueVerdict | null;
   /** Server epoch ms when the next lot opens. */
   nextAt: number;
+  /** Sealed lots: every secret bid, highest first (revealed after the lot). */
+  sealedBids: { userId: string; amount: number }[] | null;
+  /** Until then, managers holding a Steal card can match the price and take the player. */
+  stealUntil: number | null;
+  /** Set when someone used a Steal card on this player. */
+  stolenFrom: string | null;
+}
+
+export type PowerCardId = 'FREEZE' | 'STEAL' | 'REFUND';
+
+export type MarketEventId = 'DEADLINE_DAY' | 'BARGAIN_HOUR' | 'QUICK_FIRE' | 'SPONSOR';
+
+export interface MarketView {
+  id: MarketEventId;
+  /** Lots the event still covers, including the current one. */
+  lotsLeft: number;
+}
+
+/** Snake draft: whose pick it is, and who picks next. */
+export interface DraftView {
+  userId: string;
+  endsAt: number;
+  pausedRemainingMs: number | null;
+  /** 1-based pick number and total picks in the draft. */
+  pick: number;
+  totalPicks: number;
+  round: number;
+  /** The next few pickers after the current one. */
+  upcoming: string[];
 }
 
 export type FeedKind =
@@ -219,6 +283,12 @@ export interface AuctionView {
   idleLots: Record<string, number>;
   lot: LotView | null;
   lastResult: LotResultView | null;
+  /** Power cards each manager still holds (public — everyone can see who still has a Steal). */
+  cards: Record<string, PowerCardId[]>;
+  /** A market event in force for the next few lots. */
+  market: MarketView | null;
+  /** Snake draft format only. */
+  draft: DraftView | null;
 }
 
 export interface LineupView {
@@ -261,6 +331,10 @@ export interface RoomView {
     minPlayers: number;
     inactiveLotsToRemove: number;
     starCap: { max: number };
+    /** Most a single player can cost (Budget Cap format), or null. */
+    maxPrice: number | null;
+    /** Coins kept back for each other empty slot. */
+    reservePerSlot: number;
   };
   /** Your own secret objectives (hidden from everyone else until the results). */
   myObjectives: ObjectiveId[] | null;
@@ -272,8 +346,13 @@ export interface RoomView {
   squadBuilding: SquadBuildingView | null;
   /** Revealed once every lineup is final. userId → lineup. */
   lineups: Record<string, LineupView> | null;
+  /** The cup the squads play after the lineups are in. */
+  tournament: TournamentView | null;
+  /** Season mode: standings across the room's games. */
+  season: SeasonView | null;
   /** Final ranking — present once the room reaches RESULTS. */
   results: {
+    /** Ordered by final position (the cup decides it; squad score breaks ties). */
     rankings: RankedScore[];
     evaluatedAt: number;
     /** Deterministic written analysis + awards. */
@@ -317,7 +396,132 @@ export type GameEvent =
   | { type: 'LINEUP_LOCKED'; userId: string }
   | { type: 'LINEUPS_REVEALED' }
   | { type: 'RESULTS'; winnerId: string }
-  | { type: 'GAME_STARTING'; startsAt: number };
+  | { type: 'GAME_STARTING'; startsAt: number }
+  | { type: 'FROZEN'; byId: string; targetId: string }
+  | { type: 'STOLEN'; byId: string; fromId: string; playerId: string }
+  | { type: 'MARKET'; id: MarketEventId }
+  | { type: 'KICKOFF'; round: number }
+  | { type: 'GOAL'; matchId: string; userId: string }
+  | { type: 'HALF_TIME'; round: number }
+  | { type: 'FULL_TIME'; matchId: string; winnerId: string }
+  | { type: 'CHAMPION'; userId: string };
+
+/** A floating emoji or touchline taunt (not kept in state). */
+export interface Reaction {
+  id: number;
+  userId: string;
+  username: string;
+  emoji?: string;
+  taunt?: string;
+}
+
+// ---------------------------------------------------------------------------
+// Cup (the squads play each other once the lineups are in)
+// ---------------------------------------------------------------------------
+
+/** Half-time instruction. */
+export type TeamTalk = 'ATTACK' | 'CALM' | 'TIGHT';
+/** Mid-match touchline shout (one of each per match). */
+export type Shout = 'ALL_OUT' | 'PARK_IT';
+
+export type MatchStatus = 'SCHEDULED' | 'FIRST_HALF' | 'HALF_TIME' | 'SECOND_HALF' | 'EXTRA_TIME' | 'PENALTIES' | 'FINISHED';
+
+export type MatchEventKind = 'GOAL' | 'PEN_GOAL' | 'PEN_MISS' | 'CHANCE' | 'SAVE' | 'WOODWORK' | 'YELLOW' | 'RED' | 'SHOUT' | 'TALK' | 'INFO';
+
+export interface MatchEvent {
+  /** Match minute (extra time counts on from 90). */
+  minute: number;
+  /** 0 = home, 1 = away, null = neutral. */
+  side: 0 | 1 | null;
+  kind: MatchEventKind;
+  playerId?: string;
+  assistId?: string;
+  text: string;
+  /** Score after this event. */
+  score: [number, number];
+  /** Server time it is shown at (the engine plays a few seconds ahead). */
+  at?: number;
+  /** Shots: chance quality, and whether it was on target. */
+  xg?: number;
+  onTarget?: boolean;
+}
+
+export interface MatchSideView {
+  userId: string;
+  /** Squad-score seed (1 = best squad). */
+  seed: number;
+  formationId: string;
+  tacticId: TacticId;
+  goals: number;
+  stats: { shots: number; onTarget: number; possession: number; xg: number; saves: number; yellow: number; red: number };
+  /** Shouts this side has still got. */
+  shoutsLeft: Shout[];
+  /** Shown once the second half kicks off. */
+  talk: TeamTalk | null;
+  /** The viewer's own half-time choice while it's still secret. */
+  talkChosen: boolean;
+}
+
+export interface MatchView {
+  id: string;
+  round: number;
+  /** Position in the round (for the bracket). */
+  slot: number;
+  status: MatchStatus;
+  home: MatchSideView;
+  away: MatchSideView;
+  /** Live clock: the minute shown is phaseMinute + (now - phaseStartedAt) / msPerMinute, capped at phaseEndMinute. */
+  clock: { phaseStartedAt: number; phaseMinute: number; phaseEndMinute: number; msPerMinute: number } | null;
+  halfTimeEndsAt: number | null;
+  events: MatchEvent[];
+  /** -1 (away on top) … 1 (home on top), one value per 5 minutes played. */
+  momentum: number[];
+  /** Penalty shootout score so far (null if it didn't go to penalties). */
+  pens: [number, number] | null;
+  /** Half-time score once the first half is over. */
+  halfTime: [number, number] | null;
+  shootout: { side: 0 | 1; playerId: string; scored: boolean; at: number }[] | null;
+  winnerId: string | null;
+  /** Man of the match (player id), once finished. */
+  motm: string | null;
+  /** Tactical battle notes, e.g. "Counter-Attack hits High Press on the break". */
+  edges: string[];
+}
+
+export interface BracketSlotView {
+  round: number;
+  slot: number;
+  homeId: string | null;
+  awayId: string | null;
+  /** A bye: one manager goes straight through. */
+  bye: boolean;
+  matchId: string | null;
+  winnerId: string | null;
+}
+
+export interface TournamentView {
+  /** Round names, first to last (e.g. ["Semi-finals", "Final"]). */
+  rounds: string[];
+  currentRound: number;
+  /** Next round kicks off at (between rounds). */
+  nextKickoffAt: number | null;
+  bracket: BracketSlotView[];
+  /** Matches of the current and earlier rounds. */
+  matches: MatchView[];
+  championId: string | null;
+  /** userId → squad-score seed. */
+  seeds: Record<string, number>;
+}
+
+export interface SeasonView {
+  length: number;
+  /** Games played so far (finished). */
+  played: number;
+  /** Sorted, best first. */
+  table: { userId: string; username: string; points: number; wins: number; played: number }[];
+  finished: boolean;
+  championId: string | null;
+}
 
 /**
  * A proposed swap between two managers during the auction. `coins` > 0: the

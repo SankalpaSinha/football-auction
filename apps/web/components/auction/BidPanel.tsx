@@ -11,6 +11,7 @@ import { Coin } from '../ui';
 export function bidBlocker(room: RoomView, lot: LotView, me: MemberView | undefined, remainingMs: number): string | null {
   if (!me) return 'You are spectating';
   if (!me.connected) return 'Reconnecting…';
+  if (lot.frozen?.includes(me.userId)) return 'You’ve been frozen out of this one ❄️';
   if (lot.pausedRemainingMs !== null) return room.auction?.hold ? 'Paused — anyone can resume' : 'Auction paused';
   if (remainingMs <= 0) return 'Hammer falling…';
   if (me.squad.length >= room.rules.squadSize) return 'Your squad is complete';
@@ -35,7 +36,8 @@ export function BidPanel({ room, lot, me, remainingMs }: { room: RoomView; lot: 
   const leading = lot.highestBidderId === me?.userId;
   const blocker = bidBlocker(room, lot, me, remainingMs);
   const canBid = !blocker && !leading && !pending;
-  const canSkip = !!me && !pending && !leading && !lot.skippedBy.includes(me.userId) && me.squad.length < room.rules.squadSize && remainingMs > 0;
+  const canSkip =
+    !!me && !pending && !leading && !lot.skippedBy.includes(me.userId) && !lot.frozen.includes(me.userId) && me.squad.length < room.rules.squadSize && remainingMs > 0;
   const maxBid = me?.maxBid ?? 0;
   const leader = room.members.find((m) => m.userId === lot.highestBidderId);
 
@@ -167,6 +169,11 @@ export function BidPanel({ room, lot, me, remainingMs }: { room: RoomView; lot: 
         </button>
       </div>
 
+      {lot.surcharge > 1 && (
+        <div className="rounded-lg border border-amber/40 bg-amber/10 px-3 py-1.5 text-xs font-semibold text-amber-100">
+          🔥 Deadline day: the winning bid costs +20%{lot.currentBid !== null ? ` (${Math.round(lot.currentBid * lot.surcharge)} coins at the moment)` : ''}
+        </div>
+      )}
       <div className="flex min-h-5 items-center justify-between text-xs">
         <span className={blocker && !leading ? 'font-semibold text-amber-200' : 'text-dim'}>
           {leading ? (

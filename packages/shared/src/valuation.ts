@@ -42,11 +42,17 @@ export function estimateValue(
   p: { overall: number; position: Position; age: number },
   budget: number,
   cfg: ValuationConfig = DEFAULT_VALUATION,
+  /** Price cap (Budget Cap format): values become whole coins from 1 to the cap. */
+  maxPrice: number | null = null,
 ): number {
   let v = cfg.referenceValue * Math.exp(cfg.growthPerPoint * (p.overall - cfg.referenceOverall));
   v *= cfg.positionMultiplier[p.position] ?? 1;
   if (p.age <= cfg.youngAge) v *= 1 + cfg.youngBonus;
   if (p.age >= cfg.veteranAge) v *= 1 - cfg.veteranPenalty;
+  if (maxPrice !== null) {
+    // Spread the rating range over 1..cap coins: a 75 is worth about 2 of 5.
+    return Math.max(1, Math.min(maxPrice, Math.round((v / cfg.referenceValue) * 2)));
+  }
   v *= budget / cfg.referenceBudget;
   return Math.max(5, Math.round(v / 5) * 5);
 }

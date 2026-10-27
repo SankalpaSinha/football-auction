@@ -15,7 +15,7 @@ export function ExitButton({ room }: { room: RoomView }) {
   const router = useRouter();
   const toast = useGame((s) => s.toast);
   const inAuction = room.phase === 'AUCTION' || room.phase === 'PLAYER_SOLD';
-  const ranked = room.settings.mode === 'RANKED';
+  const inCup = room.phase === 'TOURNAMENT';
 
   useEffect(() => {
     if (!open) return;
@@ -66,9 +66,13 @@ export function ExitButton({ room }: { room: RoomView }) {
               <h3 className="display text-2xl font-extrabold">Leave the game?</h3>
               <p className="mt-2 text-sm text-muted">
                 {inAuction
-                  ? 'Your players go back into the auction and you can’t rejoin as a player (you can still watch).'
-                  : 'Your squad is complete, so your lineup will be auto-completed and you’ll still get a result.'}
-                {inAuction && ranked && ' In a ranked game this counts as finishing last.'}
+                  ? 'You keep your squad and coins. The auction carries on without you — enter the room code again to jump back in.'
+                  : inCup
+                    ? 'Your team plays on without you (no team talks or shouts). Enter the room code again to come back and watch.'
+                    : 'Your squad stays. If you don’t come back, your lineup is picked for you and you still get a result. Enter the room code to come back.'}
+              </p>
+              <p className="mt-2 rounded-lg bg-white/[.04] px-3 py-2 text-xs text-muted">
+                Room code <span className="font-mono font-bold text-ink">{room.code}</span>
               </p>
               <div className="mt-5 flex gap-2">
                 <Button variant="secondary" className="flex-1" onClick={() => setOpen(false)}>

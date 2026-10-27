@@ -2,7 +2,20 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion } from 'motion/react';
-import { GAME_RULES, type CompetitionSummary } from '@fa/shared';
+import {
+  ALL_TWISTS,
+  BLITZ_LOT_SEC,
+  BUDGET_CAP_BUDGET,
+  FORMAT_IDS,
+  GAME_FORMATS,
+  GAME_RULES,
+  MARKET_EVENTS,
+  POWER_CARDS,
+  SEASON_LENGTHS,
+  type CompetitionSummary,
+  type GameFormat,
+  type Twists,
+} from '@fa/shared';
 import { api } from '@/lib/api';
 import { emit, ensureConnected } from '@/lib/socket';
 import { useGame } from '@/lib/store';
@@ -30,7 +43,11 @@ export function CreateRoom() {
   const [antiSnipe, setAntiSnipe] = useState(true);
   const [mode, setMode] = useState<'CASUAL' | 'RANKED'>('CASUAL');
   const [isPublic, setIsPublic] = useState(false);
+  const [format, setFormat] = useState<GameFormat>('CLASSIC');
+  const [twists, setTwists] = useState<Twists>({ ...ALL_TWISTS });
+  const [seasonLength, setSeasonLength] = useState(1);
   const ranked = mode === 'RANKED';
+  const draft = format === 'DRAFT';
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
@@ -60,12 +77,17 @@ export function CreateRoom() {
         name: name.trim() || 'Football Auction',
         competitionId: comp.id,
         seasonId: season.id,
+        // Budget Cap always uses its own small budget; the server sets that itself.
         startingBudget: ranked ? GAME_RULES.defaultBudget : budget,
         maxPlayers,
+        // Blitz always runs 10-second lots; the server sets that itself.
         lotDurationSec: timer,
         mode,
         isPublic,
         antiSnipe,
+        format,
+        twists,
+        seasonLength,
       });
       if (!r.ok) throw new Error(r.error);
       router.push(`/room/${r.data!.code}`);
@@ -128,6 +150,31 @@ export function CreateRoom() {
         )}
       </Field>
 
+      <Field label="Format">
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+          {FORMAT_IDS.map((f) => {
+            const info = GAME_FORMATS[f];
+            const active = f === format;
+            const blocked = ranked && f !== 'CLASSIC';
+            return (
+              <button
+                key={f}
+                disabled={blocked}
+                onClick={() => setFormat(f)}
+                title={blocked ? 'Ranked games use the Classic format' : info.blurb}
+                className={`rounded-xl border p-3 text-left transition disabled:cursor-not-allowed disabled:opacity-40 ${
+                  active ? 'border-volt bg-volt/10 shadow-[inset_0_0_0_1px_rgba(200,255,46,.6)]' : 'border-white/10 bg-white/[.03] hover:bg-white/[.06]'
+                }`}
+              >
+                <div className="text-lg">{info.emoji}</div>
+                <div className={`display mt-1 text-[15px] font-bold leading-tight ${active ? 'text-volt' : ''}`}>{info.label}</div>
+                <div className="mt-0.5 text-[11px] leading-snug text-muted">{info.blurb}</div>
+              </button>
+            );
+          })}
+        </div>
+      </Field>
+
       <div className="grid gap-x-6 sm:grid-cols-2">
         <Field label="Season">
           <Chips
@@ -139,20 +186,36 @@ export function CreateRoom() {
         <Field label="Room size">
           <Chips options={sizeOptions.map((n) => ({ value: n, label: `${n}` }))} value={maxPlayers} onChange={setMaxPlayers} />
         </Field>
-        <Field label="Starting budget">
-          <Chips
-            options={GAME_RULES.budgetOptions.map((b) => ({
-              value: b,
-              label: b.toLocaleString(),
-              disabled: ranked && b !== GAME_RULES.defaultBudget,
-            }))}
-            value={ranked ? GAME_RULES.defaultBudget : budget}
-            onChange={setBudget}
-            icon={<Coin className="h-3.5 w-3.5" />}
-          />
-        </Field>
-        <Field label="Bid timer">
-          <Chips options={GAME_RULES.lotDurationOptions.map((t) => ({ value: t, label: `${t}s` }))} value={timer} onChange={setTimer} />
+        {draft ? (
+          <Field label="Budget">
+            <p className="text-sm text-muted">No bidding in a draft — every pick is free.</p>
+          </Field>
+        ) : format === 'BUDGET' ? (
+          <Field label="Budget">
+            <p className="flex items-center gap-1.5 text-sm text-muted">
+              <Coin className="h-3.5 w-3.5" /> {BUDGET_CAP_BUDGET} coins each · players cost 1–5
+            </p>
+          </Field>
+        ) : (
+          <Field label="Starting budget">
+            <Chips
+              options={GAME_RULES.budgetOptions.map((b) => ({
+                value: b,
+                label: b.toLocaleString(),
+                disabled: ranked && b !== GAME_RULES.defaultBudget,
+              }))}
+              value={ranked ? GAME_RULES.defaultBudget : budget}
+              onChange={setBudget}
+              icon={<Coin className="h-3.5 w-3.5" />}
+            />
+          </Field>
+        )}
+        <Field label={draft ? 'Pick timer' : 'Bid timer'}>
+          {format === 'BLITZ' ? (
+            <p className="text-sm text-muted">{BLITZ_LOT_SEC}s per player in Blitz</p>
+          ) : (
+            <Chips options={GAME_RULES.lotDurationOptions.map((t) => ({ value: t, label: `${t}s` }))} value={timer} onChange={setTimer} />
+          )}
         </Field>
         <Field label="Mode">
           <Chips
@@ -163,8 +226,18 @@ export function CreateRoom() {
             value={mode}
             onChange={(v) => {
               setMode(v);
-              if (v === 'RANKED') setBudget(GAME_RULES.defaultBudget);
+              if (v === 'RANKED') {
+                setBudget(GAME_RULES.defaultBudget);
+                setFormat('CLASSIC');
+              }
             }}
+          />
+        </Field>
+        <Field label="Season mode">
+          <Chips
+            options={SEASON_LENGTHS.map((n) => ({ value: n, label: n === 1 ? 'Single game' : `${n}-game season` }))}
+            value={seasonLength}
+            onChange={setSeasonLength}
           />
         </Field>
         <Field label="Visibility">
@@ -181,10 +254,41 @@ export function CreateRoom() {
 
       {ranked && (
         <p className="-mt-2 mb-4 text-xs text-muted">
-          Ranked games change everyone’s ELO and use the standard {GAME_RULES.defaultBudget.toLocaleString()}-coin budget so scores are comparable.
+          Ranked games change everyone’s ELO and use the Classic format with the standard {GAME_RULES.defaultBudget.toLocaleString()}-coin budget so
+          scores are comparable.
         </p>
       )}
-      <label className="mb-6 flex cursor-pointer items-center gap-3 text-sm text-muted">
+      {!draft && (
+        <Field label="Auction twists">
+          <div className="grid gap-2 sm:grid-cols-2">
+            {(
+              [
+                ['mystery', '🎁 Mystery lots', 'Some players stay hidden until someone wins them.'],
+                ['sealed', '🔒 Sealed bids', 'One secret bid each — highest wins.'],
+                ['events', '📰 Market events', Object.values(MARKET_EVENTS).map((e) => e.label).join(', ') + '.'],
+                ['cards', '🃏 Power cards', Object.values(POWER_CARDS).map((c) => `${c.emoji} ${c.label}`).join(' · ') + ' — once each.'],
+              ] as [keyof Twists, string, string][]
+            ).map(([key, label, blurb]) => (
+              <label
+                key={key}
+                className={`flex cursor-pointer items-start gap-3 rounded-xl border px-3 py-2.5 text-sm transition ${twists[key] ? 'border-volt/50 bg-volt/[.06]' : 'border-white/10 bg-white/[.02]'}`}
+              >
+                <input
+                  type="checkbox"
+                  checked={twists[key]}
+                  onChange={(e) => setTwists({ ...twists, [key]: e.target.checked })}
+                  className="mt-0.5 h-4 w-4 accent-[#c8ff2e]"
+                />
+                <span>
+                  <span className="font-semibold text-ink">{label}</span>
+                  <span className="block text-xs text-muted">{blurb}</span>
+                </span>
+              </label>
+            ))}
+          </div>
+        </Field>
+      )}
+      <label className={`mb-6 flex cursor-pointer items-center gap-3 text-sm text-muted ${draft ? 'hidden' : ''}`}>
         <input type="checkbox" checked={antiSnipe} onChange={(e) => setAntiSnipe(e.target.checked)} className="h-4 w-4 accent-[#c8ff2e]" />
         <span>
           <span className="font-semibold text-ink">Anti-snipe</span> — a bid in the last {GAME_RULES.antiSnipe.thresholdMs / 1000}s resets

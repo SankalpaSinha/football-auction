@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import { autoPick, buildMatchReport } from '@fa/shared';
 import { ClaudeCommentator, commentatorFromEnv, type Commentator, type CommentaryInput } from '../src/services/commentary';
-import { completeAuction, createHarness } from './helpers';
+import { completeAuction, createHarness, toResults } from './helpers';
 
 function finishGame(commentator?: Commentator) {
   const h = createHarness({ players: 3, commentator });
@@ -10,7 +10,7 @@ function finishGame(commentator?: Commentator) {
     const squad = h.member(u.id).squad.map((e) => e.player);
     h.room.lockLineup(u.id, { formationId: '4-3-3', slots: autoPick(squad, '4-3-3') });
   }
-  h.clock.advance(h.room.view('u1').resultsAt! - h.clock.now());
+  toResults(h);
   return h;
 }
 
@@ -21,11 +21,16 @@ describe('match report', () => {
     const h = finishGame();
     const r = h.room.view('u1').results!;
     const winner = h.room.view('u1').members.find((m) => m.userId === r.rankings[0].userId)!;
+    // The cup decides the winner: the headline names them and the final.
     expect(r.report.headline).toContain(winner.username);
-    expect(r.report.headline).toContain(r.rankings[0].total.toFixed(1));
+    expect(r.report.headline).toContain('lifts the cup');
     expect(r.report.summary.length).toBeGreaterThan(40);
+    // Same seed, same squads → the same cup and the same write-up.
+    expect(finishGame().room.view('u1').results!.report).toEqual(r.report);
+    // Without a cup it falls back to the squad-score story.
     const managers = h.room.view('u1').members.map((m) => ({ userId: m.userId, username: m.username, squad: m.squad }));
-    expect(buildMatchReport(r.rankings, managers)).toEqual(r.report);
+    const plain = buildMatchReport([...r.rankings].sort((a, b) => b.total - a.total), managers);
+    expect(plain.headline).toContain([...r.rankings].sort((a, b) => b.total - a.total)[0].total.toFixed(1));
   });
 
   it('hands out room awards and a verdict for every manager', () => {

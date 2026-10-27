@@ -7,6 +7,7 @@ import { AuctionScreen } from '@/components/auction/AuctionScreen';
 import { Lobby } from '@/components/Lobby';
 import { Results } from '@/components/Results';
 import { SquadBuilder } from '@/components/squad/SquadBuilder';
+import { Tournament } from '@/components/cup/Tournament';
 import { UsernameGate } from '@/components/UsernameGate';
 import { Button, ConnectionBanner, Logo } from '@/components/ui';
 import { api, saveSession } from '@/lib/api';
@@ -14,6 +15,7 @@ import { emit, ensureConnected, reclaimSession } from '@/lib/socket';
 import { useGame } from '@/lib/store';
 import type { ChatMessage, RoomView } from '@fa/shared';
 import { ChatPanel } from '@/components/ChatPanel';
+import { ReactionLayer } from '@/components/Reactions';
 
 export default function RoomPage() {
   const params = useParams<{ code: string }>();
@@ -60,6 +62,8 @@ export default function RoomPage() {
   // (Re)join — or re-attach as a spectator — whenever the socket (re)connects.
   useEffect(() => {
     if (!session || connection !== 'connected' || !modeResolved) return;
+    // Taken out of the game: only the "Rejoin" button (a fresh page) brings you back as a player.
+    if (useGame.getState().removedReason && !watching) return;
     const key = `${code}:${watching}:${Date.now()}`;
     joinedFor.current = key;
     const loadChat = () =>
@@ -125,16 +129,19 @@ export default function RoomPage() {
   if (removedReason) {
     return (
       <Centered
-        title="You were removed from the game"
-        body={`The other managers carried on without you because ${removedReason}. Your players went back into the auction.`}
+        title="You were taken out of the auction"
+        body={`The others carried on without you because ${removedReason}. Your squad and coins are safe — jump back in whenever you’re ready.`}
       >
         <div className="flex flex-wrap justify-center gap-2">
-          {/* Full reload so the page starts fresh in watch mode. */}
+          {/* Full reloads so the page starts fresh. */}
+          <a href={`/room/${code}`}>
+            <Button>↩ Rejoin the game</Button>
+          </a>
           <a href={`/room/${code}?watch=1`}>
-            <Button>👀 Watch the rest</Button>
+            <Button variant="secondary">👀 Just watch</Button>
           </a>
           <Link href="/">
-            <Button variant="secondary">Back to home</Button>
+            <Button variant="ghost">Home</Button>
           </Link>
         </div>
       </Centered>
@@ -177,7 +184,9 @@ export default function RoomPage() {
     );
   }
 
-  const isMember = room.members.some((m) => m.userId === session.user.id);
+  // Watching (including a manager who stepped out and chose to just watch): a plain spectator view.
+  const me = watching ? '' : session.user.id;
+  const isMember = !watching && room.members.some((m) => m.userId === session.user.id);
   const leave = async () => {
     await emit('room:leave');
     useGame.getState().setRoom(null);
@@ -192,7 +201,7 @@ export default function RoomPage() {
       screen = (
         <Lobby
           room={room}
-          me={session.user.id}
+          me={me}
           onLeave={leave}
           onJoin={!isMember ? joinFromWatching : undefined}
         />
@@ -200,25 +209,28 @@ export default function RoomPage() {
       break;
     case 'AUCTION':
     case 'PLAYER_SOLD':
-      screen = <AuctionScreen room={room} me={session.user.id} />;
+      screen = <AuctionScreen room={room} me={me} />;
       break;
     case 'SQUAD_BUILDING':
       screen = room.squadBuilding?.mine ? (
-        <SquadBuilder room={room} me={session.user.id} />
+        <SquadBuilder room={room} me={me} />
       ) : (
         <SpectatorSquadWait room={room} onLeave={leave} />
       );
       break;
+    case 'TOURNAMENT':
+      screen = room.tournament ? <Tournament room={room} me={me} /> : <AuctionComplete room={room} me={me} onLeave={leave} />;
+      break;
     case 'RESULTS':
     case 'FINISHED':
       screen = room.results ? (
-        <Results room={room} me={session.user.id} onLeave={leave} />
+        <Results room={room} me={me} onLeave={leave} />
       ) : (
-        <AuctionComplete room={room} me={session.user.id} onLeave={leave} />
+        <AuctionComplete room={room} me={me} onLeave={leave} />
       );
       break;
     default:
-      screen = <AuctionComplete room={room} me={session.user.id} onLeave={leave} />;
+      screen = <AuctionComplete room={room} me={me} onLeave={leave} />;
   }
 
   return (
@@ -226,6 +238,7 @@ export default function RoomPage() {
       {screen}
       {!isMember && room.phase !== 'SQUAD_BUILDING' && <SpectatorBadge count={room.spectators} onLeave={leave} />}
       <ChatPanel me={session.user.id} canPost={isMember} />
+      <ReactionLayer me={me} />
       <ConnectionBanner />
     </>
   );

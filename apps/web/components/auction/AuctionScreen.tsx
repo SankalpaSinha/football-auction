@@ -1,10 +1,12 @@
 'use client';
 import { useEffect, useRef, useState } from 'react';
 import { ChatButton } from '../ChatPanel';
+import { ReactionButton } from '../Reactions';
 import { AnimatePresence, motion } from 'motion/react';
 import { isStarPlayer, PLAYSTYLES, playstyleOf, type RoomView } from '@fa/shared';
 import { useGame } from '@/lib/store';
-import { PlayerCard } from '../PlayerCard';
+import { MysteryCard, PlayerCard } from '../PlayerCard';
+import { CardBar, MarketBanner, SealedPanel } from './Twists';
 import { TiltCard } from '../TiltCard';
 import { Logo, Pill, SoundToggle } from '../ui';
 import { BidPanel } from './BidPanel';
@@ -28,7 +30,8 @@ export function AuctionScreen({ room, me }: { room: RoomView; me: string }) {
   const lot = auction.lot;
   const self = room.members.find((m) => m.userId === me);
   const remaining = useCountdown(lot);
-  const totalMs = lot?.extended ? 5_000 : room.settings.lotDurationSec * 1000;
+  // Quick-fire lots run on half the clock.
+  const totalMs = lot?.extended ? 5_000 : (lot?.durationMs ?? room.settings.lotDurationSec * 1000);
   const [tab, setTab] = useState<Tab>('managers');
   const [viewing, setViewing] = useState<string | null>(null);
   const viewed = room.members.find((m) => m.userId === viewing);
@@ -49,9 +52,15 @@ export function AuctionScreen({ room, me }: { room: RoomView; me: string }) {
             <span className="hidden text-xs text-muted md:inline">{room.competition.seasonLabel}</span>
           )}
           <div className="ml-auto flex items-center gap-3 text-xs text-muted sm:gap-5">
-            <span>
-              Lot <span className="display text-base font-bold text-ink num">{lot?.lotNumber ?? auction.lastResult?.lotNumber ?? '–'}</span>
-            </span>
+            {auction.draft ? (
+              <span>
+                Pick <span className="display text-base font-bold text-ink num">{auction.draft.pick}</span>/{auction.draft.totalPicks}
+              </span>
+            ) : (
+              <span>
+                Lot <span className="display text-base font-bold text-ink num">{lot?.lotNumber ?? auction.lastResult?.lotNumber ?? '–'}</span>
+              </span>
+            )}
             <span className="hidden sm:inline">
               <span className="display text-base font-bold text-ink num">{auction.remainingInQueue}</span> in pool
             </span>
@@ -61,6 +70,7 @@ export function AuctionScreen({ room, me }: { room: RoomView; me: string }) {
             <span className="hidden font-mono text-ink/70 lg:inline">{room.code}</span>
             <PauseButton room={room} me={me} />
             {self && <ExitButton room={room} />}
+            <ReactionButton canTaunt={room.members.some((m) => m.userId === me)} />
             <ChatButton />
             <SoundToggle />
           </div>
@@ -89,9 +99,10 @@ export function AuctionScreen({ room, me }: { room: RoomView; me: string }) {
         {/* @container: the lot layout adapts to this column's width, not the window's */}
         <section className="@container flex min-w-0 flex-col gap-4">
           <PauseBanners room={room} me={me} />
-          <FocusControl room={room} me={me} />
+          <MarketBanner room={room} />
+          {!auction.draft && <FocusControl room={room} me={me} />}
           {self && <TradeInbox room={room} me={me} />}
-          {auction.freePick ? (
+          {auction.freePick || auction.draft ? (
             <FreePickPanel room={room} me={me} />
           ) : (
           <div className="glass relative flex flex-col gap-4 overflow-hidden rounded-3xl p-3 sm:p-6 @3xl:flex-row @3xl:items-start @3xl:justify-center @3xl:gap-6">
@@ -111,24 +122,43 @@ export function AuctionScreen({ room, me }: { room: RoomView; me: string }) {
                       exit={{ y: -30, opacity: 0, scale: 0.9, transition: { duration: 0.2 } }}
                       transition={{ type: 'spring', stiffness: 90, damping: 14 }}
                     >
-                      <div className="hidden @3xl:block">
-                        <TiltCard>
-                          <PlayerCard player={lot.player} size="lg" />
-                        </TiltCard>
-                      </div>
-                      <PlayerCard player={lot.player} size="md" className="hidden @lg:block @3xl:hidden" />
-                      <PlayerCard player={lot.player} size="sm" className="@lg:hidden" />
+                      {lot.kind === 'MYSTERY' ? (
+                        <>
+                          <div className="hidden @3xl:block">
+                            <TiltCard>
+                              <MysteryCard player={lot.player} size="lg" />
+                            </TiltCard>
+                          </div>
+                          <MysteryCard player={lot.player} size="md" className="hidden @lg:block @3xl:hidden" />
+                          <MysteryCard player={lot.player} size="sm" className="@lg:hidden" />
+                        </>
+                      ) : (
+                        <>
+                          <div className="hidden @3xl:block">
+                            <TiltCard>
+                              <PlayerCard player={lot.player} size="lg" />
+                            </TiltCard>
+                          </div>
+                          <PlayerCard player={lot.player} size="md" className="hidden @lg:block @3xl:hidden" />
+                          <PlayerCard player={lot.player} size="sm" className="@lg:hidden" />
+                        </>
+                      )}
                     </motion.div>
                   ) : (
                     <div className="grid h-[255px] w-[178px] place-items-center text-sm text-dim @3xl:h-[450px] @3xl:w-[300px]">Next player…</div>
                   )}
                 </AnimatePresence>
-                {lot?.reoffer && (
+                {lot?.reoffer && lot.kind !== 'SEALED' && (
                   <div className="absolute -top-2 left-1/2 -translate-x-1/2">
                     <Pill color="#ffb020">Second chance</Pill>
                   </div>
                 )}
-                {lot?.player.imageCredit && (
+                {lot?.kind === 'SEALED' && (
+                  <div className="absolute -top-2 left-1/2 -translate-x-1/2">
+                    <Pill color="#2ee6ff">🔒 Sealed bids</Pill>
+                  </div>
+                )}
+                {lot?.player.imageCredit && lot.kind !== 'MYSTERY' && (
                   <div className="mt-2 max-w-[178px] truncate text-center text-[10px] text-dim @3xl:max-w-[300px]" title={lot.player.imageCredit}>
                     📷 {lot.player.imageCredit}
                   </div>
@@ -147,13 +177,18 @@ export function AuctionScreen({ room, me }: { room: RoomView; me: string }) {
                   <div className="hidden @3xl:block">
                     <LotInfo room={room} remaining={remaining} totalMs={totalMs} />
                   </div>
-                  <motion.div
-                    key={outbidKey}
-                    animate={outbidKey ? { x: [0, -10, 9, -6, 4, 0] } : { x: 0 }}
-                    transition={{ duration: 0.45 }}
-                  >
-                    <BidPanel room={room} lot={lot} me={self} remainingMs={remaining} />
-                  </motion.div>
+                  {lot.kind === 'SEALED' ? (
+                    <SealedPanel room={room} lot={lot} me={self} remainingMs={remaining} />
+                  ) : (
+                    <motion.div
+                      key={outbidKey}
+                      animate={outbidKey ? { x: [0, -10, 9, -6, 4, 0] } : { x: 0 }}
+                      transition={{ duration: 0.45 }}
+                    >
+                      <BidPanel room={room} lot={lot} me={self} remainingMs={remaining} />
+                    </motion.div>
+                  )}
+                  <CardBar room={room} lot={lot} me={self} />
                 </>
               )}
             </div>
@@ -239,11 +274,27 @@ export function AuctionScreen({ room, me }: { room: RoomView; me: string }) {
 function LotInfo({ room, remaining, totalMs, compact = false }: { room: RoomView; remaining: number; totalMs: number; compact?: boolean }) {
   const lot = room.auction!.lot!;
   const p = lot.player;
+  if (lot.kind === 'MYSTERY') {
+    return (
+      <div className={compact ? 'flex flex-col gap-2' : 'flex items-center gap-4'}>
+        <Timer remainingMs={remaining} totalMs={totalMs} paused={lot.pausedRemainingMs !== null} size={compact ? 84 : 112} />
+        <div className="min-w-0">
+          <div className="label !text-violet-300">🎁 Mystery lot</div>
+          <div className={`display font-extrabold leading-tight ${compact ? 'text-2xl' : 'text-3xl'}`}>Who could it be?</div>
+          <div className="mt-0.5 text-sm text-muted">
+            {p.nation.flag} {p.nation.name} · {p.position}
+          </div>
+          <div className="mt-1 text-xs text-dim">Name and rating revealed once someone wins him. Never a star player.</div>
+          {lot.extended && <div className="mt-1 text-xs font-bold text-danger">⏱ Extended — late bid!</div>}
+        </div>
+      </div>
+    );
+  }
   return (
     <div className={compact ? 'flex flex-col gap-2' : 'flex items-center gap-4'}>
       <Timer remainingMs={remaining} totalMs={totalMs} paused={lot.pausedRemainingMs !== null} size={compact ? 84 : 112} />
       <div className="min-w-0">
-        <div className="label">Now bidding</div>
+        <div className="label">{lot.kind === 'SEALED' ? '🔒 Sealed bids for' : 'Now bidding'}</div>
         <div className={`display font-extrabold leading-tight ${compact ? 'text-2xl' : 'truncate text-3xl'}`}>{p.name}</div>
         <div className="mt-0.5 text-sm text-muted">
           {p.nation.flag} {p.nation.name} · {p.age} yrs{compact ? '' : ` · ${p.preferredFoot} foot`}

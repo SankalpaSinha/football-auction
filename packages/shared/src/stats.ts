@@ -1,4 +1,5 @@
 import type { MatchReport } from './analysis';
+import type { CupSummary } from './cup';
 import type { RankedScore } from './scoring';
 import type { GameMode, LotOutcome, SquadEntry } from './types';
 
@@ -50,6 +51,16 @@ export interface ProfileView {
     recordSigning: { playerName: string; price: number } | null;
   };
   formations: { id: string; count: number }[];
+  /** Head-to-head against the managers played most: who finished higher. */
+  rivals: { username: string; wins: number; losses: number }[];
+}
+
+/** Head-to-head between two managers across every finished game they both played. */
+export interface RivalryRecord {
+  a: string;
+  b: string;
+  aWins: number;
+  bWins: number;
 }
 
 export interface MatchDetailManager {
@@ -62,6 +73,7 @@ export interface MatchDetailManager {
   eloAfter: number | null;
 }
 
+
 export interface MatchDetailView {
   gameId: string;
   mode: GameMode;
@@ -73,6 +85,8 @@ export interface MatchDetailView {
   rankings: RankedScore[];
   report: MatchReport;
   managers: MatchDetailManager[];
+  /** The cup played after the auction (games before the cup existed have none). */
+  cup: CupSummary | null;
   lots: {
     lotNumber: number;
     playerId: string;

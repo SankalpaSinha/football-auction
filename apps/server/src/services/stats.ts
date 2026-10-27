@@ -1,4 +1,6 @@
 import {
+  type CupSummary,
+  type RivalryRecord,
   type FormationSlot,
   isTacticId,
   type TacticId,
@@ -133,7 +135,25 @@ export class StatsService {
       endedAt: (r.game.endedAt ?? r.game.startedAt).toISOString(),
     }));
 
+    // Head-to-head: in every finished game you shared, who finished higher.
+    const shared = await this.db.matchResult.findMany({
+      where: { gameId: { in: results.map((r) => r.gameId) }, userId: { not: user.id } },
+      select: { gameId: true, userId: true, rank: true, user: { select: { username: true } } },
+    });
+    const myRank = new Map(results.map((r) => [r.gameId, r.rank]));
+    const rivalMap = new Map<string, { username: string; wins: number; losses: number }>();
+    for (const o of shared) {
+      const mine = myRank.get(o.gameId);
+      if (mine === undefined || mine === o.rank) continue;
+      const row = rivalMap.get(o.userId) ?? { username: o.user.username, wins: 0, losses: 0 };
+      if (mine < o.rank) row.wins++;
+      else row.losses++;
+      rivalMap.set(o.userId, row);
+    }
+    const rivals = [...rivalMap.values()].sort((a, b) => b.wins + b.losses - (a.wins + a.losses) || a.username.localeCompare(b.username)).slice(0, 8);
+
     return {
+      rivals,
       achievements: achievements.map((a) => ({ key: a.key, unlockedAt: a.unlockedAt.toISOString() })),
       trend: results
         .slice(0, 20)
@@ -163,6 +183,35 @@ export class StatsService {
       favoriteFormation: favFormation,
       recent,
     };
+  }
+
+  /** Head-to-head records between these managers (who finished higher in each game they shared). */
+  async rivalries(userIds: string[]): Promise<RivalryRecord[]> {
+    const ids = [...new Set(userIds)].slice(0, 8);
+    if (ids.length < 2) return [];
+    const rows = await this.db.matchResult.findMany({
+      where: { userId: { in: ids }, game: { status: 'FINISHED' } },
+      select: { gameId: true, userId: true, rank: true },
+      orderBy: { gameId: 'desc' },
+      take: 5000,
+    });
+    const byGame = new Map<string, { userId: string; rank: number }[]>();
+    for (const r of rows) byGame.set(r.gameId, [...(byGame.get(r.gameId) ?? []), r]);
+    const out = new Map<string, RivalryRecord>();
+    for (const players of byGame.values()) {
+      for (let i = 0; i < players.length; i++) {
+        for (let j = i + 1; j < players.length; j++) {
+          const [x, y] = [players[i], players[j]].sort((p, q) => p.userId.localeCompare(q.userId));
+          if (x.rank === y.rank) continue;
+          const key = `${x.userId}|${y.userId}`;
+          const rec = out.get(key) ?? { a: x.userId, b: y.userId, aWins: 0, bWins: 0 };
+          if (x.rank < y.rank) rec.aWins++;
+          else rec.bWins++;
+          out.set(key, rec);
+        }
+      }
+    }
+    return [...out.values()];
   }
 
   async match(gameId: string): Promise<MatchDetailView | null> {
@@ -246,7 +295,12 @@ export class StatsService {
       endedAt: game.endedAt?.toISOString() ?? null,
       startingBudget: settings.startingBudget ?? 1000,
       rankings,
-      report: buildMatchReport(rankings, managers.map((m) => ({ userId: m.userId, username: m.username, squad: m.squad }))),
+      report: buildMatchReport(
+        rankings,
+        managers.map((m) => ({ userId: m.userId, username: m.username, squad: m.squad })),
+        { cup: (game.cup as unknown as CupSummary | null) ?? null, startingBudget: settings.startingBudget ?? 1000 },
+      ),
+      cup: (game.cup as unknown as CupSummary | null) ?? null,
       managers,
       lots: lots.map((l) => ({
         lotNumber: l.lotNumber,

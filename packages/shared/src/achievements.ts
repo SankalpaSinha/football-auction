@@ -1,4 +1,5 @@
 import { positionFit } from './fit';
+import { isStarPlayer } from './stars';
 import { resolveFormation } from './formations';
 import type { LineupInput } from './lineup';
 import type { RankedScore } from './scoring';
@@ -33,6 +34,16 @@ export const ACHIEVEMENTS: AchievementDef[] = [
   { key: 'system_builder', emoji: '⚙️', title: 'System Builder', description: 'Trigger 5+ synergy combos in one XI.', tier: 'silver' },
   { key: 'mastermind', emoji: '🕵️', title: 'Mastermind', description: 'Complete both secret objectives.', tier: 'gold' },
   { key: 'moneyball', emoji: '📉', title: 'Moneyball', description: 'Win without a single starter rated 85+.', tier: 'gold' },
+  { key: 'starless', emoji: '🌑', title: 'Won with no stars', description: 'Win without a single star player in your squad.', tier: 'gold' },
+  { key: 'samba_trio', emoji: '🇧🇷', title: 'Samba Trio', description: 'Start three Brazilians rated 85+.', tier: 'silver' },
+  { key: 'brick_wall', emoji: '🧱', title: 'Brick Wall', description: 'Win the cup without conceding a goal.', tier: 'gold' },
+  { key: 'hat_trick_hero', emoji: '🎩', title: 'Hat-trick Hero', description: 'One of your players scores a hat-trick in the cup.', tier: 'silver' },
+  { key: 'nerves_of_steel', emoji: '🥶', title: 'Nerves of Steel', description: 'Win a penalty shootout.', tier: 'bronze' },
+  { key: 'upset', emoji: '🐉', title: 'Giant Slayer', description: 'Knock out a squad seeded at least two places above yours.', tier: 'silver' },
+  { key: 'comeback', emoji: '🔄', title: 'Comeback Kings', description: 'Win a cup match you were losing at half-time.', tier: 'silver' },
+  { key: 'thief', emoji: '🦹', title: 'Daylight Robbery', description: 'Take a player with a Steal card.', tier: 'bronze' },
+  { key: 'mystery_gem', emoji: '🎁', title: 'Mystery Gem', description: 'Win a mystery lot and get a player rated 85+.', tier: 'silver' },
+  { key: 'season_champion', emoji: '👑', title: 'Season Champion', description: 'Top the table at the end of a season.', tier: 'gold' },
   { key: 'hat_trick', emoji: '⚽', title: 'Hat-trick', description: 'Win 3 games.', tier: 'silver', career: true },
   { key: 'veteran', emoji: '🎖️', title: 'Veteran', description: 'Play 10 games.', tier: 'silver', career: true },
   { key: 'elite', emoji: '👑', title: 'Elite Manager', description: 'Reach 1400 ranked ELO.', tier: 'gold', career: true },
@@ -96,6 +107,8 @@ export function gameAchievements(input: GameAchievementInput): Record<string, st
     if ((m.score.synergies?.length ?? 0) >= 5) keys.push('system_builder');
     const objs = m.score.objectives ?? [];
     if (objs.length >= 2 && objs.every((o) => o.done)) keys.push('mastermind');
+    if (won && m.squad.length > 0 && m.squad.every((e) => !isStarPlayer(e.player))) keys.push('starless');
+    if (starters.filter((p) => p && p.nation.code === 'BRA' && p.overall >= 85).length >= 3) keys.push('samba_trio');
     out[m.userId] = keys;
   }
   return out;

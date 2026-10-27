@@ -1,3 +1,4 @@
+import { cupPlayerLines, type CupSummary } from './cup';
 import { SCORING_CONFIG, type RankedScore, type ScoreComponent } from './scoring';
 import type { PlayerCard, SquadEntry } from './types';
 
@@ -22,6 +23,16 @@ export interface MatchReport {
   verdicts: Record<string, string>;
 }
 
+/** Optional extra facts from the game (older saved games have none). */
+export interface ReportExtras {
+  /** How many times each manager lost the top bid to someone else. */
+  outbid?: Record<string, number>;
+  /** Players taken with a Steal card. */
+  steals?: { userId: string; fromId: string; playerId: string; price: number }[];
+  cup?: CupSummary | null;
+  startingBudget?: number;
+}
+
 export const COMPONENT_NAMES: Record<ScoreComponent, string> = {
   quality: 'player quality',
   positionFit: 'position fit',
@@ -41,6 +52,7 @@ const LINE_NAMES = { def: 'defence', mid: 'midfield', att: 'attack', gk: 'goalke
 export function buildMatchReport(
   rankings: RankedScore[],
   managers: { userId: string; username: string; squad: SquadEntry[] }[],
+  extras: ReportExtras = {},
 ): MatchReport {
   const name = (id: string) => managers.find((m) => m.userId === id)?.username ?? 'A manager';
   const players = new Map<string, PlayerCard>();
@@ -49,11 +61,41 @@ export function buildMatchReport(
 
   const [first, second] = rankings;
   const w = SCORING_CONFIG.weights;
+  const cup = extras.cup ?? null;
 
   // --- headline + summary
   let headline = `${name(first.userId)} wins with ${first.total.toFixed(1)}`;
   const sentences: string[] = [];
-  if (second) {
+  const final = cup?.matches.filter((m) => m.round === cup.rounds.length - 1).at(-1);
+  if (cup && final && cup.championId) {
+    const champ = cup.championId;
+    const other = final.homeId === champ ? final.awayId : final.homeId;
+    const [g1, g2] = final.homeId === champ ? final.score : [final.score[1], final.score[0]];
+    const pens = final.pens ? (final.homeId === champ ? final.pens : [final.pens[1], final.pens[0]]) : null;
+    headline = `🏆 ${name(champ)} lifts the cup — ${g1}–${g2}${pens ? ` (${pens[0]}–${pens[1]} on penalties)` : ''} against ${name(other)} in the final`;
+    const bestSquad = [...rankings].sort((a, b) => b.total - a.total)[0];
+    if (bestSquad.userId === champ) {
+      sentences.push(`The best-built squad (${bestSquad.total.toFixed(1)}) went all the way.`);
+    } else {
+      const champScore = rankings.find((r) => r.userId === champ);
+      sentences.push(
+        `${name(bestSquad.userId)} had the strongest squad on paper (${bestSquad.total.toFixed(1)})` +
+          (champScore ? `, but ${name(champ)} (${champScore.total.toFixed(1)}) won it on the pitch.` : '.'),
+      );
+    }
+  }
+  if (cup) {
+    // The cup decides the order: tell the champion's road to the final.
+    const champ = cup.championId;
+    const path = champ
+      ? cup.matches.filter((m) => m.homeId === champ || m.awayId === champ).map((m) => name(m.homeId === champ ? m.awayId : m.homeId))
+      : [];
+    if (path.length > 1) {
+      const before = path.slice(0, -1);
+      const list = before.length > 1 ? `${before.slice(0, -1).join(', ')} and ${before.at(-1)}` : before[0];
+      sentences.push(`On the way to the final they knocked out ${list}.`);
+    }
+  } else if (second) {
     const margin = first.total - second.total;
     headline +=
       margin < 1 ? ` — by a whisker over ${name(second.userId)}` : margin >= 5 ? ' — a commanding victory' : ` ahead of ${name(second.userId)}`;
@@ -168,6 +210,35 @@ export function buildMatchReport(
   awards.push({ key: 'depth', emoji: '🪑', title: 'Deepest bench', userId: bench.userId, detail: `${comp(bench, 'depth').toFixed(0)} depth score` });
   const thrift = [...rankings].sort((a, b) => a.spent - b.spent || a.rank - b.rank)[0];
   awards.push({ key: 'thrift', emoji: '🧾', title: 'Most frugal', userId: thrift.userId, detail: `spent only ${thrift.spent}` });
+
+  // --- awards from the auction and the cup
+  const outbid = Object.entries(extras.outbid ?? {}).sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))[0];
+  if (outbid && outbid[1] >= 3) {
+    awards.push({ key: 'outbid', emoji: '😤', title: 'Most outbid', userId: outbid[0], detail: `lost the top bid ${outbid[1]} times` });
+  }
+  const steal = (extras.steals ?? []).slice().sort((a, b) => b.price - a.price)[0];
+  if (steal) {
+    awards.push({ key: 'thief', emoji: '🦹', title: 'Daylight robbery', userId: steal.userId, playerId: steal.playerId, detail: `stole ${pname(steal.playerId)} from ${name(steal.fromId)} for ${steal.price}` });
+  }
+  if (cup) {
+    const lines = cupPlayerLines(cup);
+    const boot = [...lines].sort((a, b) => b[1].goals - a[1].goals || b[1].assists - a[1].assists || a[0].localeCompare(b[0]))[0];
+    if (boot && boot[1].goals > 0) {
+      awards.push({ key: 'golden_boot', emoji: '👟', title: 'Golden Boot', userId: boot[1].userId, playerId: boot[0], detail: `${pname(boot[0])} · ${boot[1].goals} goal${boot[1].goals === 1 ? '' : 's'}` });
+    }
+    // Sleeper hit: the cheapest signing who made the biggest difference in the cup.
+    const price = new Map<string, number>();
+    for (const m of managers) for (const e of m.squad) price.set(e.player.id, e.price);
+    const budget = extras.startingBudget ?? 1000;
+    const sleeper = [...lines]
+      .map(([id, l]) => ({ id, l, impact: l.goals * 3 + l.assists * 2 + l.motm * 3, cost: price.get(id) ?? budget }))
+      .filter((x) => x.impact >= 3 && x.cost <= budget * 0.06)
+      .sort((a, b) => b.impact / Math.max(1, b.cost) - a.impact / Math.max(1, a.cost) || a.id.localeCompare(b.id))[0];
+    if (sleeper) {
+      const bits = [sleeper.l.goals && `${sleeper.l.goals}G`, sleeper.l.assists && `${sleeper.l.assists}A`, sleeper.l.motm && `${sleeper.l.motm}× MOTM`].filter(Boolean);
+      awards.push({ key: 'sleeper', emoji: '💤', title: 'Sleeper hit', userId: sleeper.l.userId, playerId: sleeper.id, detail: `${pname(sleeper.id)} cost ${sleeper.cost} · ${bits.join(' · ')}` });
+    }
+  }
 
   // --- one-line verdict per manager
   const verdicts: Record<string, string> = {};

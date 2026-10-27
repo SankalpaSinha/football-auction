@@ -1,7 +1,7 @@
 'use client';
 import { useState } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
-import { GROUP_ORDER, isStarPlayer, OBJECTIVES, PLAYSTYLES, playstyleOf, POSITION_GROUP, type LotView, type MemberView, type RoomView } from '@fa/shared';
+import { GROUP_ORDER, isStarPlayer, OBJECTIVES, PLAYSTYLES, playstyleOf, POSITION_GROUP, POWER_CARDS, type LotView, type MemberView, type RoomView } from '@fa/shared';
 import { coins, GROUP_LABEL, groupSquad } from '@/lib/format';
 import { emit } from '@/lib/socket';
 import { useGame } from '@/lib/store';
@@ -16,10 +16,11 @@ export function SquadPanel({ room, me }: { room: RoomView; me: MemberView | unde
   const [busy, setBusy] = useState(false);
   if (!me) return <div className="glass rounded-2xl p-4 text-sm text-muted">Spectating</div>;
   const canRelease = dealsOpen(room);
+  const hasRefund = !!room.auction?.cards[me.userId]?.includes('REFUND');
 
-  async function release(playerId: string) {
+  async function release(playerId: string, refund = false) {
     setBusy(true);
-    const r = await emit('squad:release', { playerId });
+    const r = await emit(refund ? 'card:refund' : 'squad:release', { playerId });
     setBusy(false);
     setReleasing(null);
     if (!r.ok) toast('error', r.error);
@@ -123,8 +124,18 @@ export function SquadPanel({ room, me }: { room: RoomView; me: MemberView | unde
                       {releasing === e.player.id && canRelease && (
                         <div className="mt-1.5 flex items-center gap-2 rounded-md bg-danger/10 px-2 py-1.5 text-xs">
                           <span className="min-w-0 flex-1 text-rose-100">
-                            Release {e.player.shortName}? You won’t get the {e.price} coins back.
+                            Release {e.player.shortName}? {hasRefund ? `Free, or use your Refund card for ${Math.floor(e.price / 2)} back.` : `You won’t get the ${e.price} coins back.`}
                           </span>
+                          {hasRefund && e.price > 1 && (
+                            <button
+                              disabled={busy}
+                              onClick={() => release(e.player.id, true)}
+                              title={POWER_CARDS.REFUND.blurb}
+                              className="rounded-md bg-emerald-400/25 px-2 py-1 font-bold text-emerald-100 disabled:opacity-50"
+                            >
+                              💸 +{Math.floor(e.price / 2)}
+                            </button>
+                          )}
                           <button
                             disabled={busy}
                             onClick={() => release(e.player.id)}
@@ -188,7 +199,10 @@ export function ManagersPanel({
         {room.members.map((m) => {
           const leading = lot?.highestBidderId === m.userId;
           const skipped = lot?.skippedBy.includes(m.userId);
+          const frozen = lot?.frozen.includes(m.userId);
+          const sealedIn = lot?.sealed?.decided.includes(m.userId);
           const full = m.squad.length >= room.rules.squadSize;
+          const cards = room.auction?.cards[m.userId] ?? [];
           return (
             <motion.li
               key={m.userId}
@@ -221,6 +235,11 @@ export function ManagersPanel({
                 <div className="mt-0.5 flex items-center gap-1 text-xs text-muted num">
                   <Coin className="h-3 w-3" />
                   {coins(m.budget)} · {m.squad.length}/{room.rules.squadSize}
+                  {room.settings.twists.cards && (
+                    <span className="ml-1 tracking-tight" title={`Cards left: ${cards.map((c) => POWER_CARDS[c].label).join(', ') || 'none'}`}>
+                      {cards.map((c) => POWER_CARDS[c].emoji).join('')}
+                    </span>
+                  )}
                 </div>
               </div>
               <div className="text-right">
@@ -234,6 +253,10 @@ export function ManagersPanel({
                   </span>
                 ) : full ? (
                   <span className="text-[10px] font-bold uppercase tracking-wider text-cyan">Full</span>
+                ) : frozen ? (
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-cyan">❄️ Frozen</span>
+                ) : sealedIn ? (
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-volt">🔒 In</span>
                 ) : skipped ? (
                   <span className="text-[10px] font-bold uppercase tracking-wider text-dim">Skipped</span>
                 ) : (

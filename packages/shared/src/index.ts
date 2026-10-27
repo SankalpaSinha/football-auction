@@ -17,3 +17,4 @@ export * from './stars';
 export * from './twists';
 export * from './match';
 export * from './cup';
+export * from './patch';

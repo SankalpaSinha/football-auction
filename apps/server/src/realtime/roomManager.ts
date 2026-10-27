@@ -12,6 +12,8 @@ import {
   type RoomSettings,
   type SessionUser,
   type TauntId,
+  diff,
+  type RoomView,
 } from '@fa/shared';
 import type { Server } from 'socket.io';
 import { maxPlayersForPool, type PlayerCatalog } from '../data/catalog';
@@ -26,6 +28,12 @@ const CODE_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // no 0/O/1/I
 export const roomChannel = (code: string) => `room:${code}`;
 export const userChannel = (userId: string) => `user:${userId}`;
 export const spectateChannel = (code: string) => `spectate:${code}`;
+/** Last snapshot sent to each viewer: a manager (all their tabs) or a room's spectators. */
+const baselineKey = (r: Room, viewerId: string | null) => (viewerId ? `u:${viewerId}` : `s:${r.code}`);
+/** Change on every snapshot; sent alongside each patch rather than as ops. */
+const PATCH_IGNORE = ['serverTime', 'version'] as const;
+/** Exactly what goes over the wire (no shared references, no undefined keys). */
+const frozen = (v: RoomView): RoomView => JSON.parse(JSON.stringify(v));
 
 export interface PublicRoomInfo {
   code: string;
@@ -60,6 +68,7 @@ export class RoomManager {
   /** userId → code of a game they stepped out of (exit button / sat out); they can come back to it. */
   private left = new Map<string, string>();
   private dirty = new Set<Room>();
+  private baselines = new Map<string, { code: string; view: RoomView }>();
   private flushScheduled = false;
   private createLimiter: RateLimiter;
   /** Last known ranked ELO per user (for lobby listings and matchmaking). */
@@ -362,6 +371,7 @@ export class RoomManager {
   private onClosed(room: Room, reason: string) {
     this.rooms.delete(room.code);
     this.dirty.delete(room);
+    for (const [key, b] of this.baselines) if (b.code === room.code) this.baselines.delete(key);
     for (const [userId, code] of this.watching) if (code === room.code) this.watching.delete(userId);
     this.io.in(spectateChannel(room.code)).socketsLeave(spectateChannel(room.code));
     for (const [userId, code] of this.userRoom) if (code === room.code) this.userRoom.delete(userId);
@@ -383,16 +393,53 @@ export class RoomManager {
       for (const r of rooms) {
         if (r.closed) continue;
         try {
-        for (const userId of r.memberIds()) {
-          if (this.userRoom.get(userId) === r.code) this.io.to(userChannel(userId)).emit('room:state', r.view(userId));
-        }
-        // Spectators share one public snapshot (no private lineups).
-        this.io.to(spectateChannel(r.code)).emit('room:state', r.view());
+          for (const userId of r.memberIds()) {
+            if (this.userRoom.get(userId) === r.code) this.broadcast(r, userId);
+          }
+          // Spectators share one public snapshot (no private lineups).
+          if (this.io.sockets.adapter.rooms.get(spectateChannel(r.code))?.size) this.broadcast(r, null);
         } catch (err) {
           this.deps.log(`[room ${r.code}] broadcast failed`, err);
         }
       }
     });
+  }
+
+  /**
+   * Send one viewer (a manager's sockets, or all spectators of a room) what
+   * changed since their last snapshot. Only the first snapshot is sent in full.
+   */
+  private broadcast(r: Room, viewerId: string | null) {
+    const key = baselineKey(r, viewerId);
+    // A detached copy: views share arrays with the live game, which keeps changing.
+    const view = frozen(viewerId ? r.view(viewerId) : r.view());
+    const prev = this.baselines.get(key);
+    const channel = viewerId ? userChannel(viewerId) : spectateChannel(r.code);
+    if (prev && prev.code === r.code && prev.view.id === view.id) {
+      const ops = diff(prev.view, view, PATCH_IGNORE);
+      // Nothing this viewer can see changed: stay on the old snapshot.
+      if (!ops.length) return;
+      this.baselines.set(key, { code: r.code, view });
+      this.io.to(channel).emit('room:patch', { code: r.code, id: view.id, from: prev.view.version, to: view.version, serverTime: view.serverTime, ops });
+      return;
+    }
+    this.baselines.set(key, { code: r.code, view });
+    this.io.to(channel).emit('room:state', view);
+  }
+
+  /** A full snapshot for a socket that's joining or catching up; later patches continue from it. */
+  snapshot(room: Room, viewerId: string | null): RoomView {
+    const view = frozen(viewerId ? room.view(viewerId) : room.view());
+    this.baselines.set(baselineKey(room, viewerId), { code: room.code, view });
+    return view;
+  }
+
+  /** A client missed a patch for `code`: their full snapshot, or null if they're not in or watching it. */
+  resync(userId: string, code: string): RoomView | null {
+    const room = this.roomOf(userId);
+    if (room?.code === code) return this.snapshot(room, userId);
+    const watched = this.watching.get(userId) === code ? this.rooms.get(code) : undefined;
+    return watched ? this.snapshot(watched, null) : null;
   }
 
   private newCode(): string {

@@ -1,6 +1,6 @@
 'use client';
 import { create } from 'zustand';
-import type { ChatMessage, GameEvent, Reaction, RoomView } from '@fa/shared';
+import { applyPatch, type ChatMessage, type GameEvent, type Reaction, type RoomPatch, type RoomView } from '@fa/shared';
 import type { StoredSession } from './api';
 
 export type ConnectionState = 'idle' | 'connecting' | 'connected' | 'reconnecting' | 'replaced' | 'error';
@@ -38,6 +38,8 @@ interface GameStore {
   setSession(s: StoredSession | null): void;
   setConnection(c: ConnectionState): void;
   setRoom(r: RoomView | null): void;
+  /** Apply a server patch. False when it doesn't fit our copy (missed one): ask for a full snapshot. */
+  patchRoom(p: RoomPatch): boolean;
   setActiveCode(code: string | null): void;
   setRoomClosed(reason: string | null): void;
   setRemoved(reason: string | null): void;
@@ -83,6 +85,17 @@ export const useGame = create<GameStore>((set, get) => ({
     // Ignore out-of-order snapshots for the same room.
     if (room && cur && cur.id === room.id && room.version < cur.version) return;
     set({ room });
+  },
+  patchRoom: (p) => {
+    const cur = get().room;
+    if (get().activeCode && p.code !== get().activeCode) return true;
+    if (!cur || cur.code !== p.code || cur.id !== p.id || cur.version !== p.from) return false;
+    try {
+      set({ room: { ...applyPatch(cur, p.ops), version: p.to, serverTime: p.serverTime } });
+      return true;
+    } catch {
+      return false;
+    }
   },
   setRoomClosed: (roomClosed) => set({ roomClosed }),
   setRemoved: (removedReason) => set({ removedReason }),

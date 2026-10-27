@@ -10,6 +10,8 @@ type GameSocket = Socket<ServerToClient, ClientToServer>;
 let socket: GameSocket | null = null;
 let socketToken: string | null = null;
 let syncTimer: ReturnType<typeof setInterval> | null = null;
+/** A full-snapshot request is in flight. */
+let resyncing = false;
 
 /** NTP-style offset estimate; keeps the best (lowest RTT) of a few samples. */
 async function syncClock(s: GameSocket) {
@@ -65,6 +67,12 @@ export function connectSocket(token: string): GameSocket {
     if (!s.active) setTimeout(() => s.connect(), 2500);
   });
   s.on('room:state', (view) => useGame.getState().setRoom(view));
+  s.on('room:patch', (p) => {
+    if (useGame.getState().patchRoom(p) || resyncing) return;
+    // We missed a change: get a fresh full snapshot (later patches build on it).
+    resyncing = true;
+    emit('room:sync', { code: p.code }).finally(() => (resyncing = false));
+  });
   s.on('room:event', (e) => {
     // Only the room on screen makes noise.
     if (!useGame.getState().activeCode) return;

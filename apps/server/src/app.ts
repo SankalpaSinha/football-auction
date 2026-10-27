@@ -344,7 +344,7 @@ export function createApp(deps: AppDeps) {
     if (room) {
       socket.join(roomChannel(room.code));
       room.setConnected(user.id, true);
-      socket.emit('room:state', room.view(user.id));
+      socket.emit('room:state', manager.snapshot(room, user.id));
     }
 
     const actions = new TokenBucket(15, 30, () => deps.clock.now());
@@ -352,6 +352,7 @@ export function createApp(deps: AppDeps) {
     const syncs = new TokenBucket(2, 8, () => deps.clock.now());
     const chats = new TokenBucket(1, 5, () => deps.clock.now());
     const reactions = new TokenBucket(2, 6, () => deps.clock.now());
+    const resyncs = new TokenBucket(1, 5, () => deps.clock.now());
     // Failed room lookups by code — guessing private codes gets cut off quickly.
     let codeMisses = 0;
     const lookup = <T>(fn: () => T): T => {
@@ -398,22 +399,32 @@ export function createApp(deps: AppDeps) {
 
     on('room:join', joinRoomSchema, ({ code }) => {
       const r = lookup(() => manager.join(user, code));
-      socket.emit('room:state', r.view(user.id));
+      socket.emit('room:state', manager.snapshot(r, user.id));
       return { code: r.code };
     });
+
+    on(
+      'room:sync',
+      joinRoomSchema,
+      ({ code }) => {
+        const v = manager.resync(user.id, code);
+        if (v) socket.emit('room:state', v);
+      },
+      resyncs,
+    );
 
     on('room:leave', null, () => manager.leave(user.id));
     on('room:quit', null, () => manager.quit(user.id));
 
     on('room:spectate', joinRoomSchema, ({ code }) => {
       const { room: r, role } = lookup(() => manager.spectate(user, code));
-      socket.emit('room:state', role === 'member' ? r.view(user.id) : r.view());
+      socket.emit('room:state', manager.snapshot(r, role === 'member' ? user.id : null));
       return { code: r.code, role };
     });
 
     on('match:quick', quickMatchSchema, (prefs) => {
       const { room: r, created } = manager.quickMatch(user, prefs);
-      socket.emit('room:state', r.view(user.id));
+      socket.emit('room:state', manager.snapshot(r, user.id));
       return { code: r.code, created };
     });
 

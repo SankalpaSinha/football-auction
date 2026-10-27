@@ -1,5 +1,6 @@
 import { io, type Socket } from 'socket.io-client';
 import {
+  applyPatch,
   autoPick,
   FORMATIONS,
   isStarPlayer,
@@ -99,13 +100,36 @@ export class Bot {
   connect() {
     return new Promise<this>((resolve, reject) => {
       this.socket = io(this.base, { auth: { token: this.token }, transports: ['websocket'], reconnection: !!this.opts.reconnect });
-      this.socket.on('room:state', (v) => {
-        this.state = v;
-        this.maybeAct();
+      this.socket.on('room:state', (v) => this.setState(v));
+      this.socket.on('room:patch', (p) => {
+        const cur = this.state;
+        if (cur && cur.code === p.code && cur.id === p.id && cur.version === p.from) {
+          this.setState({ ...applyPatch(cur, p.ops), version: p.to, serverTime: p.serverTime });
+        } else if (!this.resyncing) {
+          this.resyncing = true;
+          void this.emit('room:sync', { code: p.code }).finally(() => (this.resyncing = false));
+        }
       });
       this.socket.once('connect', () => resolve(this));
       this.socket.once('connect_error', reject);
     });
+  }
+
+  private resyncing = false;
+  private listeners = new Set<(v: RoomView) => void>();
+
+  /** Every new state (full snapshot or patched). Returns an unsubscribe function. */
+  onState(h: (v: RoomView) => void) {
+    this.listeners.add(h);
+    return () => this.listeners.delete(h);
+  }
+
+  private setState(v: RoomView) {
+    // Ignore an older snapshot of the same room arriving late.
+    if (this.state && this.state.id === v.id && v.version < this.state.version) return;
+    this.state = v;
+    for (const h of [...this.listeners]) h(v);
+    this.maybeAct();
   }
 
   disconnect() {
@@ -135,17 +159,17 @@ export class Bot {
     return new Promise<RoomView>((resolve, reject) => {
       if (this.state && pred(this.state)) return resolve(this.state);
       const t = setTimeout(() => {
-        this.socket.off('room:state', h);
+        this.listeners.delete(h);
         reject(new Error(`${this.username}: timed out waiting (phase ${this.state?.phase})`));
       }, timeoutMs);
       const h = (v: RoomView) => {
         if (pred(v)) {
           clearTimeout(t);
-          this.socket.off('room:state', h);
+          this.listeners.delete(h);
           resolve(v);
         }
       };
-      this.socket.on('room:state', h);
+      this.listeners.add(h);
     });
   }
 

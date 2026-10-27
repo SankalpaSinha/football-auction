@@ -3,6 +3,7 @@ import { TACTIC_IDS, type TacticId } from './playstyles';
 import { POSITIONS } from './positions';
 import { ALL_TWISTS, GAME_RULES } from './rules';
 import { REACTION_EMOJIS, TAUNT_IDS, type TauntId } from './twists';
+import type { PatchOp } from './patch';
 import type { ChatMessage, GameEvent, PlayerCard, Reaction, RoomView } from './types';
 
 export const SEASON_LENGTHS = [1, 3, 5] as const;
@@ -147,6 +148,8 @@ export interface ClientToServer {
   'card:steal': (input: unknown, ack: (r: Ack) => void) => void;
   'card:refund': (input: unknown, ack: (r: Ack) => void) => void;
   'room:react': (input: unknown, ack: (r: Ack) => void) => void;
+  /** Missed a patch: send me a full snapshot of this room. */
+  'room:sync': (input: unknown, ack: (r: Ack) => void) => void;
   'room:rematch': (input: unknown, ack: (r: Ack) => void) => void;
   'match:talk': (input: unknown, ack: (r: Ack) => void) => void;
   'match:shout': (input: unknown, ack: (r: Ack) => void) => void;
@@ -159,8 +162,20 @@ export interface ClientToServer {
   'time:sync': (input: unknown, ack: (r: { serverTime: number }) => void) => void;
 }
 
+/** Changes to a room snapshot: apply when your copy is room `id` at version `from`, otherwise ask for `room:sync`. */
+export interface RoomPatch {
+  code: string;
+  id: string;
+  from: number;
+  to: number;
+  serverTime: number;
+  ops: PatchOp[];
+}
+
 export interface ServerToClient {
   'room:state': (view: RoomView) => void;
+  /** What changed since the last snapshot (`from` is the version it applies to). */
+  'room:patch': (patch: RoomPatch) => void;
   'room:event': (event: GameEvent) => void;
   'room:closed': (info: { code: string; reason: string }) => void;
   /** You were taken out of a game (e.g. for inactivity). */

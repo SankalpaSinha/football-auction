@@ -312,10 +312,14 @@ describe('multiplayer over websockets', () => {
     await host.must('room:start');
     const kinds = new Set<string>();
     const markets = new Set<string>();
-    host.socket.on('room:state', (v) => {
+    host.onState((v) => {
       if (v.auction?.lot) kinds.add(v.auction.lot.kind);
       if (v.auction?.market) markets.add(v.auction.market.id);
     });
+    // A client that misses a patch asks for a full snapshot and carries on.
+    await host.waitFor((v) => v.phase === 'AUCTION');
+    rest[0].state = { ...rest[0].state!, version: -1 };
+    await rest[0].waitFor((v) => v.version > 0, 10_000);
     const cup = await host.waitFor((v) => v.phase === 'TOURNAMENT', 120_000);
     expect(cup.tournament!.rounds).toEqual(['Semi-finals', 'Final']);
     const done = await host.waitFor((v) => v.phase === 'RESULTS', 60_000);
@@ -338,6 +342,17 @@ describe('multiplayer over websockets', () => {
     expect(markets.size).toBeGreaterThan(0);
     expect(bots.flatMap((b) => b.played).some((p) => p.startsWith('talk:'))).toBe(true);
     expect(bots.flatMap((b) => b.errors).filter((e) => e !== 'RATE_LIMITED')).toEqual([]);
+    // Everyone followed the whole game from patches: their copy matches a fresh full snapshot.
+    await new Promise((r) => setTimeout(r, 500));
+    for (const b of bots) {
+      const before = b.state!;
+      const patched = JSON.parse(JSON.stringify(before));
+      await b.must('room:sync', { code });
+      await b.waitFor((v) => v !== before);
+      const { serverTime: _a, ...fresh } = JSON.parse(JSON.stringify(b.state));
+      const { serverTime: _b, ...mine } = patched;
+      expect(mine).toEqual(fresh);
+    }
     for (const b of bots) b.disconnect();
   }, 200_000);
 
@@ -353,7 +368,7 @@ describe('multiplayer over websockets', () => {
     }
     await host.waitFor((v) => v.members.length === 3 && v.members.every((m) => m.ready));
     const pickers: string[] = [];
-    host.socket.on('room:state', (v) => {
+    host.onState((v) => {
       const d = v.auction?.draft;
       if (d && pickers.length < d.pick) pickers[d.pick - 1] = d.userId;
     });

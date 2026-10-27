@@ -198,7 +198,7 @@ Ranked games use Classic. Every format except the draft can use the **auction tw
 
 **Tactics:** Balanced, Tiki-Taka, Counter-Attack, High Press, Wing Play and Park the Bus. The squad builder shows what each tactic would score with your XI.
 
-**Secret objectives** (`packages/shared/src/objectives.ts`), for example: 3+ starters from one club, XI average age 25 or under, 25% of the budget unspent, no starter rated 86+, 3+ synergy combos, or 8+ different playstyles.
+**Secret objectives** (`packages/shared/src/objectives.ts`), for example: 3+ starters from one club, 3+ starters aged 31 or over, 2+ wonderkids, a star player in the XI, 25% of the budget on one signing, 3+ starters with 85+ pace, two 189cm+ centre-backs, players from 9+ countries, or 3+ synergy combos. Objectives the format or player pool can't support aren't dealt (no stars in All-Time Icons, no big single buy under the Budget Cap), and clashing pairs (youth and veterans, frugal and big spender) never go to the same manager. While you play, each player shows their age plus whatever your objectives care about (foot, pace, height, club, country), players that count are highlighted, and the squad builder shows live progress such as 2/3.
 
 The squad score seeds the cup (see The cup), which decides the final standings. Ties in the squad score are broken by quality, then position fit, then fewer coins spent. The tests check that the same squad always scores the same, that the tactic changes the score, that combos are detected, and that objectives add their bonus.
 

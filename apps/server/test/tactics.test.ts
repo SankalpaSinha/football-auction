@@ -9,6 +9,8 @@ import {
   lineupSchema,
   OBJECTIVE_IDS,
   playstyleOf,
+  playerHints,
+  unsupportedObjectives,
   scoreSquad,
   softenRating,
   TACTIC_IDS,
@@ -120,16 +122,52 @@ describe('scoring with tactics and synergy', () => {
 
   it('completed objectives add bonus points', () => {
     const none = scoreSquad(squad, lineup, { objectives: [] });
-    const done = scoreSquad(squad, lineup, { objectives: ['NO_SUPERSTARS', 'CLUB_TRIO'] });
+    // Every test player has their own country and club.
+    const done = scoreSquad(squad, lineup, { objectives: ['MELTING_POT', 'CLUB_TRIO'] });
     expect(done.objectives).toEqual([
-      { id: 'NO_SUPERSTARS', done: true },
-      { id: 'CLUB_TRIO', done: false },
+      { id: 'MELTING_POT', done: true, progress: '9/9' },
+      { id: 'CLUB_TRIO', done: false, progress: '1/3' },
     ]);
     expect(done.objectiveBonus).toBe(3);
     expect(done.total).toBeCloseTo(none.total + 3, 5);
     const frugal = scoreSquad(squad, lineup, { objectives: ['FRUGAL'], startingBudget: 1000, budgetLeft: 300 });
     expect(frugal.objectives[0].done).toBe(true);
     expect(scoreSquad(squad, lineup, { objectives: ['FRUGAL'], startingBudget: 1000, budgetLeft: 100 }).objectives[0].done).toBe(false);
+  });
+
+  it('player objectives count the starters and show progress', () => {
+    const olds = new Set(lineup.slots.slice(1, 3));
+    const aged = squad.map((e) => (olds.has(e.player.id) ? { ...e, player: { ...e.player, age: 33 } } : e));
+    expect(scoreSquad(aged, lineup, { objectives: ['VETERANS'] }).objectives[0]).toEqual({ id: 'VETERANS', done: false, progress: '2/3' });
+    const third = lineup.slots[3]!;
+    const more = aged.map((e) => (e.player.id === third ? { ...e, player: { ...e.player, age: 31 } } : e));
+    expect(scoreSquad(more, lineup, { objectives: ['VETERANS'] }).objectives[0].done).toBe(true);
+  });
+
+  it('a big single buy completes Splash the cash', () => {
+    const top = Math.max(...squad.map((e) => e.price));
+    expect(scoreSquad(squad, lineup, { objectives: ['BIG_SPENDER'], startingBudget: top * 4 }).objectives[0].done).toBe(true);
+    expect(scoreSquad(squad, lineup, { objectives: ['BIG_SPENDER'], startingBudget: top * 5 }).objectives[0].done).toBe(false);
+  });
+
+  it('clashing objectives are never drawn together', () => {
+    for (let i = 0; i < 300; i++) {
+      const a = drawObjectives(createRng(`clash:${i}`));
+      expect(a.includes('YOUTH') && a.includes('VETERANS')).toBe(false);
+      expect(a.includes('FRUGAL') && a.includes('BIG_SPENDER')).toBe(false);
+    }
+  });
+
+  it('objectives a pool can’t support are left out', () => {
+    // A pool of peak-age legends with no stars, no pace and no tall centre-backs.
+    const legends = Array.from({ length: 60 }, (_, i) => ({ ...makeCard(`l${i}`, i % 6 ? 'CM' : 'CB', 90), age: 28 }));
+    const skip = unsupportedObjectives(legends);
+    expect(skip).toEqual(expect.arrayContaining(['MARQUEE', 'WONDERKIDS', 'YOUTH', 'VETERANS', 'PACE', 'TWIN_TOWERS']));
+    expect(skip).not.toContain('CLUB_TRIO');
+    expect(playerHints(['VETERANS', 'LEFT_FOOTERS'], { ...legends[0], age: 34 })).toEqual([
+      { text: '34y', hit: true },
+      { text: 'Right foot', hit: false },
+    ]);
   });
 
   it('objectives are drawn deterministically and never repeat', () => {

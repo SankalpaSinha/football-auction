@@ -22,6 +22,7 @@ import {
   playstyleOf,
   TACTIC_IDS,
   TACTICS,
+  type ObjectiveId,
   type PlayerCard,
   type RoomView,
   type ScoreContext,
@@ -38,6 +39,7 @@ import { GROUP_LABEL } from '@/lib/format';
 import { emit } from '@/lib/socket';
 import { serverNow, useGame } from '@/lib/store';
 import { PlayerAvatar } from '../PlayerAvatar';
+import { PlayerHints } from '../ObjectiveHints';
 import { Avatar, Button, Logo, Pill, SoundToggle } from '../ui';
 import { FIT_STYLE, LINK_COLOR, linksFor, PitchSurface, SlotChip } from './Pitch';
 import { SquadSheet } from '../SquadViews';
@@ -533,6 +535,7 @@ export function SquadBuilder({ room, me }: { room: RoomView; me: string }) {
                           formationRole={slots.indexOf(p.id) >= 0 ? formation.slots[slots.indexOf(p.id)].role : null}
                           selected={selected?.kind === 'bench' && selected.id === p.id}
                           liked={(TACTICS[tactic].likes as readonly string[]).includes(playstyleOf(p))}
+                          objectives={room.myObjectives}
                           locked={locked}
                           onClick={() => {
                             const idx = slots.indexOf(p.id);
@@ -573,6 +576,7 @@ export function SquadBuilder({ room, me }: { room: RoomView; me: string }) {
             squad={squad}
             slots={slots}
             formationRoles={formation.slots.map((x) => x.role)}
+            objectives={room.myObjectives}
             onPick={(id) => pickFor(picker, id)}
             onRemove={() => {
               removeFromSlot(picker);
@@ -610,6 +614,7 @@ function SquadRow({
   formationRole,
   selected,
   liked,
+  objectives,
   locked,
   onClick,
 }: {
@@ -619,6 +624,7 @@ function SquadRow({
   selected: boolean;
   /** Their playstyle suits the chosen tactic. */
   liked: boolean;
+  objectives: ObjectiveId[] | null;
   locked: boolean;
   onClick: () => void;
 }) {
@@ -637,7 +643,10 @@ function SquadRow({
         <PlayerAvatar player={player} size={30} />
         <span className="w-9 text-[11px] font-bold text-muted">{player.position}</span>
         <span className="min-w-0 flex-1">
-          <span className="block truncate font-medium">{player.shortName}</span>
+          <span className="block truncate font-medium">
+            {player.shortName}
+            <PlayerHints ids={objectives} player={player} className="ml-1.5 font-normal" />
+          </span>
           <span className={`block truncate text-[10px] ${liked ? 'font-bold text-volt' : 'text-dim'}`} title={PLAYSTYLES[playstyleOf(player)].blurb}>
             {liked && '★ '}
             {PLAYSTYLES[playstyleOf(player)].label}
@@ -691,6 +700,7 @@ function SlotPicker({
   squad,
   slots,
   formationRoles,
+  objectives,
   onPick,
   onRemove,
   onClose,
@@ -700,6 +710,7 @@ function SlotPicker({
   squad: PlayerCard[];
   slots: (string | null)[];
   formationRoles: PlayerCard['position'][];
+  objectives: ObjectiveId[] | null;
   onPick: (id: string) => void;
   onRemove: () => void;
   onClose: () => void;
@@ -753,7 +764,10 @@ function SlotPicker({
                 >
                   <PlayerAvatar player={p} size={36} />
                   <span className="min-w-0 flex-1">
-                    <span className="block truncate font-semibold">{p.shortName}</span>
+                    <span className="block truncate font-semibold">
+                      {p.shortName}
+                      <PlayerHints ids={objectives} player={p} className="ml-1.5 font-normal" />
+                    </span>
                     <span className="text-xs text-muted">
                       {p.position}
                       {p.secondaryPositions.length ? ` · ${p.secondaryPositions.join('/')}` : ''} · {PLAYSTYLES[playstyleOf(p)].label} ·{' '}
@@ -849,6 +863,7 @@ function PlanPanel({ score, byId }: { score: ReturnType<typeof scoreSquad>; byId
             {score.objectives.map((o) => (
               <li key={o.id} className={o.done ? 'text-emerald-200' : 'text-muted'}>
                 {o.done ? '✓' : '○'} <b className={o.done ? '' : 'text-ink'}>{OBJECTIVES[o.id].label}</b> · {OBJECTIVES[o.id].text}
+                {o.progress && <span className={`ml-1 font-bold num ${o.done ? '' : 'text-amber-200'}`}>({o.progress})</span>}
               </li>
             ))}
           </ul>

@@ -462,6 +462,7 @@ export function ManagerReport({
                 {score.objectives.map((o) => (
                   <li key={o.id} className={o.done ? 'text-emerald-200' : 'text-dim'}>
                     {o.done ? '✓' : '✗'} <b>{OBJECTIVES[o.id]?.label ?? o.id}</b> · {OBJECTIVES[o.id]?.text}
+                    {o.progress && <span className="ml-1 text-dim num">({o.progress})</span>}
                   </li>
                 ))}
               </ul>

@@ -1,6 +1,5 @@
 import { positionFit, type FitLevel } from './fit';
-import { isObjectiveId, OBJECTIVES, type ObjectiveId } from './objectives';
-import { isStarPlayer } from './stars';
+import { countsTowards, isObjectiveId, OBJECTIVE_RULES, OBJECTIVES, type ObjectiveId } from './objectives';
 import { COMBOS, DEFAULT_TACTIC, isTacticId, playstyleOf, TACTICS, type ComboId, type PlaystyleId, type Tactic, type TacticId } from './playstyles';
 import { FORMATIONS, resolveFormation, type Formation } from './formations';
 import type { LineupInput } from './lineup';
@@ -129,7 +128,8 @@ export interface SquadScore {
   /** Starters playing a playstyle the tactic is built around. */
   styleMatch: { liked: number; of: number };
   synergies: SynergyHit[];
-  objectives: { id: ObjectiveId; done: boolean }[];
+  /** `progress` is a short counter for the UI, e.g. "2/3". */
+  objectives: { id: ObjectiveId; done: boolean; progress?: string }[];
   objectiveBonus: number;
   links: ChemistryLink[];
   notes: { kind: 'strength' | 'weakness'; text: string }[];
@@ -362,7 +362,7 @@ export function scoreSquad(squad: SquadEntry[], lineup: LineupInput, ctx: ScoreC
   const objectiveIds = (ctx.objectives ?? []).filter(isObjectiveId);
   const objectives = objectiveIds.map((id) => ({
     id,
-    done: objectiveDone(id, { starters: filled, fits, styled, squad, synergies, tacticsScore, ctx }),
+    ...objectiveDone(id, { starters: filled, fits, squad, synergies, tacticsScore, ctx }),
   }));
   const objectiveBonus = objectives.filter((o) => o.done).length * cfg.objectivePoints;
 
@@ -445,45 +445,60 @@ function objectiveDone(
   d: {
     starters: { slot: { role: Position }; player: PlayerCard }[];
     fits: { level: FitLevel }[];
-    styled: ({ style: PlaystyleId } | null)[];
     squad: SquadEntry[];
     synergies: SynergyHit[];
     tacticsScore: number;
     ctx: ScoreContext;
   },
-): boolean {
+): { done: boolean; progress?: string } {
   const xi = d.starters.map((s) => s.player);
   const most = (key: (p: PlayerCard) => string) => {
     const c = new Map<string, number>();
     for (const p of xi) c.set(key(p), (c.get(key(p)) ?? 0) + 1);
     return Math.max(0, ...c.values());
   };
+  const atLeast = (have: number, need: number) => ({ done: have >= need, progress: `${Math.min(have, need)}/${need}` });
+  const starting = (id: ObjectiveId) => xi.filter((p) => countsTowards(id, p)).length;
+  const budget = d.ctx.startingBudget;
   switch (id) {
     case 'CLUB_TRIO':
-      return most((p) => p.club.id) >= 3;
+      return atLeast(most((p) => p.club.id), 3);
     case 'NATION_FOUR':
-      return most((p) => p.nation.code) >= 4;
-    case 'YOUTH':
-      return xi.length === 11 && avg(xi.map((p) => p.age)) <= 25;
+      return atLeast(most((p) => p.nation.code), 4);
+    case 'YOUTH': {
+      const a = avg(xi.map((p) => p.age));
+      return { done: xi.length === 11 && a <= 25, progress: xi.length ? `avg ${round1(a)}` : undefined };
+    }
     case 'VETERANS':
-      return xi.filter((p) => p.age >= 31).length >= 3;
+    case 'WONDERKIDS':
+    case 'LEFT_FOOTERS':
+    case 'PACE':
+      return atLeast(starting(id), id === 'WONDERKIDS' ? 2 : 3);
+    case 'TWIN_TOWERS':
+      // Has to be playing at centre-back, not just be one.
+      return atLeast(d.starters.filter((s) => s.slot.role === 'CB' && s.player.heightCm >= OBJECTIVE_RULES.towerCm).length, 2);
+    case 'MARQUEE':
+      return atLeast(starting(id), 1);
+    case 'MELTING_POT':
+      return atLeast(new Set(xi.map((p) => p.nation.code)).size, 9);
     case 'FRUGAL':
-      return d.ctx.startingBudget !== undefined && d.ctx.budgetLeft !== undefined && d.ctx.budgetLeft >= 0.25 * d.ctx.startingBudget;
+      return { done: budget !== undefined && d.ctx.budgetLeft !== undefined && d.ctx.budgetLeft >= 0.25 * budget };
     case 'BARGAINS':
-      return d.squad.filter((e) => e.via === 'AUCTION' && e.price < 0.5 * e.estimatedValue).length >= 3;
-    case 'NO_SUPERSTARS':
-      return xi.length === 11 && xi.every((p) => !isStarPlayer(p));
+      return atLeast(d.squad.filter((e) => e.via === 'AUCTION' && e.price < 0.5 * e.estimatedValue).length, 3);
+    case 'BIG_SPENDER': {
+      const top = Math.max(0, ...d.squad.filter((e) => e.via === 'AUCTION').map((e) => e.price));
+      const need = budget ? Math.ceil(OBJECTIVE_RULES.bigSpendShare * budget) : 0;
+      return { done: budget !== undefined && budget > 0 && top >= need, progress: budget ? `biggest buy ${top}/${need}` : undefined };
+    }
     case 'ALL_IN_POSITION':
-      return d.fits.length === 11 && d.fits.every((x) => x.level === 'NATURAL' || x.level === 'SECONDARY');
+      return atLeast(d.fits.filter((x) => x.level === 'NATURAL' || x.level === 'SECONDARY').length, 11);
     case 'COMBOS':
-      return d.synergies.length >= 3;
+      return atLeast(d.synergies.length, 3);
     case 'TACTIC_FIT':
       // Same rounding as the displayed value.
-      return round1(d.tacticsScore) >= 85;
-    case 'LEFT_FOOTERS':
-      return xi.filter((p) => p.preferredFoot === 'Left').length >= 3;
+      return { done: round1(d.tacticsScore) >= 85, progress: `${Math.round(d.tacticsScore)}` };
     case 'VARIETY':
-      return new Set(xi.map((p) => playstyleOf(p))).size >= 8;
+      return atLeast(new Set(xi.map((p) => playstyleOf(p))).size, 8);
   }
 }
 

@@ -3,7 +3,7 @@ import { useEffect, useRef, useState } from 'react';
 import { ChatButton } from '../ChatPanel';
 import { ReactionButton } from '../Reactions';
 import { AnimatePresence, motion } from 'motion/react';
-import { isStarPlayer, PLAYSTYLES, playstyleOf, type RoomView } from '@fa/shared';
+import { countsTowards, isStarPlayer, OBJECTIVES, PLAYSTYLES, playstyleOf, type RoomView } from '@fa/shared';
 import { useGame } from '@/lib/store';
 import { MysteryCard, PlayerCard } from '../PlayerCard';
 import { CardBar, MarketBanner, SealedPanel } from './Twists';
@@ -197,7 +197,7 @@ export function AuctionScreen({ room, me }: { room: RoomView; me: string }) {
 
           {/* mobile tabs */}
           <div className="lg:hidden">
-            <ObjectivesNote room={room} className="mb-3" />
+            <ObjectivesNote room={room} squad={self?.squad} className="mb-3" />
             <div className="mb-3 grid grid-cols-3 gap-1 rounded-xl bg-white/[.04] p-1">
               {(['squad', 'managers', 'feed'] as Tab[]).map((t) => (
                 <button
@@ -306,6 +306,15 @@ function LotInfo({ room, remaining, totalMs, compact = false }: { room: RoomView
         {isStarPlayer(p) && (
           <div className="mt-1 text-xs font-bold text-gold">
             ⭐ Star player · max {room.rules.starCap.max} per squad
+          </div>
+        )}
+        {(room.myObjectives ?? []).some((id) => countsTowards(id, p)) && (
+          <div className="mt-1 text-xs font-bold text-volt">
+            🕵️ Counts for your objective:{' '}
+            {(room.myObjectives ?? [])
+              .filter((id) => countsTowards(id, p))
+              .map((id) => OBJECTIVES[id].label)
+              .join(', ')}
           </div>
         )}
         {p.secondaryPositions.length > 0 && <div className="mt-1 text-xs text-dim">Also plays {p.secondaryPositions.join(', ')}</div>}

@@ -25,6 +25,7 @@ import {
   resolveFormation,
   rulesForFormat,
   SPENDING_OBJECTIVES,
+  unsupportedObjectives,
   TAUNTS,
   type CupSummary,
   type CupTeam,
@@ -487,8 +488,15 @@ export class Room {
       }));
 
     const gameId = this.gameId;
+    // Nothing a manager can't do: no spending goals when nobody pays, no big single buy
+    // under the Budget Cap's price ceiling, nothing the player pool can't support.
+    const skipObjectives: ObjectiveId[] = [
+      ...(draft ? SPENDING_OBJECTIVES : []),
+      ...(this.settings.format === 'BUDGET' ? (['BIG_SPENDER'] as const) : []),
+      ...unsupportedObjectives(this.pool),
+    ];
     for (const p of this.participants) {
-      this.objectives.set(p.userId, drawObjectives(createRng(`${seed}:objectives:${p.userId}`), undefined, draft ? SPENDING_OBJECTIVES : []));
+      this.objectives.set(p.userId, drawObjectives(createRng(`${seed}:objectives:${p.userId}`), undefined, skipObjectives));
     }
     if (this.settings.mode === 'RANKED') {
       this.deps.store
